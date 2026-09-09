@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animedetails
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +29,7 @@ import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerScreen
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -84,6 +86,12 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         headlineContent = { Text(episode.name) },
                         supportingContent = episode.scanlator?.let { scanlator ->
                             { Text(scanlator, style = MaterialTheme.typography.bodySmall) }
+                        },
+                        modifier = Modifier.clickable {
+                            // The episode url is what the source gave us. Resolving it to a
+                            // playable video means asking the source for its hosters and
+                            // video list, which is the next piece; a direct url plays today.
+                            navigator.push(AnimePlayerScreen(episode.url, episode.name))
                         },
                     )
                 }
