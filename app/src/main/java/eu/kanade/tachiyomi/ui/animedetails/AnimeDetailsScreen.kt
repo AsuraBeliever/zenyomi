@@ -99,7 +99,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         ) {
                             viewModel.resolveVideo(episode) { url ->
                                 if (url != null) {
-                                    navigator.push(AnimePlayerScreen(url, episode.name))
+                                    navigator.push(AnimePlayerScreen(url, episode.name, episode.id))
                                 }
                             }
                         },

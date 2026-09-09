@@ -28,6 +28,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      */
     private var pendingFile: String? = null
     private var surfaceReady = false
+    private var pendingResumeAt = 0
 
     /** Observers are registered against MPVLib globally, so keep ours to remove it later. */
     private var observer: MPVLib.EventObserver? = null
@@ -61,11 +62,21 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         MPVLib.addObserver(observer)
     }
 
-    fun playFile(uri: String) {
+    fun playFile(uri: String, resumeAt: Int = 0) {
+        pendingResumeAt = resumeAt
         if (surfaceReady) {
-            MPVLib.command(arrayOf("loadfile", uri))
+            load(uri, resumeAt)
         } else {
             pendingFile = uri
+        }
+    }
+
+    /** mpv takes the start position as a loadfile option, avoiding a visible seek. */
+    private fun load(uri: String, resumeAt: Int) {
+        if (resumeAt > 0) {
+            MPVLib.command(arrayOf("loadfile", uri, "replace", "start=$resumeAt"))
+        } else {
+            MPVLib.command(arrayOf("loadfile", uri))
         }
     }
 
@@ -96,7 +107,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         surfaceReady = true
         pendingFile?.let {
             pendingFile = null
-            MPVLib.command(arrayOf("loadfile", it))
+            load(it, pendingResumeAt)
         }
     }
 
