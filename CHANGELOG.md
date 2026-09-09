@@ -10,6 +10,15 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.1.1] - 2026-09-08
+### Fixed
+- Replace the remaining Mihon branding that the 0.1.0 rebrand missed: the splash screen logo, the debug-variant launcher icon, the notification icons and the *More* screen header all still drew Mihon's mark.
+- Remove Mihon's Firebase configuration and stop building with telemetry, so release builds no longer report into Mihon's analytics.
+
+### Other
+- Rewrite the store metadata, contributing guide and code of conduct for Zenyomi.
+- Add `docs/FORK_COMPLIANCE.md`, audited before every release.
+
 ## [0.1.0] - 2026-09-08
 ### Other
 - Fork Mihon v0.20.4 as the technical base of Zenyomi, a single app for reading manga and watching anime.

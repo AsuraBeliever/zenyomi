@@ -49,6 +49,7 @@ Requiere JDK 21 y el SDK de Android.
 | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Estado vivo, bloqueos |
 | [`docs/PORTING_LOG.md`](docs/PORTING_LOG.md) | Procedencia del código portado |
 | [`docs/adr/`](docs/adr) | Decisiones de arquitectura |
+| [`docs/FORK_COMPLIANCE.md`](docs/FORK_COMPLIANCE.md) | Auditoría de licencia y marcas |
 
 ## Licencia
 

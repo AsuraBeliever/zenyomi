@@ -29,7 +29,9 @@ presenta como opciones de producto, no como detalles de implementación.
    carga de extensiones; se usa la infraestructura de Mihon y se extiende para
    soportar también extensiones de anime.
 4. **Licencia: Apache-2.0.** Mihon y Aniyomi son Apache-2.0; una obra derivada no
-   puede relicenciarse a MIT. Ver `docs/adr/0002-licencia.md`.
+   puede relicenciarse a MIT. Ver `docs/adr/0002-licencia.md`. El cumplimiento como
+   fork (incluida la lista que pide Mihon) se audita en `docs/FORK_COMPLIANCE.md`
+   **antes de cada release**.
 5. **Se documenta sobre la marcha.** Todo porte queda registrado en
    `docs/PORTING_LOG.md`; toda decisión de arquitectura en `docs/adr/`.
 6. **Nunca se reescribe historia publicada** (`main`, `develop`, tags).
