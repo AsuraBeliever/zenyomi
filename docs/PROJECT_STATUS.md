@@ -61,6 +61,24 @@ Técnicas:
 - ADR-0003 — portar desde `aniyomi/main`, con v0.18.1.2 como contraste
 - ADR-0004 — la BD de anime nace en la versión 1, sin las 26 migraciones de Aniyomi
 
+## Lo que falta para que se VEA el anime
+
+Todo lo construido está bajo el capó. La app se ve exactamente igual que la v0.1.2
+porque **no hay ni una pantalla de anime todavía**. Ese es el grueso restante de la
+fase 1:
+
+| Pieza | Tamaño aproximado |
+|---|---|
+| Navegación con pestañas Anime / Manga | media |
+| Biblioteca de anime (pantalla + modelo de vista) | grande |
+| Explorar / fuentes de anime | grande |
+| Ficha de anime + lista de episodios | grande |
+| Ajustes de anime | media |
+| Módulo `i18n-anime` con las cadenas | media |
+
+De los 553 ficheros de Aniyomi que tocan anime, unos 200 son de interfaz. Es la mitad
+más laboriosa de la fase 1 y no está empezada.
+
 ## Siguiente paso
 
 Capa de dominio de anime: `domain/anime` y `domain/episode`, portados desde
