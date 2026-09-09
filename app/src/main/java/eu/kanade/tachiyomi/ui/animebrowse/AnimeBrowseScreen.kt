@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
@@ -22,6 +24,9 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Settings
 import eu.kanade.tachiyomi.ui.animeextension.AnimeExtensionsContent
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
@@ -92,6 +97,18 @@ private fun AnimeSourcesContent() {
                             text = source.lang,
                             style = MaterialTheme.typography.bodySmall,
                         )
+                    },
+                    trailingContent = {
+                        if (source is ConfigurableAnimeSource) {
+                            IconButton(
+                                onClick = { navigator.push(AnimeSourcePreferencesScreen(source.id)) },
+                            ) {
+                                Icon(
+                                    imageVector = MaterialSymbols.Rounded.Settings,
+                                    contentDescription = stringResource(MR.strings.label_settings),
+                                )
+                            }
+                        }
                     },
                     modifier = Modifier.clickable {
                         navigator.push(AnimeCatalogScreen(source.id))

@@ -28,7 +28,7 @@
 | Biblioteca de anime (UI) | ✅ | pestaña propia, lee de la BD; `anime.db` se crea al abrirla |
 | Explorar anime (fuentes + extensiones) | ✅ | dos pestañas; verificado: las 3 fuentes de una extensión real llegan a la UI |
 | Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
-| Ajustes de fuente de anime | ⬜ | `ConfigurableAnimeSource` sin UI; sin esto no se pueden configurar fuentes que lo requieran |
+| Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ⬜ | siguiente |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
