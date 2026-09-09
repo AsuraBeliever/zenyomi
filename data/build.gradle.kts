@@ -18,6 +18,15 @@ android {
                 schemaOutputDirectory.set(project.file("./src/main/sqldelight"))
                 generateAsync.set(true)
             }
+            // Anime lives in its own database, exactly as Aniyomi keeps it, so that
+            // Mihon's manga schema is never touched. See docs/adr/0001-arbol-paralelo-anime.md
+            create("AnimeDatabase") {
+                packageName.set("tachiyomi.data.anime")
+                dialect(libs.sqldelight.sqliteDialect338)
+                schemaOutputDirectory.set(project.file("./src/main/sqldelightanime"))
+                srcDirs.from(project.file("./src/main/sqldelightanime"))
+                generateAsync.set(true)
+            }
         }
     }
 }

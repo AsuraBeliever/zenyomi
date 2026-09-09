@@ -13,7 +13,19 @@ Referencia de contraste: `v0.18.1.2` (2025-10-28, última release publicada). Ve
 
 ## Entradas
 
-_(vacío — la fase 1 aún no ha empezado)_
+| Fecha | Área | Origen (Aniyomi) | Destino (Zenyomi) | SHA origen | Notas |
+|---|---|---|---|---|---|
+| 2026-09-08 | db | `data/src/main/sqldelightanime/dataanime/*.sq` (10 tablas) | igual ruta | `4b5b90a37` | Sin cambios en el SQL |
+| 2026-09-08 | db | `data/src/main/sqldelightanime/view/*.sq` (8 vistas) | igual ruta | `4b5b90a37` | Sin cambios |
+| 2026-09-08 | db | `data/src/main/sqldelightanime/migrations/113–138.sqm` | **no portado** | `4b5b90a37` | Ver ADR-0004 |
+| 2026-09-08 | source-api | `animesource/model/AnimeUpdateStrategy.kt` | `source-api/src/main/kotlin/…` | `4b5b90a37` | Reescrito; ruta `src/main/kotlin` de Mihon en vez de `src/commonMain` |
+| 2026-09-08 | source-api | `animesource/model/FetchType.kt` | `source-api/src/main/kotlin/…` | `4b5b90a37` | Reescrito |
+
+Configuración añadida (no portada literalmente): la segunda base sqldelight se declara
+en `data/build.gradle.kts` como `AnimeDatabase`, paquete `tachiyomi.data.anime`. Aniyomi
+usa el paquete `tachiyomi.mi.data` (herencia de su applicationId `xyz.jmir.tachiyomi.mi`)
+y un dialecto distinto; Zenyomi usa el dialecto y el `generateAsync` de Mihon, según la
+regla de que Mihon manda en el *cómo*.
 
 ## Renombrados sistemáticos al portar
 
