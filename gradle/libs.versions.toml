@@ -1,4 +1,10 @@
 [versions]
+aniyomi-mpv-lib = "1.18.n"
+arthenica-smartexceptions = "0.2.1"
+ffmpeg-kit = "1.18"
+androidx-media = "1.7.0"
+seeker = "1.2.2"
+truetypeparser = "2.1.4"
 nanohttpd = "2.3.1"
 aboutLibraries = "15.2.0"
 android-desugar = "2.1.5"
@@ -82,6 +88,12 @@ webgpuviewer = "40"
 xmlutil = "1.0.2"
 
 [libraries]
+aniyomi-mpv = { module = "com.github.aniyomiorg:aniyomi-mpv-lib", version.ref = "aniyomi-mpv-lib" }
+ffmpeg-kit = { module = "com.github.jmir1:ffmpeg-kit", version.ref = "ffmpeg-kit" }
+arthenica-smartexceptions = { module = "com.arthenica:smart-exception-java", version.ref = "arthenica-smartexceptions" }
+mediasession = { module = "androidx.media:media", version.ref = "androidx-media" }
+seeker = { module = "io.github.2307vivek:seeker", version.ref = "seeker" }
+truetypeparser = { module = "io.github.yubyf:truetypeparser-light", version.ref = "truetypeparser" }
 nanohttpd = { module = "org.nanohttpd:nanohttpd", version.ref = "nanohttpd" }
 aboutLibraries-compose = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "aboutLibraries" }
 android-desugar = { module = "com.android.tools:desugar_jdk_libs", version.ref = "android-desugar" }

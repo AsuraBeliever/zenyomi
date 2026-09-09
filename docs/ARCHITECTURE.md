@@ -92,8 +92,23 @@ Portado de Aniyomi. Dependencias nativas pesadas:
 | `torrserver` | streaming por torrent |
 | `mediasession`, `seeker`, `truetypeparser` | controles, barra de progreso, subtítulos |
 
-Son artefactos maven publicados, no hay que compilar `.so` a mano. Es la fase de
-mayor riesgo del proyecto (tamaño de APK, ABIs, NDK).
+Son artefactos maven publicados, no hay que compilar `.so` a mano.
+
+**Comprobado el 2026-09-09:** los cinco resuelven (JitPack para mpv y FFmpeg, Maven
+Central para el resto), empaquetan sus 24 librerías nativas y la app arranca sin
+`UnsatisfiedLinkError`.
+
+Coste en tamaño, medido sobre el APK de depuración:
+
+| ABI | Sin player | Con player |
+|---|---|---|
+| arm64-v8a | 73 MB | 106 MB |
+| armeabi-v7a | — | 95 MB |
+| universal | 174 MB | 305 MB |
+
+Las que más pesan son `libavcodec.so` (17 MB) y `libmpv.so` (5,5 MB). Los builds de
+release aplican R8 y separación por ABI, así que la cifra que le llega al usuario es la
+de su arquitectura, no la universal.
 
 ## Módulos Gradle
 

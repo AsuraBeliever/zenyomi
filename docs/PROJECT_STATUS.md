@@ -1,7 +1,7 @@
 # Estado del proyecto
 
 **Actualizado:** 2026-09-08
-**Fase actual:** 1 — Cimientos de anime (fase 0 cerrada, v0.1.2 publicada)
+**Fase actual:** 2 — Reproductor (fase 1 funcionalmente cerrada)
 **Versión objetivo inmediata:** v0.1.0
 **¿Compila?** sí — línea base de Mihon verde en 5m 42s
 **¿Instalado en el dispositivo del cliente?** sí — v0.1.0 verificada en Galaxy S25 Ultra
@@ -31,7 +31,8 @@
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
 | Extensiones de anime | ⬜ | fase 1 |
-| Player | ⬜ | fase 2 |
+| Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
+| UI del reproductor | ⬜ | siguiente |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
