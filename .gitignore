@@ -22,3 +22,12 @@ local.properties
 
 # Firebase: si algún día se añade telemetría, va con un proyecto propio y fuera del repo
 /app/google-services.json
+
+# ---------------------------------------------------------------------------
+# CLAVE DE FIRMA - NUNCA debe entrar en el repositorio (es publico).
+# Si esto se filtra, cualquiera puede firmar APKs que se instalen como
+# actualizacion legitima de Zenyomi. Ver docs/RELEASING.md
+# ---------------------------------------------------------------------------
+signing-key-backup/
+*.jks
+*.keystore
