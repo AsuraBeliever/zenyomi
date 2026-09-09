@@ -77,6 +77,7 @@ No todo tipo de Aniyomi merece un gemelo. El criterio aplicado:
   `Pin`/`Pins`, `TriState`, `DateColumnAdapter`, `StringListColumnAdapter`,
   `MemoColumnAdapter`.
 
+| 2026-09-08 | fuentes | `AndroidAnimeSourceManager` | `app/…/animesource/` | — | Derivado del de Mihon; la interfaz de dominio se reescribió a la forma suspending de Mihon en vez de la síncrona de Aniyomi |
 | 2026-09-08 | ext | motor de extensiones de anime (13 ficheros) | `app/…/animeextension/`, `domain/…/animeextension/` | — | **Derivado del motor de Mihon**, no de Aniyomi. Ver nota abajo |
 
 ### El motor de extensiones se deriva de Mihon, no se copia de Aniyomi
@@ -106,7 +107,8 @@ de preferencias compartido de Mihon y lo usan ambos motores.
 
 | Qué | Por qué espera |
 |---|---|
-| `AndroidAnimeSourceManager` | Implementación de `AnimeSourceManager` en el módulo `app`. |
+| Fuente local de anime | `source-local` de Aniyomi sin portar; `AndroidAnimeSourceManager` no siembra el mapa con ella. Es lo que permite reproducir vídeos guardados en el dispositivo. |
+| Renombrado de carpetas de descarga | `AndroidAnimeSourceManager` no llama a `renameSource` porque no existe el gestor de descargas de anime. |
 | Catálogo remoto de extensiones de anime | `AnimeExtensionApi.findExtensions()` devuelve lista vacía. La cadena de tiendas de Mihon (`ExtensionStoreRepository` + 4 modelos de red + servicio, 13 ficheros) está tipada contra la `Extension` de manga y necesita su contraparte. **Las extensiones ya instaladas como APK no dependen de esto**: las descubre `AnimeExtensionLoader`. |
 | Verificación end-to-end del cargador | No había ninguna extensión de anime instalada en el dispositivo de pruebas, así que la carga real está sin comprobar contra un APK. |
 

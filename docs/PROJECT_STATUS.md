@@ -23,7 +23,9 @@
 | Capa data de anime | ✅ | mapper + 3 repositorios, reescritos al estilo de Mihon |
 | `source-api` de anime | ✅ | 26 ficheros: `SAnime`, `SEpisode`, `Video`, `Hoster`, `AnimeHttpSource`… |
 | Dominio de fuentes de anime | ✅ | modelos, repositorios, `AnimeSourceManager` |
-| Extensiones de anime | ⏳ | siguiente: `AndroidAnimeSourceManager` y el cargador |
+| Motor de extensiones de anime | ✅ | derivado del de Mihon; carga APK con `tachiyomi.animeextension` |
+| `AndroidAnimeSourceManager` | ✅ | conecta extensiones cargadas con fuentes usables |
+| UI de anime | ⬜ | no empezada — es el grueso restante de la fase 1 |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |

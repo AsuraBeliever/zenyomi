@@ -5,9 +5,9 @@ import kotlinx.coroutines.flow.Flow
 import tachiyomi.domain.source.anime.model.StubAnimeSource
 
 interface AnimeStubSourceRepository {
-    fun subscribeAllAnime(): Flow<List<StubAnimeSource>>
+    fun subscribeAll(): Flow<List<StubAnimeSource>>
 
-    suspend fun getStubAnimeSource(id: Long): StubAnimeSource?
+    suspend fun getStubSource(id: Long): StubAnimeSource?
 
-    suspend fun upsertStubAnimeSource(id: Long, lang: String, name: String)
+    suspend fun upsertStubSource(id: Long, lang: String, name: String)
 }
