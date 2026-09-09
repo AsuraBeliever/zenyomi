@@ -19,3 +19,6 @@ local.properties
 # Zenyomi
 /docs/logs/*.log
 /.reference/
+
+# Firebase: si algún día se añade telemetría, va con un proyecto propio y fuera del repo
+/app/google-services.json

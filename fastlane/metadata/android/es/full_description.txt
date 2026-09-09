@@ -1,9 +1,13 @@
-Características:
-* Lee a tu manera con modos de visualización personalizables, incluido el tradicional de derecha a izquierda, de izquierda a derecha y modo cascada para webtoons.
-* Organiza tu colección en categorías personalizadas, consulta las insignias de no leídos y recibe actualizaciones automáticas cuando salgan nuevos capítulos.
-* Sincroniza tu progreso de lectura automáticamente con servicios populares como MyAnimeList, AniList, Kitsu, MangaBaka y muchos más.
-* Descarga capítulos para leer sin conexión y haz copias de seguridad de toda tu biblioteca y ajustes fácilmente para migrar de dispositivo o mantenerlo todo a salvo.
-* Disfruta de una interfaz Material You con personalización completa del tema, incluido un modo True Dark estricto.
-* Y mucho más...
+Zenyomi reúne tu manga y tu anime en una sola app, en vez de dos.
 
-El desarrollador de esta aplicación no tiene ninguna afiliación con los proveedores de contenido disponibles, y esta aplicación no aloja ningún contenido.
+Está construido sobre Mihon, así que todo lo que hace el lado de manga es lo que hace Mihon, y el anime se añade al lado en lugar de sustituirlo.
+
+Características:
+* Lee manga, webtoons y cómics con modos de visualización personalizables: de derecha a izquierda, de izquierda a derecha y modo cascada para webtoons.
+* Ve anime desde la misma app, con su propia biblioteca y sus propias fuentes.
+* Organiza ambas colecciones en categorías personalizadas, con insignias de pendientes y actualizaciones automáticas cuando salga algo nuevo.
+* Sincroniza tu progreso con servicios como MyAnimeList, AniList, Kitsu, MangaBaka y muchos más.
+* Descarga para uso sin conexión y respalda toda tu biblioteca y ajustes para conservarlos o migrar de dispositivo.
+* Interfaz Material You con personalización completa de temas, incluido un modo True Dark estricto.
+
+Zenyomi no aloja contenido propio. Las fuentes provienen de extensiones de terceros ajenas al proyecto.

@@ -1,49 +1,39 @@
-Looking to report an issue/bug or make a feature request? Please refer to the [README file](https://github.com/mihonapp/mihon#issues-feature-requests-and-contributing).
+# Contribuir a Zenyomi
 
----
+Zenyomi es un fork de [Mihon](https://github.com/mihonapp/mihon) que añade anime.
+Antes de tocar nada, lee [`CLAUDE.md`](CLAUDE.md): ahí están las reglas del proyecto,
+la estrategia de ramas y las convenciones de commits.
 
-Thanks for your interest in contributing to Mihon!
+## Requisitos
 
+- Android development, Kotlin y Jetpack Compose
+- JDK 21 y el SDK de Android
+- Familiaridad con la arquitectura de Mihon
 
-# Code contributions
+## Antes de escribir código
 
-Pull requests are welcome!
+Lee [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) y los
+[ADRs](docs/adr). Hay dos reglas que condicionan casi todo:
 
-If you're interested in taking on [an open issue](https://github.com/mihonapp/mihon/issues), please comment on it so others are aware.
-You do not need to ask for permission nor an assignment.
+1. **No se pierde ninguna feature de Mihon.** El anime se añade; nunca sustituye ni
+   degrada nada del lado de manga.
+2. **No se adopta la abstracción `entries`/`items` de Aniyomi.** El manga de Mihon
+   queda intacto y el anime va en un árbol paralelo. Es lo que mantiene baratos los
+   merges con upstream (ADR-0001).
 
-## Prerequisites
+Si portas código desde Aniyomi, anótalo en
+[`docs/PORTING_LOG.md`](docs/PORTING_LOG.md) con el SHA de origen.
 
-Before you start, please note that the ability to use following technologies is **required** and that existing contributors will not actively teach them to you.
+## Traducciones
 
-- Basic [Android development](https://developer.android.com/)
-- [Kotlin](https://kotlinlang.org/)
+Las cadenas base viven en `i18n/src/commonMain/moko-resources/base/`. Las
+traducciones de Mihon llegan por Weblate al upstream; las cadenas propias de Zenyomi
+se traducen aquí.
 
-### Tools
+## Si forkeas Zenyomi
 
-- [Android Studio](https://developer.android.com/studio)
-- Emulator or phone with developer options enabled to test changes.
-
-## Getting help
-
-- Join [the Discord server](https://discord.gg/mihon) for online help and to ask questions while developing.
-
-# Translations
-
-Translations are done externally via Weblate. See [our website](https://mihon.app/docs/contribute#translation) for more details.
-
-
-# Forks
-
-Forks are allowed so long as they abide by [the project's LICENSE](https://github.com/mihonapp/mihon/blob/main/LICENSE).
-
-When creating a fork, remember to:
-
-- To avoid confusion with the main app:
-    - Change the app name
-    - Change the app icon
-    - Change or disable the [app update checker](https://github.com/mihonapp/mihon/blob/main/app/src/main/java/eu/kanade/tachiyomi/data/updater/AppUpdateChecker.kt)
-- To avoid installation conflicts:
-    - Change the `applicationId` in [`build.gradle.kts`](https://github.com/mihonapp/mihon/blob/main/app/build.gradle.kts)
-- To avoid having your data polluting the main app's analytics and crash report services:
-    - If you want to use Firebase analytics, replace [`google-services.json`](https://github.com/mihonapp/mihon/blob/main/app/src/standard/google-services.json) with your own
+Aplica lo mismo que pide Mihon, y por las mismas razones: cambia el nombre, el icono,
+el `applicationId` y el comprobador de actualizaciones, y usa tu propio proyecto de
+Firebase si añades telemetría. Respeta la [LICENSE](LICENSE) y el [NOTICE](NOTICE):
+Apache-2.0 obliga a conservar los avisos de copyright y no concede derechos sobre
+marcas ajenas.

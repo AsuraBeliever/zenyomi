@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="432"
+    android:viewportHeight="432">
+  <!-- Hoja de manga con triangulo de reproduccion calado -->
+  <path
+      android:fillType="evenOdd"
+      android:fillColor="#FFFFFFFF"
+      android:pathData="M160,126L272,126A24,24 0 0,1 296,150L296,282A24,24 0 0,1 272,306L160,306A24,24 0 0,1 136,282L136,150A24,24 0 0,1 160,126ZM206,178L206,254L266,216Z"/>
+</vector>

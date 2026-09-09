@@ -1,5 +1,10 @@
 # i18n
 
-This module houses the string resources and translations.
+Este módulo contiene los recursos de cadenas y sus traducciones.
 
-Original English strings are managed in `src/commonMain/moko-resources/base/`. Translations are done externally via Weblate. See [our website](https://mihon.app/docs/contribute#translation) for more details. 
+Las cadenas base en inglés están en `src/commonMain/moko-resources/base/`.
+
+Las traducciones heredadas vienen del upstream de Mihon, que las gestiona vía Weblate.
+Zenyomi no tiene Weblate propio todavía: las cadenas nuevas del proyecto se traducen
+directamente en este repositorio. Cuando llegue el módulo `i18n-anime` para las cadenas
+de anime, se documentará aquí.
