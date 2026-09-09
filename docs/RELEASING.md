@@ -12,13 +12,24 @@ usuario pierde su biblioteca.
 | Alias | `zenyomi` |
 | Algoritmo | RSA 4096, válido hasta 2054 |
 | Credenciales | `~/.zenyomi-signing/credentials.txt` (permisos 600) |
+| Copia en el proyecto | `signing-key-backup/` — **gitignored**, ver `LEEME.txt` dentro |
 | SHA-256 | `24:5E:D5:4C:43:F4:46:90:89:91:4E:FB:5B:CD:47:08:BF:19:20:1A:C0:ED:23:50:4B:EB:F3:FF:8D:04:5D:BF` |
 
 > **Si se pierden el `.jks` y su contraseña, el proyecto no puede volver a publicar
 > una actualización instalable.** La única salida sería cambiar de `applicationId`,
 > y todos los usuarios perderían sus datos. Debe existir una copia fuera de este equipo.
 
-Ni el keystore ni `keystore.properties` entran en git (`.gitignore:13`). En CI la clave
+Ni el keystore, ni `keystore.properties`, ni `signing-key-backup/` entran en git: el
+`.gitignore` bloquea además `*.jks` y `*.keystore`. Como el repositorio es **público**,
+esto se comprueba antes de cualquier push que toque el `.gitignore`:
+
+```sh
+git check-ignore -v signing-key-backup/zenyomi-release.jks   # debe responder
+git add -A && git status --porcelain | grep -i jks           # no debe devolver nada
+```
+
+Filtrar la clave es tan grave como perderla: permitiría a cualquiera firmar un APK que
+los teléfonos aceptarían como actualización legítima de Zenyomi. En CI la clave
 viaja como secretos del repositorio: `SIGNING_KEY` (el `.jks` en base64),
 `KEY_STORE_PASSWORD`, `ALIAS` y `KEY_PASSWORD`.
 
