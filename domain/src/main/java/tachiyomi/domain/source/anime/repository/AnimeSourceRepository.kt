@@ -2,11 +2,13 @@ package tachiyomi.domain.source.anime.repository
 
 import androidx.paging.PagingSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
-import eu.kanade.tachiyomi.animesource.model.SAnime
+import tachiyomi.domain.anime.model.Anime
 import kotlinx.coroutines.flow.Flow
 import tachiyomi.domain.source.anime.model.AnimeSource
 
-typealias AnimeSourcePagingSourceType = PagingSource<Long, SAnime>
+// Mirrors Mihon: pages carry domain models, not source ones. Aniyomi types this
+// against SAnime and converts later; see docs/adr/0001-arbol-paralelo-anime.md
+typealias AnimeSourcePagingSourceType = PagingSource<Long, Anime>
 
 interface AnimeSourceRepository {
 
