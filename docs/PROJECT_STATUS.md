@@ -20,7 +20,8 @@
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
 | Dominio anime | ✅ | 33 ficheros: modelos, repositorios e interactors; compila y corre |
-| Capa data de anime | ⏳ | siguiente: implementar los repositorios contra la BD |
+| Capa data de anime | ✅ | mapper + 3 repositorios, reescritos al estilo de Mihon |
+| Fuentes de anime | ⬜ | siguiente: `AnimeSourceManager` y el `source-api` de anime |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
@@ -62,7 +63,7 @@ Capa de dominio de anime: `domain/anime` y `domain/episode`, portados desde
 `entries/anime` e `items/episode` de Aniyomi, y los repositorios de `data` que los
 conectan con la base.
 
-Nota: el fichero `anime.db` todavía **no existe** en el dispositivo, y es correcto.
+Nota: el fichero `anime.db` sigue sin existir en el dispositivo, y es correcto.
 sqldelight lo crea de forma perezosa, en la primera consulta. Como aún no hay ningún
 repositorio que la use, el proveedor nunca se invoca. Aparecerá con el primer consumidor
 real. Lo que sí está verificado es que el grafo de Metro compila, cosa que fallaría en
