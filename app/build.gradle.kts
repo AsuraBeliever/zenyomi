@@ -52,7 +52,7 @@ android {
         tempStoreFile.outputStream().use { it.write(storeFileBytes) }
 
         signingConfigs {
-            named("debug") {
+            create("release") {
                 storeFile = tempStoreFile
                 storePassword = System.getenv("storePassword")
                 keyAlias = System.getenv("keyAlias")
@@ -63,7 +63,7 @@ android {
         val keystoreProperties = FileInputStream(keystorePropertiesFile).use { Properties().apply { load(it) } }
 
         signingConfigs {
-            named("debug") {
+            create("release") {
                 storeFile = file(keystoreProperties.getProperty("storeFile"))
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
@@ -82,7 +82,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
 
-            signingConfig = debug.signingConfig
+            // Zenyomi's own key when one is available, otherwise Android's debug key so a
+            // plain checkout still builds. Mihon signs releases with the config named
+            // "debug"; overriding that one made debug builds unable to update over an
+            // already installed dev build, because their signature changed underneath.
+            signingConfig = signingConfigs.findByName("release") ?: debug.signingConfig
 
             isProfileable = true
 
