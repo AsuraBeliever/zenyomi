@@ -77,11 +77,38 @@ No todo tipo de Aniyomi merece un gemelo. El criterio aplicado:
   `Pin`/`Pins`, `TriState`, `DateColumnAdapter`, `StringListColumnAdapter`,
   `MemoColumnAdapter`.
 
+| 2026-09-08 | ext | motor de extensiones de anime (13 ficheros) | `app/…/animeextension/`, `domain/…/animeextension/` | — | **Derivado del motor de Mihon**, no de Aniyomi. Ver nota abajo |
+
+### El motor de extensiones se deriva de Mihon, no se copia de Aniyomi
+
+Regla 3 del charter: el motor de extensiones es el de Mihon, porque el de Aniyomi es
+justamente el que falla. Así que `AnimeExtensionLoader`, `AnimeExtensionManager`,
+`AnimeExtensionInstaller` y compañía **no** se portaron desde Aniyomi: se derivaron de
+los ficheros equivalentes de Mihon, cambiando el tipo de fuente y los metadatos que
+identifican una extensión de anime.
+
+| | Mihon (manga) | Zenyomi (anime) |
+|---|---|---|
+| Característica del APK | `tachiyomi.extension` | `tachiyomi.animeextension` |
+| Clase de la fuente | `tachiyomi.extension.class` | `tachiyomi.animeextension.class` |
+| Factoría | `tachiyomi.extension.factory` | `tachiyomi.animeextension.factory` |
+| Nombre / lib / aviso | `tachiyomix.*` | `aniyomix.*` |
+| Versiones de lib soportadas | `1.4`, `1.6` | `14.0`, `16.0` |
+
+Consecuencia práctica: Zenyomi carga los APK de extensiones de anime publicados para
+Aniyomi, pero con la lógica de carga, verificación de firmas e instalación de Mihon,
+que es la que está mantenida.
+
+Lo que **no** se renombra al derivar: `BasePreferences.ExtensionInstaller` es un enum
+de preferencias compartido de Mihon y lo usan ambos motores.
+
 ### Pendientes conocidos
 
 | Qué | Por qué espera |
 |---|---|
-| `AndroidAnimeSourceManager` | Implementación de `AnimeSourceManager` en el módulo `app`; llega con el cargador de extensiones de anime. |
+| `AndroidAnimeSourceManager` | Implementación de `AnimeSourceManager` en el módulo `app`. |
+| Catálogo remoto de extensiones de anime | `AnimeExtensionApi.findExtensions()` devuelve lista vacía. La cadena de tiendas de Mihon (`ExtensionStoreRepository` + 4 modelos de red + servicio, 13 ficheros) está tipada contra la `Extension` de manga y necesita su contraparte. **Las extensiones ya instaladas como APK no dependen de esto**: las descubre `AnimeExtensionLoader`. |
+| Verificación end-to-end del cargador | No había ninguna extensión de anime instalada en el dispositivo de pruebas, así que la carga real está sin comprobar contra un APK. |
 
 Configuración añadida (no portada literalmente): la segunda base sqldelight se declara
 en `data/build.gradle.kts` como `AnimeDatabase`, paquete `tachiyomi.data.anime`. Aniyomi
