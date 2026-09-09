@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -87,11 +89,19 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         supportingContent = episode.scanlator?.let { scanlator ->
                             { Text(scanlator, style = MaterialTheme.typography.bodySmall) }
                         },
-                        modifier = Modifier.clickable {
-                            // The episode url is what the source gave us. Resolving it to a
-                            // playable video means asking the source for its hosters and
-                            // video list, which is the next piece; a direct url plays today.
-                            navigator.push(AnimePlayerScreen(episode.url, episode.name))
+                        trailingContent = if (state.resolvingEpisodeId == episode.id) {
+                            { CircularProgressIndicator(Modifier.size(20.dp)) }
+                        } else {
+                            null
+                        },
+                        modifier = Modifier.clickable(
+                            enabled = state.resolvingEpisodeId == null,
+                        ) {
+                            viewModel.resolveVideo(episode) { url ->
+                                if (url != null) {
+                                    navigator.push(AnimePlayerScreen(url, episode.name))
+                                }
+                            }
                         },
                     )
                 }

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.model.Episode
@@ -31,6 +32,7 @@ import tachiyomi.domain.episode.model.Episode
 class AnimeDetailsViewModel(
     @Assisted private val animeId: Long,
     private val getAnimeWithEpisodesAndSeasons: GetAnimeWithEpisodesAndSeasons,
+    private val getEpisodeVideos: GetEpisodeVideos,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -46,10 +48,30 @@ class AnimeDetailsViewModel(
         }
     }
 
+    /**
+     * Asks the source for the episode's videos and hands back the one to open.
+     *
+     * Sources reach the network here, so this reports failure instead of throwing: an
+     * episode that resolves to nothing is a normal outcome when a source needs
+     * configuration or the host is down.
+     */
+    fun resolveVideo(episode: Episode, onResolved: (String?) -> Unit) {
+        val anime = state.value.anime ?: return onResolved(null)
+        _state.update { it.copy(resolvingEpisodeId = episode.id) }
+        viewModelScope.launch {
+            val video = runCatching { getEpisodeVideos.await(anime.source, episode) }
+                .getOrDefault(emptyList())
+                .let { with(getEpisodeVideos) { it.best() } }
+            _state.update { it.copy(resolvingEpisodeId = null) }
+            onResolved(video?.videoUrl)
+        }
+    }
+
     data class State(
         val isLoading: Boolean = true,
         val anime: Anime? = null,
         val episodes: List<Episode> = emptyList(),
+        val resolvingEpisodeId: Long? = null,
     )
 
     @AssistedFactory
