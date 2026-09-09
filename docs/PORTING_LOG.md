@@ -110,7 +110,24 @@ de preferencias compartido de Mihon y lo usan ambos motores.
 | Fuente local de anime | `source-local` de Aniyomi sin portar; `AndroidAnimeSourceManager` no siembra el mapa con ella. Es lo que permite reproducir vídeos guardados en el dispositivo. |
 | Renombrado de carpetas de descarga | `AndroidAnimeSourceManager` no llama a `renameSource` porque no existe el gestor de descargas de anime. |
 | Catálogo remoto de extensiones de anime | `AnimeExtensionApi.findExtensions()` devuelve lista vacía. La cadena de tiendas de Mihon (`ExtensionStoreRepository` + 4 modelos de red + servicio, 13 ficheros) está tipada contra la `Extension` de manga y necesita su contraparte. **Las extensiones ya instaladas como APK no dependen de esto**: las descubre `AnimeExtensionLoader`. |
-| Verificación end-to-end del cargador | No había ninguna extensión de anime instalada en el dispositivo de pruebas, así que la carga real está sin comprobar contra un APK. |
+| ~~Verificación end-to-end del cargador~~ | **Hecha (2026-09-09).** Ver abajo. |
+
+### Verificación del cargador contra una extensión real
+
+Probado en el emulador (Pixel 10 Pro XL, Android 17) con
+`eu.kanade.tachiyomi.animeextension.all.jellyfin` v14.17, del repositorio archivado de
+Aniyomi. La cadena completa funciona:
+
+1. El cargador encuentra el APK por su característica `tachiyomi.animeextension`.
+2. Valida la versión de librería. La extensión no declara `aniyomix.extensionLib`, así
+   que entra la ruta de reserva: se deriva de `versionName` (`14.17` → `14.0`), que sí
+   está en las soportadas.
+3. Verifica la firma y la clasifica como no confiable, correcto en instalación nueva.
+4. Tras confiarla, **carga e instancia las clases del APK**: la fábrica declarada en
+   `tachiyomi.animeextension.class` produce 3 objetos `AnimeSource`.
+
+Corrección que salió de esta prueba: el cargador quitaba el prefijo `"Tachiyomi: "` del
+nombre heredado de Mihon; las extensiones de anime se llaman `"Aniyomi: ..."`.
 
 Configuración añadida (no portada literalmente): la segunda base sqldelight se declara
 en `data/build.gradle.kts` como `AnimeDatabase`, paquete `tachiyomi.data.anime`. Aniyomi

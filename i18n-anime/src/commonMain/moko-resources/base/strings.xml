@@ -612,4 +612,5 @@
     <string name="pref_download_fillermarked_items">Allow downloading of fillermarked episodes</string>
     <string name="show_episode_previews">Episode thumbnails</string>
     <string name="show_episode_summaries">Episode summaries</string>
+    <string name="information_empty_anime_extensions">No anime extensions installed</string>
 </resources>

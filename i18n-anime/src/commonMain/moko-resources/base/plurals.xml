@@ -60,4 +60,8 @@
         <item quantity="one">%d video</item>
         <item quantity="other">%d videos</item>
     </plurals>
+    <plural name="num_anime_sources">
+        <item quantity="one">%d source</item>
+        <item quantity="other">%d sources</item>
+    </plural>
 </resources>
