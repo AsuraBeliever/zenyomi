@@ -15,6 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +46,11 @@ import java.util.Locale
  * gestures, picture-in-picture, track and subtitle panels across some fifty files; those
  * come later, on top of this.
  */
-class AnimePlayerScreen(private val videoUrl: String, private val title: String) : Screen() {
+class AnimePlayerScreen(
+    private val videoUrl: String,
+    private val title: String,
+    private val episodeId: Long,
+) : Screen() {
 
     @Composable
     override fun Content() {
@@ -55,11 +61,22 @@ class AnimePlayerScreen(private val videoUrl: String, private val title: String)
         var duration by remember { mutableIntStateOf(0) }
         var paused by remember { mutableStateOf(false) }
         val view = remember { ZenyomiMPVView(context) }
+        val viewModel = assistedMetroViewModel<AnimePlayerViewModel, AnimePlayerViewModel.Factory> {
+            create(episodeId = episodeId)
+        }
+        val playerState by viewModel.state.collectAsStateWithLifecycle()
 
-        DisposableEffect(Unit) {
-            view.initialise(File(context.filesDir, "mpv"))
-            view.playFile(videoUrl)
-            onDispose { view.release() }
+        DisposableEffect(playerState.loaded) {
+            if (playerState.loaded) {
+                view.initialise(File(context.filesDir, "mpv"))
+                view.playFile(videoUrl, resumeAt = playerState.resumeAt)
+            }
+            onDispose {
+                if (playerState.loaded) {
+                    view.timePos?.let { pos -> viewModel.saveProgress(pos, view.duration ?: 0) }
+                    view.release()
+                }
+            }
         }
 
         // mpv reports progress through property observers; polling keeps this first cut
@@ -69,7 +86,10 @@ class AnimePlayerScreen(private val videoUrl: String, private val title: String)
                 position = view.timePos ?: position
                 duration = view.duration ?: duration
                 paused = view.paused ?: paused
-                delay(500)
+                // Written as it plays, so a process death mid-episode still leaves a
+                // usable resume point rather than losing the whole session.
+                if (!paused) viewModel.saveProgress(position, duration)
+                delay(2000)
             }
         }
 

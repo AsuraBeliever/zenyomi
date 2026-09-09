@@ -34,7 +34,8 @@
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Controles avanzados del player | ⬜ | gestos, PiP, pistas y subtítulos (unos 50 ficheros en Aniyomi) |
-| Resolución de vídeo desde la fuente | ⚠️ | plomería completa y ruta de fallo verificada; **falta probar una resolución con éxito**, que necesita una fuente con contenido |
+| Resolución de vídeo desde la fuente | ⚠️ | verificado que llega a ejecutar código de la extensión real; **falta una resolución con éxito** |
+| Progreso de reproducción | ⚠️ | guardado y reanudación escritos; sin ejercitar, porque abrir el reproductor exige una resolución con éxito |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
