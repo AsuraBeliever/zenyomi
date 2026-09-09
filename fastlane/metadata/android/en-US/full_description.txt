@@ -1,9 +1,13 @@
-Features:
-* Read your way with customizable viewing modes, including traditional right-to-left, left-to-right, and long strip for webtoons.
-* Organize your collection into custom categories, see unread badges, and get automatic updates when new chapters drop.
-* Sync your reading progress automatically with popular services like MyAnimeList, AniList, Kitsu, MangaBaka, and more.
-* Download chapters for offline reading and easily back up your entire library and settings for safe keeping or device migration.
-* Enjoy a beautiful Material You interface with full theme customization, including a strict True Dark mode.
-* And much more...
+Zenyomi keeps your manga and your anime in one app, instead of two.
 
-The developer of this application does not have any affiliation with the content providers available, and this application hosts zero content.
+It is built on Mihon, so everything the manga side does is what Mihon does, and anime support is added alongside it rather than in place of it.
+
+Features:
+* Read manga, webtoons and comics with customizable viewing modes: right-to-left, left-to-right, and long strip for webtoons.
+* Watch anime from the same app, with its own library and its own sources.
+* Organize both collections into custom categories, with unread badges and automatic updates when something new drops.
+* Sync your progress with services like MyAnimeList, AniList, Kitsu, MangaBaka and more.
+* Download for offline use and back up your whole library and settings for safe keeping or device migration.
+* A Material You interface with full theme customization, including a strict True Dark mode.
+
+Zenyomi hosts no content of its own. Sources come from third-party extensions that are not affiliated with the project.

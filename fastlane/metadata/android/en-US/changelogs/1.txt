@@ -1,0 +1,3 @@
+Zenyomi 0.1.0 - baseline release.
+
+Mihon v0.20.4 rebranded as Zenyomi. No anime support yet: this build exists as the reference point proving nothing from Mihon is lost as anime support is built on top.
