@@ -15,3 +15,7 @@ local.properties
 
 # macOS specific files
 .DS_Store
+
+# Zenyomi
+/docs/logs/*.log
+/.reference/
