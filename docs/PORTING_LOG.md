@@ -57,11 +57,31 @@ reescribieron a ese estilo en vez de copiarse. La transformación fue sistemáti
 
 Dentro de una transacción, Mihon cualifica cada consulta con `database.`.
 
+| 2026-09-08 | source-api | `animesource/` completo (22 ficheros nuevos) | `source-api/src/main/kotlin/…` | `4b5b90a37` | KMP (`commonMain`/`androidMain`) aplanado a `src/main/kotlin`; `PreferenceScreen` pierde el `actual` |
+| 2026-09-08 | dominio | `source/anime/{model,repository,service,interactor}` | igual ruta | `4b5b90a37` | `Pin`/`Pins` **no** se duplican: se usan los de Mihon |
+| 2026-09-08 | dominio | `NetworkToLocalAnime` | `domain/anime/interactor/` | `4b5b90a37` | Pendiente saldado al llegar `AnimeSourceManager` |
+
+Dependencia añadida: `org.nanohttpd:nanohttpd:2.3.1`, como `api()` en `source-api`.
+`HttpServer` extiende NanoHTTPD y aparece en la superficie que ven las extensiones
+(`AnimeHttpSource.createHttpServer()`, `Video.usesHttpServer()`), así que quitarlo
+habría roto la paridad de API con extensions-lib 17.
+
+### Qué se duplica y qué se reutiliza
+
+No todo tipo de Aniyomi merece un gemelo. El criterio aplicado:
+
+- **Se duplica** cuando el tipo forma parte de la identidad del dominio de anime o
+  aparece en el esquema de BD o en la API de extensiones: `AnimeUpdateStrategy`,
+  `AnimeCover`, `AnimeLibraryPreferences`.
+- **Se reutiliza** el de Mihon cuando es genérico y sin semántica de medio:
+  `Pin`/`Pins`, `TriState`, `DateColumnAdapter`, `StringListColumnAdapter`,
+  `MemoColumnAdapter`.
+
 ### Pendientes conocidos
 
 | Qué | Por qué espera |
 |---|---|
-| `NetworkToLocalAnime` | Necesita `AnimeSourceManager`, de la capa de fuentes. Se porta con ella. |
+| `AndroidAnimeSourceManager` | Implementación de `AnimeSourceManager` en el módulo `app`; llega con el cargador de extensiones de anime. |
 
 Configuración añadida (no portada literalmente): la segunda base sqldelight se declara
 en `data/build.gradle.kts` como `AnimeDatabase`, paquete `tachiyomi.data.anime`. Aniyomi

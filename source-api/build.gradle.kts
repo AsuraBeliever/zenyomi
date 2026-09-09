@@ -23,6 +23,10 @@ dependencies {
 
     implementation(libs.androidx.preference)
 
+    // HttpServer extiende NanoHTTPD y forma parte de la API que ven las
+    // extensiones de anime, por eso va como api() y no implementation().
+    api(libs.nanohttpd)
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.runtime)
 }

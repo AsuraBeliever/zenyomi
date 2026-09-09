@@ -21,7 +21,9 @@
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
 | Dominio anime | ✅ | 33 ficheros: modelos, repositorios e interactors; compila y corre |
 | Capa data de anime | ✅ | mapper + 3 repositorios, reescritos al estilo de Mihon |
-| Fuentes de anime | ⬜ | siguiente: `AnimeSourceManager` y el `source-api` de anime |
+| `source-api` de anime | ✅ | 26 ficheros: `SAnime`, `SEpisode`, `Video`, `Hoster`, `AnimeHttpSource`… |
+| Dominio de fuentes de anime | ✅ | modelos, repositorios, `AnimeSourceManager` |
+| Extensiones de anime | ⏳ | siguiente: `AndroidAnimeSourceManager` y el cargador |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
