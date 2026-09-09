@@ -36,6 +36,7 @@ import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
+import eu.kanade.tachiyomi.ui.animelibrary.AnimeLibraryTab
 import eu.kanade.tachiyomi.ui.library.LibraryTab
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.MoreTab
@@ -65,6 +66,7 @@ object HomeScreen : Screen() {
 
     private val TABS = listOf(
         LibraryTab,
+        AnimeLibraryTab,
         UpdatesTab,
         HistoryTab,
         BrowseTab,
