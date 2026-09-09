@@ -21,6 +21,7 @@ import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Explore
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.animebrowse.AnimeBrowseScreen
+import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.R
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
@@ -80,6 +81,7 @@ data object AnimeLibraryTab : Tab {
                 else -> AnimeLibraryContent(
                     library = state.library,
                     contentPadding = contentPadding,
+                    onAnimeClick = { navigator.push(AnimeDetailsScreen(it)) },
                 )
             }
         }

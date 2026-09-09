@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animebrowse
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,6 +26,7 @@ import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.screens.LoadingScreen
 
@@ -70,7 +72,9 @@ class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
                         val anime = animeList[index] ?: return@items
                         androidx.compose.foundation.layout.Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(4.dp),
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .clickable { navigator.push(AnimeDetailsScreen(anime.id)) },
                         ) {
                             AsyncImage(
                                 model = anime.thumbnailUrl,

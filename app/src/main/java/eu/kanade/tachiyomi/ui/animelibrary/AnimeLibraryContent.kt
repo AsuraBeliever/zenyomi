@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animelibrary
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +36,7 @@ import tachiyomi.domain.library.anime.LibraryAnime
 fun AnimeLibraryContent(
     library: List<LibraryAnime>,
     contentPadding: PaddingValues,
+    onAnimeClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
@@ -43,16 +45,18 @@ fun AnimeLibraryContent(
         modifier = modifier,
     ) {
         items(library, key = { it.id }) { item ->
-            AnimeLibraryGridItem(item)
+            AnimeLibraryGridItem(item, onClick = { onAnimeClick(item.id) })
         }
     }
 }
 
 @Composable
-private fun AnimeLibraryGridItem(item: LibraryAnime) {
+private fun AnimeLibraryGridItem(item: LibraryAnime, onClick: () -> Unit) {
     androidx.compose.foundation.layout.Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(4.dp),
+        modifier = Modifier
+            .padding(4.dp)
+            .clickable(onClick = onClick),
     ) {
         AsyncImage(
             model = item.anime.thumbnailUrl,
