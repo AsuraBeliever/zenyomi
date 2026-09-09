@@ -1,7 +1,7 @@
 # Estado del proyecto
 
 **Actualizado:** 2026-09-08
-**Fase actual:** 1 — Cimientos de anime (fase 0 cerrada, tag v0.1.0)
+**Fase actual:** 1 — Cimientos de anime (fase 0 cerrada, v0.1.2 publicada)
 **Versión objetivo inmediata:** v0.1.0
 **¿Compila?** sí — línea base de Mihon verde en 5m 42s
 **¿Instalado en el dispositivo del cliente?** sí — v0.1.0 verificada en Galaxy S25 Ultra
@@ -18,8 +18,8 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Dominio anime | ⬜ | fase 1 |
-| BD anime | ⬜ | fase 1 |
+| BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
+| Dominio anime | ⏳ | siguiente paso de la fase 1 |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
@@ -53,12 +53,19 @@ Técnicas:
 - ADR-0001 — árbol paralelo de anime, no se adopta `entries`/`items`
 - ADR-0002 — Apache-2.0, no MIT (obligación legal)
 - ADR-0003 — portar desde `aniyomi/main`, con v0.18.1.2 como contraste
+- ADR-0004 — la BD de anime nace en la versión 1, sin las 26 migraciones de Aniyomi
 
 ## Siguiente paso
 
-Fase 1, empezando por portar el esquema sqldelight de anime desde Aniyomi
-(`sqldelightanime/`). Es la pieza más segura: puramente aditiva, no toca el
-esquema de manga de Mihon.
+Capa de dominio de anime: `domain/anime` y `domain/episode`, portados desde
+`entries/anime` e `items/episode` de Aniyomi, y los repositorios de `data` que los
+conectan con la base.
+
+Nota: el fichero `anime.db` todavía **no existe** en el dispositivo, y es correcto.
+sqldelight lo crea de forma perezosa, en la primera consulta. Como aún no hay ningún
+repositorio que la use, el proveedor nunca se invoca. Aparecerá con el primer consumidor
+real. Lo que sí está verificado es que el grafo de Metro compila, cosa que fallaría en
+tiempo de compilación si el binding estuviera mal.
 
 ## Incidencias resueltas
 
