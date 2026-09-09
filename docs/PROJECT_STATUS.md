@@ -26,8 +26,8 @@
 | Motor de extensiones de anime | ✅ | derivado del de Mihon; carga APK con `tachiyomi.animeextension` |
 | `AndroidAnimeSourceManager` | ✅ | conecta extensiones cargadas con fuentes usables |
 | Biblioteca de anime (UI) | ✅ | pestaña propia, lee de la BD; `anime.db` se crea al abrirla |
-| Pantalla de extensiones de anime | ✅ | lista, confía y desinstala; **verificada con una extensión real** |
-| Resto de la UI de anime | ⬜ | explorar/fuentes, ficha y episodios |
+| Explorar anime (fuentes + extensiones) | ✅ | dos pestañas; verificado: las 3 fuentes de una extensión real llegan a la UI |
+| Resto de la UI de anime | ⬜ | catálogo de una fuente, ficha de anime y lista de episodios |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
