@@ -11,6 +11,16 @@ class NetworkToLocalAnime(
     private val sourceManager: AnimeSourceManager,
 ) {
 
+    /**
+     * Mihon's manga counterpart exposes invoke() and batches the whole list through
+     * MangaRepository.insertNetworkManga. AnimeRepository has no batch insert yet, so
+     * these delegate to the per-entry path below; the call shape matches Mihon, the
+     * batching does not. Porting the batch query is recorded in docs/PORTING_LOG.md.
+     */
+    suspend operator fun invoke(anime: Anime): Anime = await(anime)
+
+    suspend operator fun invoke(anime: List<Anime>): List<Anime> = anime.map { await(it) }
+
     suspend fun await(anime: Anime): Anime {
         val localAnime = getAnime(anime.url, anime.source)
         return when {
