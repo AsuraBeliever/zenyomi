@@ -118,6 +118,10 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-24.04
     needs: [get_tag, build, build_foss]
+    # Mihon published releases with a bot PAT; we use the workflow's own token,
+    # which is read-only by default and returns 403 on release creation.
+    permissions:
+      contents: write
 
     steps:
       - name: Download all artifacts
