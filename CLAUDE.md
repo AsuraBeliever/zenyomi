@@ -85,6 +85,13 @@ Cada commit debe compilar. Nada de commits "WIP" en `develop` ni en `main`.
 | 0.4.x | Descargas, historial, trackers y backup de anime |
 | 1.0.0 | Paridad con Aniyomi sin haber perdido nada de Mihon |
 
+**Higiene de tags.** Los remotes `mihon` y `aniyomi` están configurados con
+`tagOpt = --no-tags`: sus tags (v0.1.0 … v0.20.4, 159 en total) colisionan con
+nuestra numeración y no deben entrar en el repo. Si alguna vez reaparecen, se borran
+en local — siguen disponibles en los upstreams. Antes de tagear, comprobar que el
+nombre está libre; `git tag` falla si existe, pero `git push origin <tag>` publicaría
+entonces el tag ajeno sin avisar.
+
 Release = tag `v<version>` en `main` + APK firmado + entrada en `CHANGELOG.md`.
 Variantes: `debug` (`app.zenyomi.debug`), `dev`, `release`.
 

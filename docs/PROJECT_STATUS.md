@@ -1,10 +1,10 @@
 # Estado del proyecto
 
 **Actualizado:** 2026-09-08
-**Fase actual:** 0 — Fundaciones
+**Fase actual:** 1 — Cimientos de anime (fase 0 cerrada, tag v0.1.0)
 **Versión objetivo inmediata:** v0.1.0
 **¿Compila?** sí — línea base de Mihon verde en 5m 42s
-**¿Instalado en el dispositivo del cliente?** no — bloqueado por emparejamiento
+**¿Instalado en el dispositivo del cliente?** sí — v0.1.0 verificada en Galaxy S25 Ultra
 
 ## Semáforo por área
 
@@ -15,8 +15,9 @@
 | Repo en GitHub | ✅ | github.com/AsuraBeliever/zenyomi, público, default `develop` |
 | CI | ✅ | workflow de Mihon adaptado; corre en `main` y `develop` |
 | Build de línea base | ✅ | `:app:assembleDebug` verde, APKs por ABI generados |
-| Rebranding a Zenyomi | ⏳ | commiteado, verificación de build en curso |
-| Wireless debugging | 🔴 | **bloqueado: faltan datos de emparejamiento del cliente** |
+| Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
+| Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
+| Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | Dominio anime | ⬜ | fase 1 |
 | BD anime | ⬜ | fase 1 |
 | Extensiones de anime | ⬜ | fase 1 |
@@ -27,10 +28,7 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
 ## Bloqueos activos
 
-1. **Wireless debugging sin emparejar.** No hay dispositivo conectado y no existía
-   memoria de sesiones anteriores. Hace falta que el cliente abra *Depuración
-   inalámbrica* y pase el código de vinculación. Procedimiento en `docs/TESTING.md`.
-   Impide cerrar la fase 0: sin dispositivo no se puede verificar el APK.
+Ninguno.
 
 ## Hechos medidos (2026-09-08)
 
@@ -58,6 +56,14 @@ Técnicas:
 
 ## Siguiente paso
 
-Con el dispositivo emparejado: `./gradlew :app:installDebug`, humo de regresión de
-manga (checklist en `docs/TESTING.md`), tag `v0.1.0` y cierre de la fase 0.
-Después arranca la fase 1 por la base de datos de anime.
+Fase 1, empezando por portar el esquema sqldelight de anime desde Aniyomi
+(`sqldelightanime/`). Es la pieza más segura: puramente aditiva, no toca el
+esquema de manga de Mihon.
+
+## Incidencias resueltas
+
+- **2026-09-08 — tags heredados.** Los 159 tags de Mihon/Aniyomi (v0.1.0 … v0.20.4)
+  colisionaban con nuestra numeración: al tagear `v0.1.0` git rechazó el tag por
+  existir ya, y el push publicó el tag ajeno de 2016 en su lugar. Se borraron los
+  tags heredados y se fijó `tagOpt = --no-tags` en ambos remotes. Sin pérdida de
+  historia (7971 commits en `main`).
