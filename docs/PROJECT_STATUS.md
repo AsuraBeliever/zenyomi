@@ -27,7 +27,9 @@
 | `AndroidAnimeSourceManager` | ✅ | conecta extensiones cargadas con fuentes usables |
 | Biblioteca de anime (UI) | ✅ | pestaña propia, lee de la BD; `anime.db` se crea al abrirla |
 | Explorar anime (fuentes + extensiones) | ✅ | dos pestañas; verificado: las 3 fuentes de una extensión real llegan a la UI |
-| Resto de la UI de anime | ⬜ | catálogo de una fuente, ficha de anime y lista de episodios |
+| Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
+| Ajustes de fuente de anime | ⬜ | `ConfigurableAnimeSource` sin UI; sin esto no se pueden configurar fuentes que lo requieran |
+| Ficha de anime y episodios | ⬜ | siguiente |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
