@@ -213,6 +213,13 @@ dependencies {
 
     implementation(projects.i18n)
     implementation(projects.i18nAnime)
+
+    // Reproduccion de video (fase 2). mpv y FFmpeg traen librerias nativas.
+    implementation(libs.aniyomi.mpv)
+    implementation(libs.ffmpeg.kit)
+    implementation(libs.mediasession)
+    implementation(libs.seeker)
+    implementation(libs.truetypeparser)
     implementation(projects.icons.materialSymbols)
     implementation(projects.icons.simpleIcons)
     implementation(projects.core.archive)
