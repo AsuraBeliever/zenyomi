@@ -1,86 +1,63 @@
-<div align="center">
+# Zenyomi
 
-<a href="https://mihon.app">
-    <img src="./.github/assets/logo.png" alt="Mihon logo" title="Mihon logo" width="80"/>
-</a>
+Lector de manga y reproductor de anime en una sola app Android.
 
-# Mihon [App](#)
+Zenyomi es un **doble fork**: toma [Mihon](https://github.com/mihonapp/mihon) como
+base técnica y porta encima las funciones de anime de
+[Aniyomi](https://github.com/aniyomiorg/aniyomi). Ambos descienden de Tachiyomi.
 
-### Full-featured reader
-Discover and read manga, webtoons, comics, and more – easier than ever on your Android device.
+## Por qué existe
 
-[![Discord server](https://img.shields.io/discord/1195734228319617024.svg?label=&labelColor=6A7EC2&color=7389D8&logo=discord&logoColor=FFFFFF)](https://discord.gg/mihon)
-[![GitHub downloads](https://img.shields.io/github/downloads/mihonapp/mihon/total?label=downloads&labelColor=27303D&color=0D1117&logo=github&logoColor=FFFFFF&style=flat)](https://mihon.app/download)
+Aniyomi ya juntaba anime y manga, pero lleva más de diez meses sin publicar una
+release (v0.18.1.2, octubre de 2025) y se quedó atrás respecto a Mihon, que sigue
+publicando cada pocas semanas. El resultado son extensiones que fallan y correcciones
+que nunca llegan.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/mihonapp/mihon/build.yml?labelColor=27303D)](https://github.com/mihonapp/mihon/actions/workflows/build_push.yml)
-[![License: Apache-2.0](https://img.shields.io/github/license/mihonapp/mihon?labelColor=27303D&color=0877d2)](/LICENSE)
-[![Translation status](https://img.shields.io/weblate/progress/mihon?labelColor=27303D&color=946300)](https://hosted.weblate.org/engage/mihon/)
+Zenyomi le da la vuelta al planteamiento: parte del código vivo de Mihon y trae el
+anime encima, en un árbol paralelo que deja el lado de manga intacto. Así seguir a
+Mihon sigue siendo barato, y **ninguna función de Mihon se pierde por el camino**.
 
-## Download
+## Estado
 
-[![Mihon Stable](https://img.shields.io/github/release/mihonapp/mihon.svg?maxAge=3600&label=Stable&labelColor=06599d&color=043b69)](https://mihon.app/download)
-[![Mihon Beta](https://img.shields.io/github/v/release/mihonapp/mihon-preview.svg?maxAge=3600&label=Beta&labelColor=2c2c47&color=1c1c39)](https://mihon.app/download)
+En desarrollo temprano. Consulta el estado real en
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) y el plan en
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-*Requires Android 8.0 or higher.*
+| Fase | Versión | Alcance |
+|---|---|---|
+| 0 | v0.1.0 | Base de Mihon compilando como Zenyomi |
+| 1 | v0.2.0 | Fuentes, biblioteca y fichas de anime |
+| 2 | v0.3.0 | Reproductor de vídeo |
+| 3 | v0.4.0 | Descargas, historial, trackers y backup de anime |
+| 4 | v1.0.0 | Paridad con Aniyomi sin perder nada de Mihon |
 
-## Features
+## Compilar
 
-<div align="left">
+Requiere JDK 21 y el SDK de Android.
 
-* Local reading of content.
-* A configurable reader with multiple viewers, reading directions and other settings.
-* Tracker support: [MangaBaka](https://mangabaka.org), [MyAnimeList](https://myanimelist.net/), [AniList](https://anilist.co/), [Kitsu](https://kitsu.app/), [MangaUpdates](https://mangaupdates.com), [Shikimori](https://shikimori.one), [Bangumi](https://bgm.tv/), and [Hikka](https://hikka.io/) support.
-* Categories to organize your library.
-* Light and dark themes.
-* Schedule updating your library for new chapters.
-* Create backups locally to read offline or to your desired cloud service.
-* Plus much more...
+```sh
+./gradlew :app:assembleDebug
+```
 
-</div>
+## Documentación
 
-## Contributing
+| Documento | Contenido |
+|---|---|
+| [`CLAUDE.md`](CLAUDE.md) | Charter: roles, reglas, ramas, convenciones |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Cómo se combinan los dos forks |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Fases y entregables |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Estado vivo, bloqueos |
+| [`docs/PORTING_LOG.md`](docs/PORTING_LOG.md) | Procedencia del código portado |
+| [`docs/adr/`](docs/adr) | Decisiones de arquitectura |
 
-[Code of conduct](./CODE_OF_CONDUCT.md) · [Contributing guide](./CONTRIBUTING.md)
+## Licencia
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Apache License 2.0 — ver [`LICENSE`](LICENSE) y [`NOTICE`](NOTICE).
 
-Before reporting a new issue, take a look at the [FAQ](https://mihon.app/docs/faq/general), the [changelog](https://mihon.app/changelogs/) and the already opened [issues](https://github.com/mihonapp/mihon/issues); if you got any questions, join our [Discord server](https://discord.gg/mihon).
+Zenyomi es una obra derivada de Mihon y Aniyomi, ambos Apache-2.0. Los nombres,
+logos y marcas de Mihon, Aniyomi y Tachiyomi pertenecen a sus respectivos
+propietarios y no se distribuyen con este proyecto; Apache-2.0 no concede derechos
+de marca (sección 6). El nombre y el icono de Zenyomi son propios.
 
-
-### Repositories
-
-[![mihonapp/website - GitHub](https://github-stats-extended.vercel.app/api/pin/?username=mihonapp&repo=website&bg_color=161B22&text_color=c9d1d9&title_color=0877d2&icon_color=0877d2&border_radius=8&hide_border=true&description_lines_count=2)](https://github.com/mihonapp/website/)
-[![mihonapp/bitmap.kt - GitHub](https://github-stats-extended.vercel.app/api/pin/?username=mihonapp&repo=bitmap.kt&bg_color=161B22&text_color=c9d1d9&title_color=0877d2&icon_color=0877d2&border_radius=8&hide_border=true&description_lines_count=2)](https://github.com/mihonapp/bitmap.kt/)
-
-### Credits
-
-Thank you to all the people who have contributed!
-
-<a href="https://github.com/mihonapp/mihon/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=mihonapp/mihon" alt="Mihon app contributors" title="Mihon app contributors" width="800"/>
-</a>
-
-### Disclaimer
-
-The developer(s) of this application does not have any affiliation with the content providers available, and this application hosts zero content.
-
-### License
-
-<pre>
-Copyright © 2015 Javier Tomás
-Copyright © 2024 Mihon Open Source Project
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-</pre>
-
-</div>
+Este proyecto no aloja ni distribuye contenido. Las fuentes de contenido provienen
+de extensiones de terceros ajenas al proyecto.
