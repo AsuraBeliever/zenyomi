@@ -149,7 +149,7 @@ jobs:
 
             > [!IMPORTANT]
             >
-            > Zenyomi is signed with its own key, so it installs alongside Mihon and Aniyomi rather than over them. Builds from before v0.1.2 were signed with a throwaway debug key and must be uninstalled before installing this one.
+            > Zenyomi installs alongside Mihon and Aniyomi rather than over them, so you can keep all three. Restore a Mihon backup from **More → Backup and restore** to bring your library across.
           files: |
             zenyomi-${{ needs.get_tag.outputs.tag }}.apk
             zenyomi-${{ needs.get_tag.outputs.tag }}-foss.apk

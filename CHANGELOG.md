@@ -12,7 +12,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 
 ## [0.1.2] - 2026-09-08
 ### Other
-- First properly signed release. Earlier builds were signed with a throwaway debug key, so they must be uninstalled before installing this one; from here on updates install cleanly over each other.
+- First properly signed release, using the project's own key so that future updates install cleanly over each other. It installs alongside Mihon and Aniyomi rather than over them, and alongside the `app.zenyomi.dev` debug builds, which use a separate application id.
 - Enable the release pipeline: the inherited workflow was gated to Mihon's repository and never ran here.
 
 ## [0.1.1] - 2026-09-08

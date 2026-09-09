@@ -61,4 +61,6 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.1.1 | 2 | debug (desechable) | Retirada la marca de Mihon; sin publicar |
 | 0.1.2 | 3 | **clave del proyecto** | Primera release publicada |
 
-Las builds anteriores a 0.1.2 no se pueden actualizar: hay que desinstalarlas.
+Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
+de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es
+limpia mientras no cambie la clave.
