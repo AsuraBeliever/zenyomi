@@ -1,0 +1,3 @@
+Zenyomi 0.1.2
+
+First properly signed release. Builds before this one used a throwaway debug key and must be uninstalled first.

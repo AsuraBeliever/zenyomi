@@ -10,6 +10,11 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.1.2] - 2026-09-08
+### Other
+- First properly signed release. Earlier builds were signed with a throwaway debug key, so they must be uninstalled before installing this one; from here on updates install cleanly over each other.
+- Enable the release pipeline: the inherited workflow was gated to Mihon's repository and never ran here.
+
 ## [0.1.1] - 2026-09-08
 ### Fixed
 - Replace the remaining Mihon branding that the 0.1.0 rebrand missed: the splash screen logo, the debug-variant launcher icon, the notification icons and the *More* screen header all still drew Mihon's mark.

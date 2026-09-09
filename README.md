@@ -50,6 +50,7 @@ Requiere JDK 21 y el SDK de Android.
 | [`docs/PORTING_LOG.md`](docs/PORTING_LOG.md) | Procedencia del código portado |
 | [`docs/adr/`](docs/adr) | Decisiones de arquitectura |
 | [`docs/FORK_COMPLIANCE.md`](docs/FORK_COMPLIANCE.md) | Auditoría de licencia y marcas |
+| [`docs/RELEASING.md`](docs/RELEASING.md) | Firma y proceso de publicación |
 
 ## Licencia
 
