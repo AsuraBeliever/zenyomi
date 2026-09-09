@@ -54,7 +54,7 @@ import tachiyomi.domain.track.interactor.InsertTrack
 
 @DependencyGraph(
     scope = AppScope::class,
-    bindingContainers = [AppBindings::class],
+    bindingContainers = [AppBindings::class, AnimeBindings::class],
 )
 interface AppGraph : ViewModelGraph {
     fun inject(app: App)
