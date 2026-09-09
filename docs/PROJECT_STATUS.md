@@ -19,7 +19,8 @@
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
-| Dominio anime | ⏳ | siguiente paso de la fase 1 |
+| Dominio anime | ✅ | 33 ficheros: modelos, repositorios e interactors; compila y corre |
+| Capa data de anime | ⏳ | siguiente: implementar los repositorios contra la BD |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
