@@ -31,6 +31,32 @@ Referencia de contraste: `v0.18.1.2` (2025-10-28, última release publicada). Ve
 | 2026-09-08 | dominio | `EntryCover` | **no portado** | `4b5b90a37` | Interfaz marcadora vacía de la generalización de Aniyomi; `AnimeCover` queda suelto (ADR-0001) |
 | 2026-09-08 | dominio | preferencias de episodio dentro de `LibraryPreferences` | `library/service/AnimeLibraryPreferences.kt` | `4b5b90a37` | **No** se tocó el fichero de Mihon; clase paralela, acceso por propiedad y claves propias |
 
+| 2026-09-08 | data | `entries/anime/AnimeMapper.kt` | `data/anime/AnimeMapper.kt` | `4b5b90a37` | Solo reescritura de paquetes |
+| 2026-09-08 | data | `AnimeRepositoryImpl`, `AnimeRelationRepositoryImpl`, `EpisodeRepositoryImpl`, `EpisodeSanitizer` | `data/{anime,episode}/` | `4b5b90a37` | **Reescritos** al estilo de Mihon: sin `DatabaseHandler` |
+| 2026-09-08 | data | `handlers/anime/*` (4 ficheros) | **no portado** | `4b5b90a37` | Mihon eliminó esa abstracción; ver nota abajo |
+
+### Nota: el `DatabaseHandler` no se porta
+
+Aniyomi conserva el envoltorio `AnimeDatabaseHandler` heredado de Tachiyomi
+(`handler.awaitList { ... }`). Mihon lo eliminó: con `generateAsync` las consultas de
+sqldelight ya son suspending, así que sus repositorios usan la base directamente
+(`database.mangasQueries.x(...).awaitAsList()`).
+
+Como Mihon manda en el *cómo* (regla 2 del charter), los repositorios de anime se
+reescribieron a ese estilo en vez de copiarse. La transformación fue sistemática:
+
+| Aniyomi | Zenyomi |
+|---|---|
+| `handler.awaitOne { q }` | `database.q.awaitAsOne()` |
+| `handler.awaitOneOrNull { q }` | `database.q.awaitAsOneOrNull()` |
+| `handler.awaitList { q }` | `database.q.awaitAsList()` |
+| `handler.subscribeToList { q }` | `database.q.subscribeToList()` |
+| `handler.await(inTransaction = true) { … }` | `database.transaction { … }` |
+| `handler.awaitOneOrNullExecutable(…) { … }` | `database.transactionWithResult { … }` |
+| `.executeAsOne()` | `.awaitAsOne()` |
+
+Dentro de una transacción, Mihon cualifica cada consulta con `database.`.
+
 ### Pendientes conocidos
 
 | Qué | Por qué espera |
