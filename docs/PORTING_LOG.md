@@ -3,7 +3,8 @@
 Toda pieza de código traída desde Aniyomi se anota aquí, con el SHA de origen, para
 poder auditar la procedencia y volver a comparar cuando Aniyomi cambie.
 
-Referencia de origen: `aniyomi/main` @ `4b5b90a37` (2026-09-05).
+Referencia de origen principal: `aniyomi/main` @ `4b5b90a37` (2026-09-05).
+Referencia de contraste: `v0.18.1.2` (2025-10-28, última release publicada). Ver ADR-0003.
 
 ## Formato
 

@@ -7,18 +7,28 @@ Ambos forks descienden de Tachiyomi. Ancestro común:
 
 Desde entonces (medido 2026-09-08):
 
-| | commits desde el ancestro | último commit |
-|---|---|---|
-| Mihon | 1557 por delante de Aniyomi | 2026-09-08 |
-| Aniyomi | 1726 por delante de Mihon | 2026-09-05 |
+| | commits desde el ancestro | último commit | **última release** |
+|---|---|---|---|
+| Mihon | 1557 por delante de Aniyomi | 2026-09-08 | v0.20.4 — 2026-08-05 |
+| Aniyomi | 1726 por delante de Mihon | 2026-09-05 | v0.18.1.2 — **2025-10-28** |
 
 Comparten historia, así que git puede hacer `cherry-pick` y `diff` entre los dos
 forks directamente. Eso es lo que hace viable el porte.
 
-> Nota: Aniyomi **sí** está mantenido (commits de hace días: streaming por torrent,
-> nueva tienda de extensiones, extension-lib 17). Lo que está abandonado es su rama
-> `m_mihon` (último commit 2025-10-12), el intento del propio equipo de Aniyomi de
-> rebasar sobre Mihon. Ese intento fracasó — es la razón por la que aquí se hace al revés.
+## Aniyomi está abandonado de facto
+
+Aniyomi lleva **más de diez meses sin publicar una release** (v0.18.1.2, octubre 2025),
+mientras Mihon publica cada pocas semanas. Su rama `main` sí recibe commits, pero ese
+trabajo nunca llega a los usuarios: lo que la gente tiene instalado es de octubre de 2025.
+
+Eso explica directamente los fallos de extensiones que sufre Aniyomi hoy. Su migración
+a extension-lib 17 y a la tienda de extensiones nueva está escrita en `main` y **sin
+publicar**, así que la app instalada se quedó anclada a una librería antigua mientras
+el ecosistema de extensiones siguió avanzando.
+
+Su rama `m_mihon` (último commit 2025-10-12) era el intento del propio equipo de Aniyomi
+de rebasar sobre Mihon. También quedó abandonada. Es la razón por la que aquí se hace
+al revés: partir de Mihon y traer el anime encima.
 
 ## La diferencia estructural que manda sobre todo lo demás
 
