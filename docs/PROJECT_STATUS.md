@@ -32,7 +32,9 @@
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
 | Extensiones de anime | ⬜ | fase 1 |
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
-| UI del reproductor | ⬜ | siguiente |
+| Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
+| Controles avanzados del player | ⬜ | gestos, PiP, pistas y subtítulos (unos 50 ficheros en Aniyomi) |
+| Resolución de vídeo desde la fuente | ⬜ | `getHosterList`/`getVideoList`; hoy el reproductor toma una URL directa |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
@@ -40,6 +42,18 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 ## Bloqueos activos
 
 Ninguno.
+
+## Aviso conocido: alineación de 16 KB
+
+En el emulador (Pixel 10 Pro XL, página de 16 KB) Android muestra un diálogo de
+compatibilidad: varias librerías nativas no están alineadas a 16 KB y la app corre en
+modo compatible. **No es algo que hayamos introducido**: en la lista aparecen también
+librerías propias de Mihon (`libconscrypt_jni`, `libsqliteJni`, `libquickjs`,
+`libimagedecoder2`, `libwebgpu_c_bundled`), junto a las nuevas de mpv y FFmpeg.
+
+Hoy solo es un aviso y la app funciona. A futuro conviene vigilarlo, porque Google Play
+acabará exigiendo alineación de 16 KB. La parte que depende de nosotros son mpv y
+FFmpeg-kit; el resto se arregla siguiendo a upstream.
 
 ## Hechos medidos (2026-09-08)
 
