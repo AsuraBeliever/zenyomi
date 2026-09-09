@@ -23,6 +23,19 @@ Referencia de contraste: `v0.18.1.2` (2025-10-28, última release publicada). Ve
 
 | 2026-09-08 | db | adaptadores de columna de anime | `data/…/AnimeDatabaseAdapter.kt` | — | Escrito aquí; `DateColumnAdapter`, `StringListColumnAdapter` y `MemoColumnAdapter` se reutilizan de Mihon |
 | 2026-09-08 | di | proveedor de `AnimeDatabase` | `app/…/di/AnimeBindings.kt` | — | Escrito aquí siguiendo el patrón de `AppBindings`; fichero aparte para no tocar el de Mihon |
+| 2026-09-08 | dominio | `entries/anime/{model,repository,interactor}` (18) | `domain/anime/…` | `4b5b90a37` | `entries.anime` → `anime`; añadido `@Inject` de Metro |
+| 2026-09-08 | dominio | `items/episode/{model,repository,interactor,service}` (13) | `domain/episode/…` | `4b5b90a37` | `items.episode` → `episode`; añadido `@Inject` |
+| 2026-09-08 | dominio | `library/anime/LibraryAnime.kt`, `source/anime/model/DeletableAnime.kt` | igual ruta | `4b5b90a37` | Sin cambios de estructura |
+| 2026-09-08 | dominio | `aniyomi/domain/anime/{SeasonAnime,SeasonDisplayMode}.kt` | `domain/anime/model/` | `4b5b90a37` | Movidos del paquete raíz `aniyomi.*` al árbol `tachiyomi.domain.anime` |
+| 2026-09-08 | source-api | `animesource/model/{SAnime,SAnimeImpl}.kt` | `source-api/src/main/kotlin/…` | `4b5b90a37` | Ruta `src/main/kotlin` de Mihon |
+| 2026-09-08 | dominio | `EntryCover` | **no portado** | `4b5b90a37` | Interfaz marcadora vacía de la generalización de Aniyomi; `AnimeCover` queda suelto (ADR-0001) |
+| 2026-09-08 | dominio | preferencias de episodio dentro de `LibraryPreferences` | `library/service/AnimeLibraryPreferences.kt` | `4b5b90a37` | **No** se tocó el fichero de Mihon; clase paralela, acceso por propiedad y claves propias |
+
+### Pendientes conocidos
+
+| Qué | Por qué espera |
+|---|---|
+| `NetworkToLocalAnime` | Necesita `AnimeSourceManager`, de la capa de fuentes. Se porta con ella. |
 
 Configuración añadida (no portada literalmente): la segunda base sqldelight se declara
 en `data/build.gradle.kts` como `AnimeDatabase`, paquete `tachiyomi.data.anime`. Aniyomi
