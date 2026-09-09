@@ -1,0 +1,124 @@
+package eu.kanade.tachiyomi.ui.animedetails
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
+import coil3.compose.AsyncImage
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import eu.kanade.presentation.components.AppBar
+import eu.kanade.presentation.util.Screen
+import tachiyomi.domain.anime.model.Anime
+import tachiyomi.i18n.anime.ANMR
+import tachiyomi.presentation.core.components.material.Scaffold
+import tachiyomi.presentation.core.i18n.pluralStringResource
+import tachiyomi.presentation.core.screens.LoadingScreen
+
+/**
+ * One anime entry: cover, description and the list of episodes.
+ *
+ * Reading state, downloads and playback are not wired yet, so an episode row is
+ * informational; tapping one does nothing until the player lands.
+ */
+class AnimeDetailsScreen(private val animeId: Long) : Screen() {
+
+    @Composable
+    override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
+        val viewModel = assistedMetroViewModel<AnimeDetailsViewModel, AnimeDetailsViewModel.Factory> {
+            create(animeId = animeId)
+        }
+        val state by viewModel.state.collectAsStateWithLifecycle()
+        val anime = state.anime
+
+        Scaffold(
+            topBar = { scrollBehavior ->
+                AppBar(
+                    title = anime?.title.orEmpty(),
+                    navigateUp = navigator::pop,
+                    scrollBehavior = scrollBehavior,
+                )
+            },
+        ) { contentPadding ->
+            if (state.isLoading || anime == null) {
+                LoadingScreen(Modifier.padding(contentPadding))
+                return@Scaffold
+            }
+
+            LazyColumn(contentPadding = contentPadding) {
+                item { AnimeHeader(anime) }
+                item {
+                    Text(
+                        text = pluralStringResource(
+                            ANMR.plurals.num_episodes,
+                            state.episodes.size,
+                            state.episodes.size,
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    HorizontalDivider()
+                }
+                items(state.episodes, key = { it.id }) { episode ->
+                    ListItem(
+                        headlineContent = { Text(episode.name) },
+                        supportingContent = episode.scanlator?.let { scanlator ->
+                            { Text(scanlator, style = MaterialTheme.typography.bodySmall) }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnimeHeader(anime: Anime) {
+    Row(Modifier.padding(16.dp)) {
+        AsyncImage(
+            model = anime.thumbnailUrl,
+            contentDescription = anime.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .width(120.dp)
+                .height(180.dp)
+                .clip(RoundedCornerShape(4.dp)),
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.fillMaxWidth()) {
+            Text(anime.title, style = MaterialTheme.typography.titleMedium)
+            anime.author?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
+            Spacer(Modifier.height(8.dp))
+            anime.description?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}

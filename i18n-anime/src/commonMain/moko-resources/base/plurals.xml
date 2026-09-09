@@ -64,4 +64,8 @@
         <item quantity="one">%d source</item>
         <item quantity="other">%d sources</item>
     </plural>
+    <plural name="num_episodes">
+        <item quantity="one">%d episode</item>
+        <item quantity="other">%d episodes</item>
+    </plural>
 </resources>

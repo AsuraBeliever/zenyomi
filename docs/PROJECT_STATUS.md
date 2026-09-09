@@ -29,7 +29,7 @@
 | Explorar anime (fuentes + extensiones) | ✅ | dos pestañas; verificado: las 3 fuentes de una extensión real llegan a la UI |
 | Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
-| Ficha de anime y episodios | ⬜ | siguiente |
+| Ficha de anime y episodios | ⚠️ | escrita y conectada, pero **sin ejercitar en ejecución**: no hay fuente con contenido para llegar a ella |
 | Extensiones de anime | ⬜ | fase 1 |
 | Player | ⬜ | fase 2 |
 | Descargas / historial / tracker anime | ⬜ | fase 3 |
