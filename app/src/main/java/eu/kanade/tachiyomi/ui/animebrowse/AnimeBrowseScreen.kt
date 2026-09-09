@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animebrowse
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -75,6 +76,7 @@ class AnimeBrowseScreen : Screen() {
 
 @Composable
 private fun AnimeSourcesContent() {
+    val navigator = LocalNavigator.currentOrThrow
     val viewModel = metroViewModel<AnimeSourcesViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -90,6 +92,9 @@ private fun AnimeSourcesContent() {
                             text = source.lang,
                             style = MaterialTheme.typography.bodySmall,
                         )
+                    },
+                    modifier = Modifier.clickable {
+                        navigator.push(AnimeCatalogScreen(source.id))
                     },
                 )
             }
