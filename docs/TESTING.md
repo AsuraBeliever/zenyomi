@@ -7,13 +7,29 @@ sobre Wi-Fi). No se entrega nada sin haberlo instalado y abierto antes.
 
 | Campo | Valor |
 |---|---|
-| Dispositivo | _sin registrar_ |
-| IP / puerto de conexión | _sin registrar_ |
-| Emparejado | **no** |
-| Última verificación | — |
+| Dispositivo | Samsung Galaxy S25 Ultra (SM-S938B) |
+| Android | 16 (SDK 36), arm64-v8a |
+| guid ADB | `adb-RZGL52RZP5R-9uFDFn` |
+| IP habitual | `192.168.1.132` |
+| Emparejado | **sí**, desde 2026-09-08 |
+| Última verificación | 2026-09-08 — Zenyomi 0.1.0 instalada y abierta |
 
-> No hay memoria de sesiones anteriores con este dispositivo: el directorio de
-> memoria estaba vacío. Hay que emparejar desde cero.
+Ya conviven en el dispositivo `app.mihon` y `xyz.jmir.tachiyomi.mi` (Aniyomi) junto a
+`app.zenyomi.dev`, así que se puede comparar comportamiento contra ambos originales.
+
+## Reconectar (uso diario)
+
+El emparejamiento persiste entre reinicios; **el puerto de conexión cambia**. No hay
+que pedirle nada al cliente: el puerto se descubre solo por mDNS.
+
+```sh
+export PATH=$PATH:$HOME/Android/Sdk/platform-tools
+adb devices -l          # normalmente ya aparece conectado
+adb mdns services       # si no, lista el ip:puerto actual
+```
+
+Solo hace falta repetir el emparejamiento con código si se revocan las autorizaciones
+de depuración en el teléfono.
 
 ## Emparejamiento (primera vez)
 

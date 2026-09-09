@@ -10,6 +10,19 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.1.0] - 2026-09-08
+### Other
+- Fork Mihon v0.20.4 as the technical base of Zenyomi, a single app for reading manga and watching anime.
+- Rebrand as Zenyomi: own application id (`app.zenyomi`), name, launcher icon and update channel. Internal Kotlin package namespaces are deliberately unchanged so that merges from Mihon stay cheap.
+- Establish the project charter, architecture notes, roadmap and the first three architecture decision records.
+
+No user-facing manga functionality was added, changed or removed in this release: it is Mihon v0.20.4 under a new identity, published as the baseline against which future anime work is measured.
+
+---
+
+The entries below are inherited from [Mihon](https://github.com/mihonapp/mihon), the
+technical base of Zenyomi, and describe changes made by the Mihon project.
+
 ## [Unreleased]
 ### Added
 - Add `id:` prefix search to remaining trackers (AniList, Bangumi, Kitsu, MangaUpdates, Shikimori, and Hikka) ([@MajorTanya](https://github.com/MajorTanya)) ([#3776](https://github.com/mihonapp/mihon/pull/3776))
