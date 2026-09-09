@@ -65,6 +65,26 @@ adb shell monkey -p app.zenyomi.dev -c android.intent.category.LAUNCHER 1
 adb logcat -c && adb logcat --pid=$(adb shell pidof -s app.zenyomi.dev)
 ```
 
+## Fixture de anime en el emulador
+
+Las tres extensiones del repositorio archivado de Aniyomi (Google Drive, GoogleDriveIndex,
+Jellyfin) son fuentes autoalojadas: sin un servidor configurado no devuelven contenido, así
+que no sirven para probar pantallas que necesitan una entrada real.
+
+Para eso se inserta una entrada a mano en la base de anime del emulador:
+
+```sh
+adb -s emulator-5554 shell am force-stop app.zenyomi.dev
+adb -s emulator-5554 shell "run-as app.zenyomi.dev cat databases/anime.db" > anime.db
+sqlite3 anime.db   # INSERT en animes y episodes; ver PRAGMA table_info para las NOT NULL
+adb -s emulator-5554 push anime.db /data/local/tmp/anime.db
+adb -s emulator-5554 shell "run-as app.zenyomi.dev sh -c 'cat /data/local/tmp/anime.db > databases/anime.db; rm -f databases/anime.db-wal databases/anime.db-shm'"
+```
+
+Hay que borrar el `-wal` y el `-shm` al restituir, o SQLite reaplica el diario y descarta
+lo insertado. El emulador conserva ahora una entrada `Anime de prueba (fixture)` con tres
+episodios.
+
 ## Checklist de humo (cada release)
 
 Manga (regresión — **nada de esto puede romperse nunca**):
