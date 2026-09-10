@@ -3,6 +3,8 @@ package eu.kanade.tachiyomi.ui.animeplayer
 import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
@@ -70,6 +72,15 @@ class AnimePlayerScreen(
         var duration by remember { mutableIntStateOf(0) }
         var paused by remember { mutableStateOf(false) }
         var tracks by remember { mutableStateOf(emptyList<ZenyomiMPVView.Track>()) }
+        var seekFeedback by remember { mutableStateOf<String?>(null) }
+
+        // The jump indicator is a flash, not a state: clear it shortly after it appears.
+        LaunchedEffect(seekFeedback) {
+            if (seekFeedback != null) {
+                delay(700)
+                seekFeedback = null
+            }
+        }
         val view = remember { ZenyomiMPVView(context) }
         val viewModel = assistedMetroViewModel<AnimePlayerViewModel, AnimePlayerViewModel.Factory> {
             create(episodeId = episodeId)
@@ -114,6 +125,8 @@ class AnimePlayerScreen(
                 .fillMaxSize()
                 .background(Color.Black),
         ) {
+            // Gestures sit over the surface, not on it: the SurfaceView itself stays a
+            // plain video output and all input is handled in Compose.
             AndroidView(
                 factory = {
                     view.apply {
@@ -125,6 +138,31 @@ class AnimePlayerScreen(
                 },
                 modifier = Modifier.fillMaxSize(),
             )
+
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = { offset ->
+                                val forward = offset.x > size.width / 2
+                                val target = (view.timePos ?: 0) + if (forward) SEEK_STEP else -SEEK_STEP
+                                view.seekTo(target.coerceAtLeast(0))
+                                seekFeedback = if (forward) "+$SEEK_STEP s" else "-$SEEK_STEP s"
+                            },
+                            onTap = { view.togglePause() },
+                        )
+                    },
+            )
+
+            seekFeedback?.let { text ->
+                Text(
+                    text = text,
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
 
             Row(
                 verticalAlignment = Alignment.Top,
@@ -180,6 +218,8 @@ class AnimePlayerScreen(
         }
     }
 }
+
+private const val SEEK_STEP = 10
 
 private fun formatTime(seconds: Int): String {
     val h = seconds / 3600

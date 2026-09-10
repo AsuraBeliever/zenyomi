@@ -109,6 +109,18 @@ ffmpeg -f lavfi -i testsrc2=size=640x360:rate=24:duration=10 \
 El código de tiempo grabado en la imagen permite comprobar que la posición que muestra la
 barra coincide con el fotograma real, sin fiarse solo de lo que reporta la app.
 
+## Lo que adb no puede probar
+
+`adb shell input tap` tarda entre 100 y 300 ms por evento, por encima de la ventana de
+detección de un doble toque, así que dos taps seguidos llegan siempre como dos toques
+simples. Encadenarlos en una sola invocación o usar `input swipe` con duración 1 tampoco
+lo consigue.
+
+Consecuencia: el salto por doble toque del reproductor queda sin verificar de forma
+automática y hay que probarlo a mano. Lo que sí se comprueba por adb es que la capa de
+gestos recibe eventos y está por encima de la superficie de vídeo: un toque simple
+alterna la pausa, y eso aparece en el log como `Set property: pause=...`.
+
 ## Checklist de humo (cada release)
 
 Manga (regresión — **nada de esto puede romperse nunca**):

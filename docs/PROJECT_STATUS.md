@@ -34,7 +34,8 @@
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
-| Gestos y PiP del player | ⬜ | pendiente |
+| Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque no se puede disparar por adb, ver TESTING.md |
+| PiP del player | ⬜ | pendiente |
 | Resolución de vídeo desde la fuente | ✅ | verificada de punta a punta con la fuente local |
 | Progreso de reproducción | ✅ | verificado en la BD: `seen=1`, `last_second_seen=9`, `total_seconds=10` |
 | Fuente local de anime | ✅ | reproduce vídeos de la carpeta `localanime` |
