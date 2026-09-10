@@ -3,12 +3,17 @@ package eu.kanade.tachiyomi.ui.animeextension
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import tachiyomi.i18n.MR
@@ -29,7 +34,32 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 fun AnimeExtensionsContent() {
     val viewModel = metroViewModel<AnimeExtensionsViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showAddStore by remember { mutableStateOf(false) }
 
+    if (showAddStore) {
+        AddStoreDialog(
+            onDismiss = { showAddStore = false },
+            onConfirm = { url, onFailed ->
+                // Closing on failure would leave the user with no idea why nothing
+                // happened, so the dialog stays open and says so.
+                viewModel.addStore(url) { ok -> if (ok) showAddStore = false else onFailed() }
+            },
+        )
+    }
+
+    Column {
+        TextButton(onClick = { showAddStore = true }) {
+            Text(stringResource(ANMR.strings.label_anime_extension_repos))
+        }
+        AnimeExtensionsList(state, viewModel)
+    }
+}
+
+@Composable
+private fun AnimeExtensionsList(
+    state: AnimeExtensionsViewModel.State,
+    viewModel: AnimeExtensionsViewModel,
+) {
     when {
         state.isLoading -> LoadingScreen()
         state.isEmpty -> EmptyScreen(stringRes = ANMR.strings.information_empty_anime_extensions)
@@ -46,6 +76,19 @@ fun AnimeExtensionsContent() {
                     trailingContent = {
                         TextButton(onClick = { viewModel.trust(extension) }) {
                             Text(stringResource(MR.strings.ext_trust))
+                        }
+                    },
+                )
+            }
+            items(state.available, key = { "available-" + it.pkgName }) { extension ->
+                ListItem(
+                    headlineContent = { Text(extension.name) },
+                    supportingContent = {
+                        Text(extension.versionName, style = MaterialTheme.typography.bodySmall)
+                    },
+                    trailingContent = {
+                        TextButton(onClick = { viewModel.install(extension) }) {
+                            Text(stringResource(MR.strings.ext_install))
                         }
                     },
                 )
@@ -75,4 +118,49 @@ fun AnimeExtensionsContent() {
             }
         }
     }
+}
+
+/**
+ * Asks for an extension repository's index url.
+ *
+ * The anime repositories a user follows are their own choice, so this takes a url rather
+ * than shipping a list.
+ */
+@Composable
+private fun AddStoreDialog(onDismiss: () -> Unit, onConfirm: (String, () -> Unit) -> Unit) {
+    var url by remember { mutableStateOf("") }
+    var failed by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(ANMR.strings.label_anime_extension_repos)) },
+        text = {
+            OutlinedTextField(
+                value = url,
+                onValueChange = {
+                    url = it
+                    failed = false
+                },
+                singleLine = true,
+                isError = failed,
+                label = { Text("index.min.json") },
+                supportingText = if (failed) {
+                    { Text(stringResource(ANMR.strings.anime_extension_repo_invalid)) }
+                } else {
+                    null
+                },
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(url) { failed = true } },
+                enabled = url.isNotBlank(),
+            ) {
+                Text(stringResource(MR.strings.action_add))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(MR.strings.action_cancel)) }
+        },
+    )
 }
