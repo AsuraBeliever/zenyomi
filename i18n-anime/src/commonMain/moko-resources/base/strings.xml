@@ -615,4 +615,5 @@
     <string name="information_empty_anime_extensions">No anime extensions installed</string>
     <string name="player_track_audio">Audio</string>
     <string name="player_track_subtitle">Subtitles</string>
+    <string name="anime_extension_repo_invalid">Could not read that repository</string>
 </resources>

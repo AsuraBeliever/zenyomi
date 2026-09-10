@@ -166,3 +166,29 @@ regla de que Mihon manda en el *cómo*.
 | `tachiyomi.domain.entries.manga` | *(no se porta — se usa el de Mihon)* |
 | `tachiyomi.domain.items.chapter` | *(no se porta — se usa el de Mihon)* |
 | `i18n-aniyomi` / `AYMR` | `i18n-anime` / `ANMR` |
+
+## Tienda de extensiones de anime
+
+Origen: la cadena de tienda de Mihon (`mihon.data.extension.*`), no Aniyomi. Aniyomi
+nunca tuvo tienda con firma verificada, así que aquí no hay porte sino derivación del
+lado manga, según la regla 3 del charter.
+
+| Fichero nuevo | Derivado de |
+|---|---|
+| `data/.../animeextension/model/BaseNetworkAnimeExtensionStore.kt` | `BaseNetworkExtensionStore.kt` |
+| `data/.../animeextension/model/NetworkAnimeExtensionStore.kt` | `NetworkExtensionStore.kt` |
+| `data/.../animeextension/model/NetworkLegacyAnimeExtension.kt` | `NetworkLegacyExtension.kt` |
+| `data/.../animeextension/model/NetworkLegacyAnimeExtensionRepo.kt` | `NetworkLegacyExtensionRepo.kt` |
+| `data/.../animeextension/repository/AnimeExtensionStoreRepositoryImpl.kt` | homónimo de manga |
+| `data/.../animeextension/service/AnimeExtensionStoreService.kt` | `ExtensionStoreService.kt` |
+| `domain/.../animeextension/repository/AnimeExtensionStoreRepository.kt` | homónimo de manga |
+
+`ExtensionStore` (el modelo de dominio) **se reutiliza tal cual**: no contiene nada
+específico de manga. Duplicarlo habría sido deuda gratuita.
+
+**Diferencia real con el lado manga.** Los repos de Mihon publican `index_v2` y
+`shortName`; el `repo.json` de Aniyomi no publica ninguno de los dos. En
+kotlinx.serialization un campo nulable *sin valor por defecto* sigue siendo
+obligatorio, así que el modelo de manga rechazaba el repo oficial de Aniyomi. Ambos
+campos llevan ahora `= null`. Es el tipo de detalle que no se ve derivando a ojo: el
+código compila igual y falla solo contra datos reales.
