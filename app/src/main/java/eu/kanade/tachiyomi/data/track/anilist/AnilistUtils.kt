@@ -2,10 +2,23 @@ package eu.kanade.tachiyomi.data.track.anilist
 
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.data.database.models.Track
+import eu.kanade.tachiyomi.data.database.models.anime.AnimeTrack
 import tachiyomi.domain.track.model.Track as DomainTrack
 
 internal fun Track.toApiStatus() = when (status) {
     Anilist.READING -> "CURRENT"
+    Anilist.COMPLETED -> "COMPLETED"
+    Anilist.ON_HOLD -> "PAUSED"
+    Anilist.DROPPED -> "DROPPED"
+    Anilist.PLAN_TO_READ -> "PLANNING"
+    Anilist.REREADING -> "REPEATING"
+    else -> throw NotImplementedError("Unknown status: $status")
+}
+
+// AniList's list statuses are shared between anime and manga, so the same strings apply; only
+// the Kotlin type differs.
+internal fun AnimeTrack.toApiStatus() = when (status) {
+    Anilist.WATCHING -> "CURRENT"
     Anilist.COMPLETED -> "COMPLETED"
     Anilist.ON_HOLD -> "PAUSED"
     Anilist.DROPPED -> "DROPPED"
