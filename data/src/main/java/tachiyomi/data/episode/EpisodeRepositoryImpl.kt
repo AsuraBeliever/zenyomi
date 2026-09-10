@@ -108,9 +108,9 @@ class EpisodeRepositoryImpl(
 
     override suspend fun getBookmarkedEpisodesByAnimeId(animeId: Long): List<Episode> {
         return database.episodesQueries.getBookmarkedEpisodesByAnimeId(
-                animeId,
-                ::mapEpisode,
-            ).awaitAsList()
+            animeId,
+            ::mapEpisode,
+        ).awaitAsList()
     }
 
     override suspend fun getEpisodeById(id: Long): Episode? {
@@ -119,17 +119,17 @@ class EpisodeRepositoryImpl(
 
     override suspend fun getEpisodeByAnimeIdAsFlow(animeId: Long): Flow<List<Episode>> {
         return database.episodesQueries.getEpisodesByAnimeId(
-                animeId,
-                ::mapEpisode,
-            ).subscribeToList()
+            animeId,
+            ::mapEpisode,
+        ).subscribeToList()
     }
 
     override suspend fun getEpisodeByUrlAndAnimeId(url: String, animeId: Long): Episode? {
         return database.episodesQueries.getEpisodeByUrlAndAnimeId(
-                url,
-                animeId,
-                ::mapEpisode,
-            ).awaitAsOneOrNull()
+            url,
+            animeId,
+            ::mapEpisode,
+        ).awaitAsOneOrNull()
     }
 
     private fun mapEpisode(

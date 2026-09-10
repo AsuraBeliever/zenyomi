@@ -6,9 +6,9 @@ import android.util.AttributeSet
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.core.net.toUri
+import `is`.xyz.mpv.MPVLib
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
-import `is`.xyz.mpv.MPVLib
 import java.io.File
 
 /**

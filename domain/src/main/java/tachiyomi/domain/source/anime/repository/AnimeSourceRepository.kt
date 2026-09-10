@@ -2,8 +2,8 @@ package tachiyomi.domain.source.anime.repository
 
 import androidx.paging.PagingSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
-import tachiyomi.domain.anime.model.Anime
 import kotlinx.coroutines.flow.Flow
+import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.source.anime.model.AnimeSource
 
 // Mirrors Mihon: pages carry domain models, not source ones. Aniyomi types this
