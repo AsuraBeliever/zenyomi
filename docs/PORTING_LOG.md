@@ -282,3 +282,22 @@ puede lanzar y olvidar, pero una espera acotada nunca llega al límite de ANR de
 `alang`, `slang` y `speed` se fijan como **opciones antes de `init()`**, no como propiedades
 después: mpv las aplica al abrir el fichero, así que ponerlas más tarde no hace nada hasta el
 siguiente. Verificado midiendo: a 2x el vídeo avanza 64 s en 32 s reales.
+
+## Estadísticas de anime
+
+Pantalla propia, accesible desde la biblioteca de anime igual que el historial, en vez de una
+sección dentro de la de Mihon: el árbol es paralelo y así su pantalla queda intacta. Reutiliza
+las cadenas de Mihon donde significan lo mismo (`label_overview_section`, `label_started`,
+`label_mean_score`…), que es donde compartir sí sale gratis.
+
+Los contadores se calculan recorriendo la biblioteca con los interactors existentes, no con
+vistas agregadas nuevas. Una biblioteca de anime son decenas de entradas, no los miles que
+puede tener una de manga, y unas cuantas consultas son más fáciles de mantener correctas que
+un SQL agregado escrito a mano — que es justo donde ya me equivoqué al derivar mappers.
+
+**"Tiempo visto" es la suma de `last_second_seen`**, es decir lo más lejos que se ha llegado en
+cada episodio. `animehistory` no guarda duración propia que sumar, al contrario que el lado
+manga. No acumula revisionados; para eso haría falta una columna nueva.
+
+Solo se cuentan como *tracked* los servicios que implementan `AnimeTracker`. Incluir los de
+manga inflaría el número con entradas que no son de anime.

@@ -62,8 +62,8 @@ La fase de mayor riesgo: dependencias nativas y ABIs.
 - [x] Actualizaciones de biblioteca de anime (job periódico)
 - [x] Trackers de anime — AniList y MAL. Simkl y Bangumi no: Bangumi es solo manga en Mihon y Simkl no existe ahí, así que ninguno sale gratis
 - [x] Backup y restauración incluyendo anime
-- [ ] Ajustes de anime y del player
-- [ ] Estadísticas de anime
+- [x] Ajustes de anime y del player
+- [x] Estadísticas de anime
 
 ---
 
