@@ -69,7 +69,7 @@ La fase de mayor riesgo: dependencias nativas y ABIs.
 
 ## Fase 4 — Pulido y v1.0.0
 
-- [ ] Auditoría: **ninguna feature de Mihon perdida** (checklist exhaustivo)
+- [x] Auditoría: **ninguna feature de Mihon perdida** — ver `docs/MIHON_PARITY.md`
 - [ ] Streaming por torrent (torrserver) — opcional, se evalúa
 - [ ] Rendimiento, baseline profile, R8
 - [ ] Release firmado, changelog, fastlane
