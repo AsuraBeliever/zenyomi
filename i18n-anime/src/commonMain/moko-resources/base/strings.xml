@@ -616,4 +616,11 @@
     <string name="player_track_audio">Audio</string>
     <string name="player_track_subtitle">Subtitles</string>
     <string name="anime_extension_repo_invalid">Could not read that repository</string>
+    <string name="anime_channel_progress">Progress</string>
+    <string name="anime_channel_errors">Errors</string>
+    <string name="anime_channel_new_episodes">New episodes</string>
+    <string name="anime_notification_updating_progress">Updating anime library… (%1$s)</string>
+    <string name="anime_notification_new_episodes">New episodes found</string>
+    <string name="anime_notification_new_episodes_text">%1$s and %2$d more</string>
+    <string name="anime_notification_update_error">%1$d anime could not be updated</string>
 </resources>

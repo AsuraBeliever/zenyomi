@@ -43,7 +43,7 @@
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
 | Descargas de anime | ⬜ | fase 3 |
-| Actualizaciones de biblioteca de anime | ⚠️ | refresco manual verificado; falta el trabajo periódico en segundo plano |
+| Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ⬜ | fase 3 |
 | Backup de anime | ⬜ | fase 3 |
 
