@@ -217,3 +217,43 @@ sin excepciones de serialización, y deja la biblioteca de anime intacta.
 
 La restauración **fusiona, no reemplaza**: gana el progreso más avanzado de los dos lados, de
 modo que restaurar un backup viejo nunca des-marca un episodio ya visto.
+
+## Trackers de anime
+
+No es un porte de Aniyomi sino una **capacidad añadida a los trackers de Mihon**. La interfaz
+`AnimeTracker` va al lado de `Tracker`, no dentro: Komga, Kavita, MangaUpdates y compañía son
+servicios solo de manga, y ofrecerlos para anime invitaría al usuario a registrarse en algo
+que nunca podrá guardar una serie. El login, el logout y el estado de la cuenta se quedan en
+`Tracker`: uno inicia sesión en AniList una vez, no una vez por tipo de medio.
+
+| Servicio | Qué hizo falta |
+|---|---|
+| AniList | `SaveMediaListEntry` y `DeleteMediaListEntry` reciben un `mediaId` y no distinguen el tipo, así que añadir, actualizar y borrar valen tal cual; solo se duplicaron las **lecturas** con `type: ANIME` y `episodes` en vez de `chapters` |
+| MyAnimeList | Endpoints propios de anime: `/v2/anime`, `num_episodes`, `num_episodes_watched`. Nada reutilizable salvo el OAuth |
+
+Los modelos de anime (`AnimeTrack`, `AnimeTrackSearch`) son un árbol paralelo con nombres
+honestos —`last_episode_seen`, no un campo neutro—, que es justo lo que evita confundirlos con
+los de manga en la llamada.
+
+**Detalle que ya nos mordió una vez:** todos los campos de `MALAnimeListItemStatus` llevan
+valor por defecto. Un campo nulable *sin* default sigue siendo obligatorio para
+kotlinx.serialization, que es exactamente lo que rompió la tienda de extensiones con el
+`repo.json` de Aniyomi.
+
+## El player pasa a Activity propia
+
+`AnimePlayerScreen` era una pantalla del navegador de `MainActivity`. Picture-in-picture no
+puede vivir ahí: se declara **por actividad**, y además necesita `configChanges` para que
+entrar en PiP no destruya y recree el player a mitad de reproducción.
+
+Ponerle `supportsPictureInPicture` y `configChanges` a `MainActivity` habría cambiado también
+cómo sobrevive a la rotación el lado de manga, que es exactamente lo que prohíbe la regla 1.
+Mihon ya separa su lector en `ReaderActivity` por el mismo motivo, así que el player sigue esa
+misma forma: `AnimePlayerActivity`, lanzada con un `Intent`, y el contenido extraído a un
+composable `AnimePlayerContent` reutilizable.
+
+Al dejar de haber navegador que hacer *pop*, la pantalla gana barra propia con título y botón
+de cerrar — dos parámetros (`title`, `onBack`) que antes se pasaban y no se usaban.
+
+Los iconos salen del set del proyecto (`Close`, `FlipToBack`); no hay `picture_in_picture` en
+`icons/material-symbols`, y dibujar un SVG a mano por un botón no compensa.

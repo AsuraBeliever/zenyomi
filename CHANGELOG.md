@@ -10,6 +10,19 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.5.0] - 2026-09-10
+### Added
+- Anime tracking on MyAnimeList and AniList: search, link, unlink, and progress pushed when an episode is watched. Signing in is shared with the manga side, so one account covers both.
+- Picture-in-picture in the video player, with the aspect ratio taken from the video rather than assumed.
+- The player now has its own bar with the episode title and a close button.
+
+### Changed
+- The player moved into its own activity. Picture-in-picture is declared per activity and needs to survive configuration changes; putting that on the main activity would have changed how the manga side handles rotation.
+
+### Other
+- Tracking is only offered for services that actually have anime. Komga, Kavita, MangaUpdates and the other manga-only trackers are left out rather than inviting you to sign in to something that cannot hold a series.
+- AniList's API is returning 403 to every request at the time of this release, which also breaks Mihon's manga tracking. MyAnimeList was implemented in the same batch so anime tracking is usable today.
+
 ## [0.4.0] - 2026-09-10
 ### Added
 - Anime extensions can be installed from inside the app: add a repository by its index url and install from the list it publishes, signature checked the way Mihon checks manga extensions.

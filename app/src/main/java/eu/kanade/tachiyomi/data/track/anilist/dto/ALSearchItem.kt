@@ -11,7 +11,11 @@ data class ALSearchItem(
     val format: String,
     val status: String?,
     val startDate: ALFuzzyDate,
-    val chapters: Long?,
+    // Both default to null so one DTO can parse a manga response (which carries chapters) and
+    // an anime one (which carries episodes). A nullable field without a default is still
+    // required by kotlinx.serialization, which would make each query fail on the other's shape.
+    val chapters: Long? = null,
+    val episodes: Long? = null,
     val averageScore: Int?,
     val staff: ALStaff,
     val countryOfOrigin: String = "",
@@ -35,6 +39,18 @@ data class ALSearchItem(
         totalChapters = chapters ?: 0,
         averageScore = averageScore ?: -1,
         staff = staff,
+    )
+
+    fun toALAnime(): ALAnime = ALAnime(
+        remoteId = id,
+        title = title.userPreferred,
+        imageUrl = coverImage.large,
+        description = description,
+        format = format.replace("_", "-"),
+        publishingStatus = status ?: "",
+        startDateFuzzy = startDate.toEpochMilli(),
+        totalEpisodes = episodes ?: 0,
+        averageScore = averageScore ?: -1,
     )
 }
 

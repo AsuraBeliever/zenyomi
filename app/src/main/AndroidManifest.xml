@@ -152,6 +152,14 @@
         </activity>
 
         <activity
+            android:name=".ui.animeplayer.AnimePlayerActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true" />
+
+        <activity
             android:name=".ui.reader.ReaderActivity"
             android:exported="false"
             android:launchMode="singleTask">

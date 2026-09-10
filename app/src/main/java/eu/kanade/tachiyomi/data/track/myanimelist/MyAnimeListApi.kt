@@ -3,7 +3,13 @@ package eu.kanade.tachiyomi.data.track.myanimelist
 import android.net.Uri
 import androidx.core.net.toUri
 import eu.kanade.tachiyomi.data.database.models.Track
+import eu.kanade.tachiyomi.data.database.models.anime.AnimeTrack
+import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
+import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALAnime
+import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALAnimeListItem
+import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALAnimeListItemStatus
+import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALAnimeSearchResult
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALListItem
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALListItemStatus
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALManga
@@ -244,6 +250,111 @@ class MyAnimeListApi(
         }
     }
 
+    // ---- Anime -------------------------------------------------------------------------
+    //
+    // MAL keeps anime on its own endpoints with their own field names, so unlike AniList there
+    // is nothing to share: /v2/anime instead of /v2/manga, num_episodes instead of
+    // num_chapters, num_episodes_watched instead of num_chapters_read.
+
+    suspend fun searchAnime(query: String): List<AnimeTrackSearch> {
+        return withIOContext {
+            val url = "$BASE_API_URL/anime".toUri().buildUpon()
+                // Same 64 character limit the manga endpoint enforces.
+                .appendQueryParameter("q", query.take(64))
+                .appendQueryParameter("nsfw", "true")
+                .appendQueryParameter("fields", ANIME_SEARCH_FIELDS)
+                .build()
+            with(json) {
+                authClient.newCall(GET(url.toString()))
+                    .awaitSuccess()
+                    .parseAs<MALAnimeSearchResult>()
+                    .data
+                    .map { parseAnimeSearchItem(it.node) }
+            }
+        }
+    }
+
+    suspend fun updateAnimeItem(track: AnimeTrack): AnimeTrack {
+        return withIOContext {
+            val formBodyBuilder = FormBody.Builder()
+                .add("status", track.toMyAnimeListStatus() ?: "watching")
+                .add("is_rewatching", (track.status == MyAnimeList.REREADING).toString())
+                .add("score", track.score.toInt().toString())
+                .add("num_watched_episodes", track.last_episode_seen.toInt().toString())
+            convertToIsoDate(track.started_watching_date)?.let {
+                formBodyBuilder.add("start_date", it)
+            }
+            convertToIsoDate(track.finished_watching_date)?.let {
+                formBodyBuilder.add("finish_date", it)
+            }
+
+            val request = Request.Builder()
+                .url(animeUrl(track.remote_id).toString())
+                .put(formBodyBuilder.build())
+                .build()
+            with(json) {
+                val response = authClient.newCall(request).await()
+                if (!response.isSuccessful) {
+                    if (response.body.string().contains("invalid_content")) {
+                        throw MALTitleNotApproved()
+                    }
+                    throw HttpException(response.code)
+                }
+                response.parseAs<MALAnimeListItemStatus>().let { parseAnimeItem(it, track) }
+            }
+        }
+    }
+
+    suspend fun deleteAnimeItem(track: AnimeTrack) {
+        withIOContext {
+            authClient.newCall(DELETE(animeUrl(track.remote_id).toString())).awaitSuccess()
+        }
+    }
+
+    suspend fun findAnimeListItem(track: AnimeTrack): AnimeTrack? {
+        return withIOContext {
+            val uri = "$BASE_API_URL/anime".toUri().buildUpon()
+                .appendPath(track.remote_id.toString())
+                .appendQueryParameter("fields", "num_episodes,my_list_status")
+                .build()
+            with(json) {
+                authClient.newCall(GET(uri.toString()))
+                    .awaitSuccess()
+                    .parseAs<MALAnimeListItem>()
+                    .let { item ->
+                        track.total_episodes = item.numEpisodes
+                        item.myListStatus?.let { parseAnimeItem(it, track) }
+                    }
+            }
+        }
+    }
+
+    private fun parseAnimeItem(listStatus: MALAnimeListItemStatus, track: AnimeTrack): AnimeTrack {
+        return track.apply {
+            val isRewatching = listStatus.isRewatching
+            status = if (isRewatching) MyAnimeList.REREADING else getAnimeStatus(listStatus.status)
+            last_episode_seen = listStatus.numEpisodesWatched
+            score = listStatus.score.toDouble()
+            listStatus.startDate?.let { started_watching_date = parseDate(it) }
+            listStatus.finishDate?.let { finished_watching_date = parseDate(it) }
+        }
+    }
+
+    private fun parseAnimeSearchItem(item: MALAnime): AnimeTrackSearch {
+        return AnimeTrackSearch.create(trackerId).apply {
+            remote_id = item.id
+            title = item.title
+            total_episodes = item.numEpisodes
+            cover_url = item.covers?.large ?: ""
+            summary = item.synopsis
+            score = item.mean
+            tracking_url = "https://myanimelist.net/anime/${item.id}"
+            publishing_status = item.status.replace("_", " ")
+            publishing_type = item.mediaType.replace("_", " ")
+            start_date = item.startDate ?: ""
+        }
+    }
+
     private fun parseDate(isoDate: String): Long {
         val pattern = when (isoDate.length) {
             10 -> "yyyy-MM-dd"
@@ -275,6 +386,9 @@ class MyAnimeListApi(
         private const val SEARCH_FIELDS =
             "id,title,synopsis,num_chapters,mean,main_picture,status,media_type,start_date,authors{first_name,last_name}"
 
+        private const val ANIME_SEARCH_FIELDS =
+            "id,title,synopsis,num_episodes,mean,main_picture,status,media_type,start_date"
+
         private const val LIST_PAGINATION_AMOUNT = 250
 
         private var codeVerifier: String = ""
@@ -286,6 +400,11 @@ class MyAnimeListApi(
             .build()
 
         fun mangaUrl(id: Long): Uri = "$BASE_API_URL/manga".toUri().buildUpon()
+            .appendPath(id.toString())
+            .appendPath("my_list_status")
+            .build()
+
+        fun animeUrl(id: Long): Uri = "$BASE_API_URL/anime".toUri().buildUpon()
             .appendPath(id.toString())
             .appendPath("my_list_status")
             .build()
