@@ -18,8 +18,10 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Release 0.4.0 | ✅ | tag `v0.4.0`, APK firmado y verificado en release |
+| Release 0.5.1 | ✅ | tag `v0.5.1`, prueba de humo completa de release (arranque, extensiones, reproducción, PiP) |
 | Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
+| Trackers de anime (código) | ✅ | MyAnimeList y AniList |
+| PiP del player | ✅ | Activity propia |
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
 | Dominio anime | ✅ | 33 ficheros: modelos, repositorios e interactors; compila y corre |
 | Capa data de anime | ✅ | mapper + 3 repositorios, reescritos al estilo de Mihon |
