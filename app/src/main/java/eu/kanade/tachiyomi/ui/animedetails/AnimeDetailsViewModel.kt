@@ -18,6 +18,7 @@ import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.anime.interactor.SyncEpisodesWithSource
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
+import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.model.Episode
 
@@ -37,6 +38,7 @@ class AnimeDetailsViewModel(
     private val getEpisodeVideos: GetEpisodeVideos,
     private val syncEpisodesWithSource: SyncEpisodesWithSource,
     private val sourceManager: AnimeSourceManager,
+    private val updateAnime: UpdateAnime,
 ) : ViewModel() {
 
     private var episodesFetched = false
@@ -79,6 +81,13 @@ class AnimeDetailsViewModel(
                 .let { with(getEpisodeVideos) { it.best() } }
             _state.update { it.copy(resolvingEpisodeId = null) }
             onResolved(video?.videoUrl)
+        }
+    }
+
+    fun toggleFavorite() {
+        val anime = state.value.anime ?: return
+        viewModelScope.launch {
+            updateAnime.awaitUpdateFavorite(anime.id, !anime.favorite)
         }
     }
 
