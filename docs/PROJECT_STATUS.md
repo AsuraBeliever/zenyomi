@@ -30,7 +30,7 @@
 | Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
-| Extensiones de anime | ⬜ | fase 1 |
+| Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
@@ -42,16 +42,33 @@
 | Sincronización de episodios | ✅ | la ficha pide los episodios a la fuente y los guarda |
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
-| Descargas de anime | ⬜ | fase 3 |
-| Actualizaciones de biblioteca de anime | ⚠️ | refresco manual verificado; falta el trabajo periódico en segundo plano |
+| Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
+| Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ⬜ | fase 3 |
-| Backup de anime | ⬜ | fase 3 |
+| Backup de anime | ✅ | mismo fichero .tachibk que el manga; verificado backup → borrado → restauración |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
 ## Bloqueos activos
 
 Ninguno.
+
+## Diferencia conocida con el manga
+
+La opción **"All read entries"** del backup solo aplica al manga. El backup de anime incluye
+lo que está en la biblioteca, no los animes vistos y luego quitados de ella. Es una carencia,
+no un accidente: el lado anime todavía no tiene el equivalente de
+`mangaRepository.getReadMangaNotInLibrary()`.
+
+## Sin verificar en dispositivo
+
+**Una descarga de vídeo HTTP completada de punta a punta.** El emulador no tiene instalada
+ninguna fuente de anime accesible por red: la única extensión presente (Jellyfin) apunta a un
+servidor que no existe. Se ha verificado todo lo que rodea a la descarga — encolado, cola
+persistida entre muertes del proceso, worker en primer plano, notificación de progreso y de
+error, desencolado y borrado del fichero — pero el bucle que copia los bytes solo se ha
+ejercitado hasta el punto en que la fuente falla al resolver el vídeo. Queda pendiente de la
+primera extensión real que instale el cliente.
 
 ## Aviso conocido: alineación de 16 KB
 

@@ -9,6 +9,7 @@ import eu.kanade.tachiyomi.util.system.buildNotificationChannel
 import eu.kanade.tachiyomi.util.system.buildNotificationChannelGroup
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 
 /**
  * Class to manage the basic information of all the notifications used in the app.
@@ -46,6 +47,24 @@ object Notifications {
     const val CHANNEL_NEW_CHAPTERS = "new_chapters_channel"
     const val ID_NEW_CHAPTERS = -301
     const val GROUP_NEW_CHAPTERS = "eu.kanade.tachiyomi.NEW_CHAPTERS"
+
+    /**
+     * Notification channel and ids used by the anime library updater. Anime gets its own
+     * channels rather than sharing the manga ones so a user who only cares about one of the
+     * two libraries can silence the other from the system settings.
+     */
+    const val CHANNEL_ANIME_DOWNLOADER_PROGRESS = "anime_downloader_progress_channel"
+    const val ID_DOWNLOAD_EPISODE_PROGRESS = -211
+    const val CHANNEL_ANIME_DOWNLOADER_ERROR = "anime_downloader_error_channel"
+    const val ID_DOWNLOAD_EPISODE_ERROR = -212
+
+    const val CHANNEL_ANIME_LIBRARY_PROGRESS = "anime_library_progress_channel"
+    const val ID_ANIME_LIBRARY_PROGRESS = -111
+    const val CHANNEL_ANIME_LIBRARY_ERROR = "anime_library_errors_channel"
+    const val ID_ANIME_LIBRARY_ERROR = -112
+    const val CHANNEL_NEW_EPISODES = "new_episodes_channel"
+    const val ID_NEW_EPISODES = -311
+    const val GROUP_NEW_EPISODES = "app.zenyomi.NEW_EPISODES"
 
     /**
      * Notification channel and ids used by the backup/restore system.
@@ -155,6 +174,30 @@ object Notifications {
                 },
                 buildNotificationChannel(CHANNEL_INCOGNITO_MODE, IMPORTANCE_LOW) {
                     setName(context.stringResource(MR.strings.pref_incognito_mode))
+                },
+                buildNotificationChannel(CHANNEL_ANIME_DOWNLOADER_PROGRESS, IMPORTANCE_LOW) {
+                    setName(context.stringResource(ANMR.strings.anime_channel_progress))
+                    setGroup(GROUP_DOWNLOADER)
+                    setShowBadge(false)
+                },
+                buildNotificationChannel(CHANNEL_ANIME_DOWNLOADER_ERROR, IMPORTANCE_LOW) {
+                    setName(context.stringResource(ANMR.strings.anime_channel_errors))
+                    setGroup(GROUP_DOWNLOADER)
+                    setShowBadge(false)
+                },
+                buildNotificationChannel(CHANNEL_ANIME_LIBRARY_PROGRESS, IMPORTANCE_LOW) {
+                    setName(context.stringResource(ANMR.strings.anime_channel_progress))
+                    setGroup(GROUP_LIBRARY)
+                    setShowBadge(false)
+                },
+                buildNotificationChannel(CHANNEL_ANIME_LIBRARY_ERROR, IMPORTANCE_LOW) {
+                    setName(context.stringResource(ANMR.strings.anime_channel_errors))
+                    setGroup(GROUP_LIBRARY)
+                    setShowBadge(false)
+                },
+                buildNotificationChannel(CHANNEL_NEW_EPISODES, IMPORTANCE_DEFAULT) {
+                    setName(context.stringResource(ANMR.strings.anime_channel_new_episodes))
+                    setGroup(GROUP_LIBRARY)
                 },
                 buildNotificationChannel(CHANNEL_EXTENSIONS_UPDATE, IMPORTANCE_DEFAULT) {
                     setGroup(GROUP_APK_UPDATES)

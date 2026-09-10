@@ -15,11 +15,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tachiyomi.domain.episode.interactor.GetEpisode
+import tachiyomi.domain.episode.interactor.UpdateEpisode
+import tachiyomi.domain.episode.model.EpisodeUpdate
 import tachiyomi.domain.history.anime.interactor.UpsertAnimeHistory
 import tachiyomi.domain.history.anime.model.AnimeHistoryUpdate
 import java.util.Date
-import tachiyomi.domain.episode.interactor.UpdateEpisode
-import tachiyomi.domain.episode.model.EpisodeUpdate
 
 /**
  * Keeps an episode's watch progress.

@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.data.backup.restore.restorers
 import android.content.Context
 import android.util.Log
 import dev.zacsweers.metro.Inject
+import eu.kanade.tachiyomi.data.animelibrary.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.data.backup.create.BackupCreateJob
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
@@ -40,6 +41,7 @@ class PreferenceRestorer(
         )
 
         LibraryUpdateJob.setupTask(context)
+        AnimeLibraryUpdateJob.setupTask(context)
         BackupCreateJob.setupTask(context)
     }
 

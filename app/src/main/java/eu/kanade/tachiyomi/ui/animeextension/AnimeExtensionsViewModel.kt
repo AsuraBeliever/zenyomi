@@ -12,9 +12,11 @@ import eu.kanade.tachiyomi.animeextension.model.AnimeExtension
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import mihon.domain.animeextension.repository.AnimeExtensionStoreRepository
 
 /**
  * Backs the anime extensions screen.
@@ -28,6 +30,7 @@ import kotlinx.coroutines.launch
 @ContributesIntoMap(AppScope::class, binding = binding<ViewModel>())
 class AnimeExtensionsViewModel(
     private val extensionManager: AnimeExtensionManager,
+    private val storeRepository: AnimeExtensionStoreRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -38,13 +41,40 @@ class AnimeExtensionsViewModel(
             combine(
                 extensionManager.installedExtensionsFlow,
                 extensionManager.untrustedExtensionsFlow,
-            ) { installed, untrusted -> installed to untrusted }
-                .collect { (installed, untrusted) ->
-                    _state.update {
-                        it.copy(isLoading = false, installed = installed, untrusted = untrusted)
-                    }
-                }
+                extensionManager.availableExtensionsFlow,
+                storeRepository.getAllAsFlow(),
+            ) { installed, untrusted, available, stores ->
+                State(
+                    isLoading = false,
+                    installed = installed,
+                    untrusted = untrusted,
+                    // An extension already on the device is not something to offer again.
+                    available = available.filterNot { remote ->
+                        installed.any { it.pkgName == remote.pkgName } ||
+                            untrusted.any { it.pkgName == remote.pkgName }
+                    },
+                    storeCount = stores.size,
+                )
+            }.collect { next -> _state.update { next } }
         }
+    }
+
+    /**
+     * Adds an extension repository by its index url.
+     *
+     * Reports failure through state rather than throwing: a bad url or an unreachable
+     * host is an ordinary thing for a user to hit while typing one in.
+     */
+    fun addStore(indexUrl: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val result = storeRepository.insert(indexUrl.trim())
+            if (result.isSuccess) extensionManager.findAvailableExtensions()
+            onResult(result.isSuccess)
+        }
+    }
+
+    fun install(extension: AnimeExtension.Available) {
+        viewModelScope.launch { extensionManager.installExtension(extension).collect() }
     }
 
     fun trust(extension: AnimeExtension.Untrusted) {
@@ -59,7 +89,10 @@ class AnimeExtensionsViewModel(
         val isLoading: Boolean = true,
         val installed: List<AnimeExtension.Installed> = emptyList(),
         val untrusted: List<AnimeExtension.Untrusted> = emptyList(),
+        val available: List<AnimeExtension.Available> = emptyList(),
+        val storeCount: Int = 0,
     ) {
-        val isEmpty: Boolean get() = installed.isEmpty() && untrusted.isEmpty()
+        val isEmpty: Boolean
+            get() = installed.isEmpty() && untrusted.isEmpty() && available.isEmpty()
     }
 }

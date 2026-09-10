@@ -1,13 +1,13 @@
 package tachiyomi.domain.anime.model
 
 import androidx.compose.runtime.Immutable
-import tachiyomi.domain.anime.model.SeasonDisplayMode
 import eu.kanade.tachiyomi.animesource.model.AnimeUpdateStrategy
 import eu.kanade.tachiyomi.animesource.model.FetchType
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import kotlinx.serialization.json.JsonObject
 import mihon.core.common.extensions.EMPTY
 import tachiyomi.core.common.preference.TriState
+import tachiyomi.domain.anime.model.SeasonDisplayMode
 import java.io.Serializable
 import java.time.Instant
 import kotlin.math.pow

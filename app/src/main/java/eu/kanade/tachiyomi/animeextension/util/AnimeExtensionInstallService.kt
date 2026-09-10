@@ -7,11 +7,11 @@ import android.net.Uri
 import android.os.IBinder
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.animeextension.installer.InstallerAnime
 import eu.kanade.tachiyomi.animeextension.installer.PackageInstallerInstallerAnime
 import eu.kanade.tachiyomi.animeextension.installer.ShizukuInstallerAnime
 import eu.kanade.tachiyomi.animeextension.util.AnimeExtensionInstaller.Companion.EXTRA_DOWNLOAD_ID
+import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.getSerializableExtraCompat
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import logcat.LogPriority

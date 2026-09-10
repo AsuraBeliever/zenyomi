@@ -14,21 +14,23 @@ import eu.kanade.domain.track.service.DelayedTrackingUpdateJob
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.tachiyomi.App
+import eu.kanade.tachiyomi.animeextension.util.AnimeExtensionInstallActivity
 import eu.kanade.tachiyomi.core.security.PrivacyPreferences
 import eu.kanade.tachiyomi.core.security.SecurityPreferences
+import eu.kanade.tachiyomi.data.animelibrary.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.data.backup.create.BackupCreateJob
 import eu.kanade.tachiyomi.data.backup.restore.BackupRestoreJob
 import eu.kanade.tachiyomi.data.cache.ChapterCache
 import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadJob
 import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadJob
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.data.library.MetadataUpdateJob
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
 import eu.kanade.tachiyomi.extension.ExtensionManager
-import eu.kanade.tachiyomi.animeextension.util.AnimeExtensionInstallActivity
 import eu.kanade.tachiyomi.extension.util.ExtensionInstallActivity
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.NetworkPreferences
@@ -65,11 +67,15 @@ interface AppGraph : ViewModelGraph {
     fun inject(webViewActivity: WebViewActivity)
     fun inject(baseOAuthLoginActivity: BaseOAuthLoginActivity)
     fun inject(libraryUpdateJob: LibraryUpdateJob)
+
+    fun inject(animeLibraryUpdateJob: AnimeLibraryUpdateJob)
     fun inject(metadataUpdateJob: MetadataUpdateJob)
     fun inject(backupRestoreJob: BackupRestoreJob)
     fun inject(backupCreateJob: BackupCreateJob)
     fun inject(delayedTrackingUpdateJob: DelayedTrackingUpdateJob)
     fun inject(downloadJob: DownloadJob)
+
+    fun inject(animeDownloadJob: AnimeDownloadJob)
     fun inject(notificationReceiver: NotificationReceiver)
     fun inject(notificationReceiver: SecureActivityDelegateImpl)
     fun inject(extensionInstallActivity: ExtensionInstallActivity)

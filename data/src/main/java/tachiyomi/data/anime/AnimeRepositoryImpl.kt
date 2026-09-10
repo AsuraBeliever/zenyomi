@@ -7,10 +7,6 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import tachiyomi.data.subscribeToList
-import tachiyomi.data.subscribeToOne
-import tachiyomi.data.subscribeToOneOrNull
-import tachiyomi.domain.anime.model.SeasonAnime
 import kotlinx.coroutines.flow.Flow
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
@@ -18,8 +14,12 @@ import tachiyomi.data.AnimeUpdateStrategyColumnAdapter
 import tachiyomi.data.FetchTypeColumnAdapter
 import tachiyomi.data.MemoColumnAdapter
 import tachiyomi.data.StringListColumnAdapter
+import tachiyomi.data.subscribeToList
+import tachiyomi.data.subscribeToOne
+import tachiyomi.data.subscribeToOneOrNull
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.anime.model.AnimeUpdate
+import tachiyomi.domain.anime.model.SeasonAnime
 import tachiyomi.domain.anime.repository.AnimeRepository
 import tachiyomi.domain.library.anime.LibraryAnime
 import tachiyomi.domain.source.anime.model.DeletableAnime
@@ -43,18 +43,18 @@ class AnimeRepositoryImpl(
 
     override suspend fun getAnimeByUrlAndSourceId(url: String, sourceId: Long): Anime? {
         return database.animesQueries.getAnimeByUrlAndSource(
-                url,
-                sourceId,
-                AnimeMapper::mapAnime,
-            ).awaitAsOneOrNull()
+            url,
+            sourceId,
+            AnimeMapper::mapAnime,
+        ).awaitAsOneOrNull()
     }
 
     override fun getAnimeByUrlAndSourceIdAsFlow(url: String, sourceId: Long): Flow<Anime?> {
         return database.animesQueries.getAnimeByUrlAndSource(
-                url,
-                sourceId,
-                AnimeMapper::mapAnime,
-            ).subscribeToOneOrNull()
+            url,
+            sourceId,
+            AnimeMapper::mapAnime,
+        ).subscribeToOneOrNull()
     }
 
     override suspend fun getAnimeFavorites(): List<Anime> {
@@ -166,7 +166,10 @@ class AnimeRepositoryImpl(
     }
 
     override fun getAnimeSeasonsByIdAsFlow(parentId: Long): Flow<List<SeasonAnime>> {
-        return database.animeseasonsViewQueries.getAnimeSeasonsById(parentId, AnimeMapper::mapSeasonAnime).subscribeToList()
+        return database.animeseasonsViewQueries.getAnimeSeasonsById(
+            parentId,
+            AnimeMapper::mapSeasonAnime,
+        ).subscribeToList()
     }
 
     override suspend fun removeParentIdByIds(animeIds: List<Long>) {
@@ -178,7 +181,9 @@ class AnimeRepositoryImpl(
     }
 
     override fun getDeletableParentAnime(): Flow<List<DeletableAnime>> {
-        return database.animedeletableViewQueries.getDeletableParentAnime(AnimeMapper::mapDeletableAnime).subscribeToList()
+        return database.animedeletableViewQueries.getDeletableParentAnime(
+            AnimeMapper::mapDeletableAnime,
+        ).subscribeToList()
     }
 
     override suspend fun getChildrenByParentId(parentId: Long): List<Anime> {

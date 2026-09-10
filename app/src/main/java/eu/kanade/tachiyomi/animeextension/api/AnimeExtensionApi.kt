@@ -5,28 +5,43 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.animeextension.model.AnimeExtension
+import eu.kanade.tachiyomi.animeextension.model.AnimeLoadResult
+import eu.kanade.tachiyomi.animeextension.util.AnimeExtensionLoader
+import mihon.domain.animeextension.repository.AnimeExtensionStoreRepository
+import tachiyomi.core.common.util.lang.withIOContext
 
 /**
- * Remote catalogue of anime extensions.
+ * Remote catalogue of anime extensions, read from the stores the user has added.
  *
- * Zenyomi has no anime extension stores yet: Mihon's store chain
- * ([mihon.domain.extension.repository.ExtensionStoreRepository] and the network models
- * behind it) is typed against the manga [eu.kanade.tachiyomi.extension.model.Extension],
- * so an anime counterpart has to be ported before this can return anything.
- *
- * Until then there genuinely are no available anime extensions to list, and an empty
- * result is the honest answer rather than a placeholder. Anime extensions that are
- * already installed on the device as APKs are unaffected: those are discovered by
- * [eu.kanade.tachiyomi.animeextension.util.AnimeExtensionLoader], which does not go
- * through here.
- *
- * See docs/PORTING_LOG.md, "Pendientes conocidos".
+ * Mirrors [eu.kanade.tachiyomi.extension.api.ExtensionApi] against the anime store
+ * repository, so an anime repository URL behaves the same way a manga one does.
  */
 @Inject
 @SingleIn(AppScope::class)
-class AnimeExtensionApi {
+class AnimeExtensionApi(
+    private val repository: AnimeExtensionStoreRepository,
+) {
 
-    suspend fun findExtensions(): List<AnimeExtension.Available> = emptyList()
+    suspend fun findExtensions(): List<AnimeExtension.Available> {
+        return withIOContext { repository.fetchExtensions() }
+    }
 
-    suspend fun checkForUpdates(context: Context): List<AnimeExtension.Installed>? = null
+    /**
+     * Installed extensions that a store offers a newer build of.
+     *
+     * Returns them rather than notifying: the anime side has no update notifier yet, and
+     * whoever calls this can decide what to do with the list.
+     */
+    suspend fun checkForUpdates(context: Context): List<AnimeExtension.Installed> {
+        repository.refreshAll()
+        val available = findExtensions()
+
+        return AnimeExtensionLoader.loadExtensions(context)
+            .filterIsInstance<AnimeLoadResult.Success>()
+            .map { it.extension }
+            .filter { installed ->
+                val remote = available.find { it.pkgName == installed.pkgName } ?: return@filter false
+                remote.versionCode > installed.versionCode || remote.libVersion > installed.libVersion
+            }
+    }
 }

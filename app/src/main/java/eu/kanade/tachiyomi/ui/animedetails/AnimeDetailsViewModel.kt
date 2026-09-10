@@ -9,18 +9,21 @@ import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
+import eu.kanade.domain.anime.interactor.GetEpisodeVideos
+import eu.kanade.domain.anime.interactor.SyncEpisodesWithSource
+import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import eu.kanade.domain.anime.interactor.GetEpisodeVideos
-import eu.kanade.domain.anime.interactor.SyncEpisodesWithSource
-import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
 import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.model.Episode
+import tachiyomi.domain.source.anime.service.AnimeSourceManager
 
 /**
  * One anime entry: its details and its episodes.
@@ -39,6 +42,7 @@ class AnimeDetailsViewModel(
     private val syncEpisodesWithSource: SyncEpisodesWithSource,
     private val sourceManager: AnimeSourceManager,
     private val updateAnime: UpdateAnime,
+    private val downloadManager: AnimeDownloadManager,
 ) : ViewModel() {
 
     private var episodesFetched = false
@@ -55,6 +59,7 @@ class AnimeDetailsViewModel(
                 // The catalogue only stores the entry; its episodes have to be asked for.
                 // Done once, and failures are silent because a source being unreachable is
                 // ordinary and the stored episodes stay usable.
+                refreshDownloaded()
                 if (!episodesFetched) {
                     episodesFetched = true
                     sourceManager.get(anime.source)?.let { source ->
@@ -76,11 +81,73 @@ class AnimeDetailsViewModel(
         val anime = state.value.anime ?: return onResolved(null)
         _state.update { it.copy(resolvingEpisodeId = episode.id) }
         viewModelScope.launch {
+            // A downloaded copy wins: it plays offline and costs the source nothing.
+            val source = sourceManager.get(anime.source)
+            val local = source?.let { downloadManager.downloadedUri(anime, it, episode) }
+            if (local != null) {
+                _state.update { it.copy(resolvingEpisodeId = null) }
+                return@launch onResolved(local)
+            }
             val video = runCatching { getEpisodeVideos.await(anime.source, episode) }
                 .getOrDefault(emptyList())
                 .let { with(getEpisodeVideos) { it.best() } }
             _state.update { it.copy(resolvingEpisodeId = null) }
             onResolved(video?.videoUrl)
+        }
+    }
+
+    val downloadProgress = downloadManager.progress
+
+    val downloadQueue = downloadManager.queue
+
+    init {
+        // The job, not this ViewModel, does the downloading, so the only signal that a file
+        // landed is the queue shrinking.
+        viewModelScope.launch {
+            downloadManager.queue
+                .map { it.size }
+                .distinctUntilChanged()
+                .collect { refreshDownloaded() }
+        }
+    }
+
+    /**
+     * Queues an episode for offline watching.
+     *
+     * The download runs in [eu.kanade.tachiyomi.data.download.anime.AnimeDownloadJob], not here:
+     * a video takes long enough that tying it to this ViewModel meant navigating back cancelled
+     * it halfway. Video resolution happens in the job too, as late as possible, because a source
+     * can hand back a different (or expired) url between queueing and downloading.
+     */
+    fun downloadEpisode(episode: Episode) {
+        val anime = state.value.anime ?: return
+        downloadManager.enqueue(anime, listOf(episode))
+    }
+
+    fun deleteDownload(episode: Episode) {
+        val anime = state.value.anime ?: return
+        viewModelScope.launch {
+            val source = sourceManager.get(anime.source) ?: return@launch
+            downloadManager.deleteEpisode(anime, source, episode)
+            refreshDownloaded()
+        }
+    }
+
+    /** Which episodes already have a file on disk, so rows can show it. */
+    fun refreshDownloaded() {
+        val anime = state.value.anime ?: return
+        viewModelScope.launch {
+            val source = sourceManager.get(anime.source) ?: return@launch
+            val ids = state.value.episodes
+                .filter { downloadManager.isDownloaded(anime, source, it) }
+                .map { it.id }
+                .toSet()
+            _state.update {
+                it.copy(
+                    downloadedEpisodeIds = ids,
+                    canDownload = downloadManager.isDownloadableSource(source),
+                )
+            }
         }
     }
 
@@ -96,6 +163,8 @@ class AnimeDetailsViewModel(
         val anime: Anime? = null,
         val episodes: List<Episode> = emptyList(),
         val resolvingEpisodeId: Long? = null,
+        val downloadedEpisodeIds: Set<Long> = emptySet(),
+        val canDownload: Boolean = false,
     )
 
     @AssistedFactory

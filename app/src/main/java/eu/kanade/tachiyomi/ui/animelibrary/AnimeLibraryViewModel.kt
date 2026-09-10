@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import eu.kanade.domain.anime.interactor.RefreshAnimeLibrary
 import tachiyomi.domain.anime.interactor.GetLibraryAnime
 import tachiyomi.domain.library.anime.LibraryAnime
 
@@ -29,7 +28,6 @@ import tachiyomi.domain.library.anime.LibraryAnime
 @ContributesIntoMap(AppScope::class, binding = binding<ViewModel>())
 class AnimeLibraryViewModel(
     private val getLibraryAnime: GetLibraryAnime,
-    private val refreshAnimeLibrary: RefreshAnimeLibrary,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -43,19 +41,9 @@ class AnimeLibraryViewModel(
         }
     }
 
-    fun refresh() {
-        if (state.value.isRefreshing) return
-        _state.update { it.copy(isRefreshing = true) }
-        viewModelScope.launch {
-            runCatching { refreshAnimeLibrary.await() }
-            _state.update { it.copy(isRefreshing = false) }
-        }
-    }
-
     data class State(
         val isLoading: Boolean = true,
         val library: List<LibraryAnime> = emptyList(),
-        val isRefreshing: Boolean = false,
     ) {
         val isEmpty: Boolean get() = library.isEmpty()
     }
