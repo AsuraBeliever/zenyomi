@@ -1,9 +1,9 @@
 package tachiyomi.domain.anime.repository
 
-import tachiyomi.domain.anime.model.SeasonAnime
 import kotlinx.coroutines.flow.Flow
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.anime.model.AnimeUpdate
+import tachiyomi.domain.anime.model.SeasonAnime
 import tachiyomi.domain.library.anime.LibraryAnime
 import tachiyomi.domain.source.anime.model.DeletableAnime
 

@@ -7,15 +7,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,10 +34,12 @@ import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerScreen
-import tachiyomi.domain.anime.model.Anime
 import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Download
 import mihon.icons.materialsymbols.rounded.Favorite
+import mihon.icons.materialsymbols.roundedfilled.CheckCircle
 import mihon.icons.materialsymbols.roundedfilled.Favorite
+import tachiyomi.domain.anime.model.Anime
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -60,6 +62,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
             create(animeId = animeId)
         }
         val state by viewModel.state.collectAsStateWithLifecycle()
+        val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
         val anime = state.anime
 
         Scaffold(
@@ -77,7 +80,11 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                                         MaterialSymbols.Rounded.Favorite
                                     },
                                     contentDescription = stringResource(
-                                        if (anime.favorite) MR.strings.remove_from_library else MR.strings.add_to_library,
+                                        if (anime.favorite) {
+                                            MR.strings.remove_from_library
+                                        } else {
+                                            MR.strings.add_to_library
+                                        },
                                     ),
                                 )
                             }
@@ -112,10 +119,29 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         supportingContent = episode.scanlator?.let { scanlator ->
                             { Text(scanlator, style = MaterialTheme.typography.bodySmall) }
                         },
-                        trailingContent = if (state.resolvingEpisodeId == episode.id) {
-                            { CircularProgressIndicator(Modifier.size(20.dp)) }
-                        } else {
-                            null
+                        trailingContent = {
+                            val percent = downloadProgress[episode.id]
+                            when {
+                                state.resolvingEpisodeId == episode.id ->
+                                    CircularProgressIndicator(Modifier.size(20.dp))
+                                percent != null ->
+                                    CircularProgressIndicator(
+                                        progress = { percent / 100f },
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                episode.id in state.downloadedEpisodeIds ->
+                                    Icon(
+                                        imageVector = MaterialSymbols.RoundedFilled.CheckCircle,
+                                        contentDescription = stringResource(MR.strings.label_downloaded),
+                                    )
+                                else ->
+                                    IconButton(onClick = { viewModel.downloadEpisode(episode) }) {
+                                        Icon(
+                                            imageVector = MaterialSymbols.Rounded.Download,
+                                            contentDescription = stringResource(MR.strings.action_download),
+                                        )
+                                    }
+                            }
                         },
                         modifier = Modifier.clickable(
                             enabled = state.resolvingEpisodeId == null,

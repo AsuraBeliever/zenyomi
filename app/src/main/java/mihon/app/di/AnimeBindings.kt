@@ -6,13 +6,13 @@ import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteConfiguration
 import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDatabaseType
 import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDriver
 import com.eygraber.sqldelight.androidx.driver.FileProvider
+import dataanime.Animehistory
+import dataanime.Animes
+import dataanime.Episodes
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import dataanime.Animehistory
-import dataanime.Animes
-import dataanime.Episodes
 import tachiyomi.data.AnimeUpdateStrategyColumnAdapter
 import tachiyomi.data.DateColumnAdapter
 import tachiyomi.data.FetchTypeColumnAdapter

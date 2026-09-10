@@ -1,6 +1,5 @@
 package tachiyomi.domain.anime.model
 
-
 /**
  * Contains the required data for AnimeCoverFetcher
  */

@@ -25,9 +25,9 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
+import eu.kanade.tachiyomi.ui.animeextension.AnimeExtensionsContent
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Settings
-import eu.kanade.tachiyomi.ui.animeextension.AnimeExtensionsContent
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold

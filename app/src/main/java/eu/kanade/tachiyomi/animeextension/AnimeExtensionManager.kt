@@ -10,11 +10,11 @@ import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.animeextension.api.AnimeExtensionApi
 import eu.kanade.tachiyomi.animeextension.api.AnimeExtensionUpdateNotifier
 import eu.kanade.tachiyomi.animeextension.model.AnimeExtension
-import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.animeextension.model.AnimeLoadResult
 import eu.kanade.tachiyomi.animeextension.util.AnimeExtensionInstallReceiver
 import eu.kanade.tachiyomi.animeextension.util.AnimeExtensionInstaller
 import eu.kanade.tachiyomi.animeextension.util.AnimeExtensionLoader
+import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -386,7 +386,9 @@ class AnimeExtensionManager(
 
     private operator fun <T : AnimeExtension> Map<String, T>.plus(extension: T) = plus(extension.pkgName to extension)
 
-    private fun <T : AnimeExtension> StateFlow<Map<String, T>>.mapExtensions(scope: CoroutineScope): StateFlow<List<T>> {
+    private fun <T : AnimeExtension> StateFlow<Map<String, T>>.mapExtensions(
+        scope: CoroutineScope,
+    ): StateFlow<List<T>> {
         return map { it.values.toList() }.stateIn(scope, SharingStarted.Lazily, value.values.toList())
     }
 
