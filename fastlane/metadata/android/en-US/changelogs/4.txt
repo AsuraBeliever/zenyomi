@@ -1,0 +1,3 @@
+Zenyomi 0.3.0
+
+Anime arrives: library, sources, extensions, a local source for your own files, and an mpv player with track selection and watch progress. Nothing from the manga side was removed.
