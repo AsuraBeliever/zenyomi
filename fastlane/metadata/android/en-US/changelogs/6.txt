@@ -1,0 +1,5 @@
+Zenyomi 0.5.0
+
+Track anime on MyAnimeList and AniList, with progress pushed as you watch.
+Picture-in-picture in the player.
+The player now shows the episode title and a close button.
