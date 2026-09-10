@@ -39,6 +39,7 @@
 | Fuente local de anime | ✅ | reproduce vídeos de la carpeta `localanime` |
 | Sincronización de episodios | ✅ | la ficha pide los episodios a la fuente y los guarda |
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
+| Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
 | Descargas de anime | ⬜ | fase 3 |
 | Actualizaciones de biblioteca de anime | ⬜ | fase 3 |
 | Trackers de anime | ⬜ | fase 3 |

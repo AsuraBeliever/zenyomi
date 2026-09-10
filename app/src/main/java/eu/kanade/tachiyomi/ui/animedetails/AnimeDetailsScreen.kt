@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -33,9 +35,14 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerScreen
 import tachiyomi.domain.anime.model.Anime
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Favorite
+import mihon.icons.materialsymbols.roundedfilled.Favorite
+import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.pluralStringResource
+import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
 
 /**
@@ -60,6 +67,22 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                 AppBar(
                     title = anime?.title.orEmpty(),
                     navigateUp = navigator::pop,
+                    actions = {
+                        if (anime != null) {
+                            IconButton(onClick = viewModel::toggleFavorite) {
+                                Icon(
+                                    imageVector = if (anime.favorite) {
+                                        MaterialSymbols.RoundedFilled.Favorite
+                                    } else {
+                                        MaterialSymbols.Rounded.Favorite
+                                    },
+                                    contentDescription = stringResource(
+                                        if (anime.favorite) MR.strings.remove_from_library else MR.strings.add_to_library,
+                                    ),
+                                )
+                            }
+                        }
+                    },
                     scrollBehavior = scrollBehavior,
                 )
             },
