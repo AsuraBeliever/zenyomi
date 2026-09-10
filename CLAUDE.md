@@ -75,6 +75,10 @@ Tipos: `feat` `fix` `port` `refactor` `chore` `docs` `build` `ci` `test`.
 
 Cada commit debe compilar. Nada de commits "WIP" en `develop` ni en `main`.
 
+**Antes de cada commit: `./gradlew spotlessApply`.** El CI corre `spotlessCheck` y lo
+rechaza si no. Lo que genera código a partir de otro fichero casi nunca respeta el
+formato, así que esto no es opcional.
+
 ## 7. Versionado y releases
 
 `MAJOR.MINOR.PATCH` desde `0.1.0`. `versionCode` incremental manual.
