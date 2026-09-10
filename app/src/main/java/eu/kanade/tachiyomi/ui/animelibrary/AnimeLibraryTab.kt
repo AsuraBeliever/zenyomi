@@ -20,6 +20,7 @@ import eu.kanade.presentation.components.AppBar
 import mihon.icons.materialsymbols.MaterialSymbols
 import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
 import mihon.icons.materialsymbols.rounded.Explore
+import mihon.icons.materialsymbols.rounded.Refresh
 import mihon.icons.materialsymbols.rounded.Schedule
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.animebrowse.AnimeBrowseScreen
@@ -63,6 +64,15 @@ data object AnimeLibraryTab : Tab {
                 AppBar(
                     title = stringResource(ANMR.strings.label_anime_library),
                     actions = {
+                        IconButton(
+                            onClick = viewModel::refresh,
+                            enabled = !state.isRefreshing,
+                        ) {
+                            Icon(
+                                imageVector = MaterialSymbols.Rounded.Refresh,
+                                contentDescription = stringResource(MR.strings.action_update_library),
+                            )
+                        }
                         IconButton(onClick = { navigator.push(AnimeHistoryScreen()) }) {
                             Icon(
                                 imageVector = MaterialSymbols.Rounded.Schedule,
