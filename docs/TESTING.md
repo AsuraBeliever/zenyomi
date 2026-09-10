@@ -85,6 +85,30 @@ Hay que borrar el `-wal` y el `-shm` al restituir, o SQLite reaplica el diario y
 lo insertado. El emulador conserva ahora una entrada `Anime de prueba (fixture)` con tres
 episodios.
 
+## Vídeos de prueba generados con FFmpeg
+
+Para probar el reproductor sin depender de ninguna fuente, se generan clips locales y se
+dejan en `Documents/localanime/` del emulador, donde los recoge la fuente local:
+
+```sh
+# clip simple de 10 s con codigo de tiempo grabado en la imagen
+ffmpeg -f lavfi -i testsrc2=size=640x360:rate=24:duration=10 \
+       -f lavfi -i sine=frequency=440:duration=10 \
+       -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest test.mp4
+
+# clip con 2 pistas de audio y 2 de subtitulos, para probar el selector
+ffmpeg -f lavfi -i testsrc2=size=640x360:rate=24:duration=10 \
+       -f lavfi -i sine=frequency=440:duration=10 \
+       -f lavfi -i sine=frequency=880:duration=10 -i es.srt -i en.srt \
+       -map 0:v -map 1:a -map 2:a -map 3 -map 4 \
+       -c:v libx264 -pix_fmt yuv420p -c:a aac -c:s mov_text \
+       -metadata:s:a:0 language=jpn -metadata:s:a:1 language=spa \
+       -metadata:s:s:0 language=spa -metadata:s:s:1 language=eng multi.mp4
+```
+
+El código de tiempo grabado en la imagen permite comprobar que la posición que muestra la
+barra coincide con el fotograma real, sin fiarse solo de lo que reporta la app.
+
 ## Checklist de humo (cada release)
 
 Manga (regresión — **nada de esto puede romperse nunca**):

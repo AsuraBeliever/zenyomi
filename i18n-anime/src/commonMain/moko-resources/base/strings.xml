@@ -613,4 +613,6 @@
     <string name="show_episode_previews">Episode thumbnails</string>
     <string name="show_episode_summaries">Episode summaries</string>
     <string name="information_empty_anime_extensions">No anime extensions installed</string>
+    <string name="player_track_audio">Audio</string>
+    <string name="player_track_subtitle">Subtitles</string>
 </resources>
