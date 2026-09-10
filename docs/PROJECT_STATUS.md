@@ -42,7 +42,7 @@
 | Sincronización de episodios | ✅ | la ficha pide los episodios a la fuente y los guarda |
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
-| Descargas de anime | ⬜ | fase 3 |
+| Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ⬜ | fase 3 |
 | Backup de anime | ⬜ | fase 3 |
@@ -52,6 +52,16 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 ## Bloqueos activos
 
 Ninguno.
+
+## Sin verificar en dispositivo
+
+**Una descarga de vídeo HTTP completada de punta a punta.** El emulador no tiene instalada
+ninguna fuente de anime accesible por red: la única extensión presente (Jellyfin) apunta a un
+servidor que no existe. Se ha verificado todo lo que rodea a la descarga — encolado, cola
+persistida entre muertes del proceso, worker en primer plano, notificación de progreso y de
+error, desencolado y borrado del fichero — pero el bucle que copia los bytes solo se ha
+ejercitado hasta el punto en que la fuente falla al resolver el vídeo. Queda pendiente de la
+primera extensión real que instale el cliente.
 
 ## Aviso conocido: alineación de 16 KB
 

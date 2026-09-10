@@ -623,4 +623,9 @@
     <string name="anime_notification_new_episodes">New episodes found</string>
     <string name="anime_notification_new_episodes_text">%1$s and %2$d more</string>
     <string name="anime_notification_update_error">%1$d anime could not be updated</string>
+    <string name="anime_download_notifier_downloading">Downloading episodes</string>
+    <string name="anime_download_notifier_episode_error">Could not download %1$s</string>
+    <string name="anime_download_notifier_queue">%1$d in queue</string>
+    <string name="anime_action_delete_download">Delete download</string>
+    <string name="anime_download_queued">Added to the download queue</string>
 </resources>
