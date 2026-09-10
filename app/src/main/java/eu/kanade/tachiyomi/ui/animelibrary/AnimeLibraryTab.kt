@@ -18,7 +18,9 @@ import tachiyomi.presentation.core.i18n.stringResource
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.components.AppBar
 import mihon.icons.materialsymbols.MaterialSymbols
+import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
 import mihon.icons.materialsymbols.rounded.Explore
+import mihon.icons.materialsymbols.rounded.Schedule
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.ui.animebrowse.AnimeBrowseScreen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
@@ -61,6 +63,12 @@ data object AnimeLibraryTab : Tab {
                 AppBar(
                     title = stringResource(ANMR.strings.label_anime_library),
                     actions = {
+                        IconButton(onClick = { navigator.push(AnimeHistoryScreen()) }) {
+                            Icon(
+                                imageVector = MaterialSymbols.Rounded.Schedule,
+                                contentDescription = stringResource(ANMR.strings.label_anime_history),
+                            )
+                        }
                         IconButton(onClick = { navigator.push(AnimeBrowseScreen()) }) {
                             Icon(
                                 imageVector = MaterialSymbols.Rounded.Explore,

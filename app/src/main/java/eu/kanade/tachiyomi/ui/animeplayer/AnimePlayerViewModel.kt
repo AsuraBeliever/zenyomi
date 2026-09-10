@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tachiyomi.domain.episode.interactor.GetEpisode
+import tachiyomi.domain.history.anime.interactor.UpsertAnimeHistory
+import tachiyomi.domain.history.anime.model.AnimeHistoryUpdate
+import java.util.Date
 import tachiyomi.domain.episode.interactor.UpdateEpisode
 import tachiyomi.domain.episode.model.EpisodeUpdate
 
@@ -29,6 +32,7 @@ class AnimePlayerViewModel(
     @Assisted private val episodeId: Long,
     private val getEpisode: GetEpisode,
     private val updateEpisode: UpdateEpisode,
+    private val upsertAnimeHistory: UpsertAnimeHistory,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -51,6 +55,11 @@ class AnimePlayerViewModel(
     fun saveProgress(positionSeconds: Int, durationSeconds: Int) {
         if (durationSeconds <= 0) return
         viewModelScope.launch {
+            // History is what drives the recents list, so it is stamped on every save
+            // rather than only when an episode finishes.
+            upsertAnimeHistory.await(
+                AnimeHistoryUpdate(episodeId = episodeId, seenAt = Date()),
+            )
             updateEpisode.await(
                 EpisodeUpdate(
                     id = episodeId,
