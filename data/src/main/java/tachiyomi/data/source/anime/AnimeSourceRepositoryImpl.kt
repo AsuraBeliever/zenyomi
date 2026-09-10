@@ -4,7 +4,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
-import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
+import eu.kanade.tachiyomi.animesource.AnimeSource as ApiAnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +17,6 @@ import tachiyomi.domain.source.anime.model.StubAnimeSource
 import tachiyomi.domain.source.anime.repository.AnimeSourcePagingSourceType
 import tachiyomi.domain.source.anime.repository.AnimeSourceRepository
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
-import eu.kanade.tachiyomi.animesource.AnimeSource as ApiAnimeSource
 import tachiyomi.domain.source.anime.model.AnimeSource as DomainAnimeSource
 
 /**
@@ -78,9 +77,9 @@ class AnimeSourceRepositoryImpl(
         return AnimeSourceLatestPagingSource({ catalogue(sourceId) }, networkToLocalAnime)
     }
 
-    private suspend fun catalogue(sourceId: Long): AnimeCatalogueSource {
-        return sourceManager.getOrStub(sourceId) as AnimeCatalogueSource
-    }
+    // The catalogue calls live on AnimeSource itself, so no cast to a catalogue
+    // subtype is needed and sources like the local one can stay minimal.
+    private suspend fun catalogue(sourceId: Long) = sourceManager.getOrStub(sourceId)
 
     private fun mapToDomain(source: ApiAnimeSource): DomainAnimeSource = DomainAnimeSource(
         id = source.id,

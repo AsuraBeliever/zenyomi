@@ -64,6 +64,11 @@ class StorageManager(
         return baseDir?.createDirectory(DOWNLOADS_PATH)
     }
 
+    /** Sibling of the manga local source folder, holding local video files. */
+    fun getLocalAnimeSourceDirectory(): UniFile? {
+        return baseDir?.createDirectory(LOCAL_ANIME_SOURCE_PATH)
+    }
+
     fun getLocalSourceDirectory(): UniFile? {
         return baseDir?.createDirectory(LOCAL_SOURCE_PATH)
     }
@@ -72,3 +77,4 @@ class StorageManager(
 private const val AUTOMATIC_BACKUPS_PATH = "autobackup"
 private const val DOWNLOADS_PATH = "downloads"
 private const val LOCAL_SOURCE_PATH = "local"
+private const val LOCAL_ANIME_SOURCE_PATH = "localanime"

@@ -1,7 +1,7 @@
 package tachiyomi.data.source.anime
 
 import androidx.paging.PagingState
-import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
+import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
 import kotlinx.coroutines.CancellationException
@@ -19,42 +19,42 @@ import tachiyomi.domain.source.anime.repository.AnimeSourcePagingSourceType
  * `mangas`, so this could not simply be renamed from the manga version.
  */
 class AnimeSourceSearchPagingSource(
-    source: suspend () -> AnimeCatalogueSource,
+    source: suspend () -> AnimeSource,
     private val query: String,
     private val filters: AnimeFilterList,
     networkToLocalAnime: NetworkToLocalAnime,
 ) : BaseAnimeSourcePagingSource(source, networkToLocalAnime) {
-    override suspend fun requestNextPage(source: AnimeCatalogueSource, currentPage: Int): AnimesPage {
+    override suspend fun requestNextPage(source: AnimeSource, currentPage: Int): AnimesPage {
         return source.getSearchAnime(currentPage, query, filters)
     }
 }
 
 class AnimeSourcePopularPagingSource(
-    source: suspend () -> AnimeCatalogueSource,
+    source: suspend () -> AnimeSource,
     networkToLocalAnime: NetworkToLocalAnime,
 ) : BaseAnimeSourcePagingSource(source, networkToLocalAnime) {
-    override suspend fun requestNextPage(source: AnimeCatalogueSource, currentPage: Int): AnimesPage {
+    override suspend fun requestNextPage(source: AnimeSource, currentPage: Int): AnimesPage {
         return source.getPopularAnime(currentPage)
     }
 }
 
 class AnimeSourceLatestPagingSource(
-    source: suspend () -> AnimeCatalogueSource,
+    source: suspend () -> AnimeSource,
     networkToLocalAnime: NetworkToLocalAnime,
 ) : BaseAnimeSourcePagingSource(source, networkToLocalAnime) {
-    override suspend fun requestNextPage(source: AnimeCatalogueSource, currentPage: Int): AnimesPage {
+    override suspend fun requestNextPage(source: AnimeSource, currentPage: Int): AnimesPage {
         return source.getLatestUpdates(currentPage)
     }
 }
 
 abstract class BaseAnimeSourcePagingSource(
-    private val source: suspend () -> AnimeCatalogueSource,
+    private val source: suspend () -> AnimeSource,
     private val networkToLocalAnime: NetworkToLocalAnime,
 ) : AnimeSourcePagingSourceType() {
 
     private val seenAnime = hashSetOf<String>()
 
-    abstract suspend fun requestNextPage(source: AnimeCatalogueSource, currentPage: Int): AnimesPage
+    abstract suspend fun requestNextPage(source: AnimeSource, currentPage: Int): AnimesPage
 
     override suspend fun load(params: LoadParams<Long>): LoadResult<Long, Anime> {
         val page = params.key ?: 1

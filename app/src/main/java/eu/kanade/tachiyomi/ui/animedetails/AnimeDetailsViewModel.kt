@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
+import eu.kanade.domain.anime.interactor.SyncEpisodesWithSource
+import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.model.Episode
@@ -33,7 +35,11 @@ class AnimeDetailsViewModel(
     @Assisted private val animeId: Long,
     private val getAnimeWithEpisodesAndSeasons: GetAnimeWithEpisodesAndSeasons,
     private val getEpisodeVideos: GetEpisodeVideos,
+    private val syncEpisodesWithSource: SyncEpisodesWithSource,
+    private val sourceManager: AnimeSourceManager,
 ) : ViewModel() {
+
+    private var episodesFetched = false
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
@@ -43,6 +49,15 @@ class AnimeDetailsViewModel(
             getAnimeWithEpisodesAndSeasons.subscribe(animeId).collect { (anime, episodes, _) ->
                 _state.update {
                     it.copy(isLoading = false, anime = anime, episodes = episodes)
+                }
+                // The catalogue only stores the entry; its episodes have to be asked for.
+                // Done once, and failures are silent because a source being unreachable is
+                // ordinary and the stored episodes stay usable.
+                if (!episodesFetched) {
+                    episodesFetched = true
+                    sourceManager.get(anime.source)?.let { source ->
+                        runCatching { syncEpisodesWithSource.await(anime, source) }
+                    }
                 }
             }
         }

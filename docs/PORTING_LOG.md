@@ -108,7 +108,8 @@ de preferencias compartido de Mihon y lo usan ambos motores.
 | Qué | Por qué espera |
 |---|---|
 | Inserción por lotes de anime | `AnimeRepository` solo tiene `insertAnime` por elemento; Mihon usa `insertNetworkManga(List)`. `NetworkToLocalAnime` expone ya la forma de llamada de Mihon (`invoke`) pero itera, sin batch. |
-| Fuente local de anime | `source-local` de Aniyomi sin portar; `AndroidAnimeSourceManager` no siembra el mapa con ella. Es lo que permite reproducir vídeos guardados en el dispositivo. |
+| ~~Fuente local de anime~~ | **Hecha.** Versión mínima propia, no portada: lee la carpeta `localanime` del almacenamiento elegido. |
+| Descargas de anime | `source-local` de Aniyomi sin portar; `AndroidAnimeSourceManager` no siembra el mapa con ella. Es lo que permite reproducir vídeos guardados en el dispositivo. |
 | Renombrado de carpetas de descarga | `AndroidAnimeSourceManager` no llama a `renameSource` porque no existe el gestor de descargas de anime. |
 | Catálogo remoto de extensiones de anime | `AnimeExtensionApi.findExtensions()` devuelve lista vacía. La cadena de tiendas de Mihon (`ExtensionStoreRepository` + 4 modelos de red + servicio, 13 ficheros) está tipada contra la `Extension` de manga y necesita su contraparte. **Las extensiones ya instaladas como APK no dependen de esto**: las descubre `AnimeExtensionLoader`. |
 | ~~Verificación end-to-end del cargador~~ | **Hecha (2026-09-09).** Ver abajo. |
