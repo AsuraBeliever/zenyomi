@@ -1,0 +1,4 @@
+Zenyomi 0.5.1
+
+Fixes the player crashing the app in release builds, which affected every
+release since 0.3.0. Video playback now works in the installable APKs.
