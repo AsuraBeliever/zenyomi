@@ -18,6 +18,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.category.visualName
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.widget.TriStateListDialog
+import eu.kanade.tachiyomi.data.animelibrary.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import kotlinx.coroutines.launch
@@ -156,6 +157,7 @@ object SettingsLibraryScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_library_update_interval),
                     onValueChanged = {
                         LibraryUpdateJob.setupTask(context, it)
+                        AnimeLibraryUpdateJob.setupTask(context, it)
                         true
                     },
                 ),
@@ -173,6 +175,7 @@ object SettingsLibraryScreen : SearchableSettings {
                         // Post to event looper to allow the preference to be updated.
                         ContextCompat.getMainExecutor(context).execute {
                             LibraryUpdateJob.setupTask(context)
+                            AnimeLibraryUpdateJob.setupTask(context)
                         }
                         true
                     },

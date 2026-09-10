@@ -7,7 +7,6 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
-import eu.kanade.domain.anime.interactor.RefreshAnimeLibrary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +28,6 @@ import tachiyomi.domain.library.anime.LibraryAnime
 @ContributesIntoMap(AppScope::class, binding = binding<ViewModel>())
 class AnimeLibraryViewModel(
     private val getLibraryAnime: GetLibraryAnime,
-    private val refreshAnimeLibrary: RefreshAnimeLibrary,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -43,19 +41,9 @@ class AnimeLibraryViewModel(
         }
     }
 
-    fun refresh() {
-        if (state.value.isRefreshing) return
-        _state.update { it.copy(isRefreshing = true) }
-        viewModelScope.launch {
-            runCatching { refreshAnimeLibrary.await() }
-            _state.update { it.copy(isRefreshing = false) }
-        }
-    }
-
     data class State(
         val isLoading: Boolean = true,
         val library: List<LibraryAnime> = emptyList(),
-        val isRefreshing: Boolean = false,
     ) {
         val isEmpty: Boolean get() = library.isEmpty()
     }

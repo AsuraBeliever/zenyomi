@@ -6,9 +6,14 @@ import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -18,13 +23,17 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.data.animelibrary.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.ui.animebrowse.AnimeBrowseScreen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
+import eu.kanade.tachiyomi.util.system.workManager
+import kotlinx.coroutines.launch
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Explore
 import mihon.icons.materialsymbols.rounded.Refresh
 import mihon.icons.materialsymbols.rounded.Schedule
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -58,6 +67,22 @@ data object AnimeLibraryTab : Tab {
         val state by viewModel.state.collectAsStateWithLifecycle()
 
         val navigator = LocalNavigator.currentOrThrow
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+        val snackbarHostState = remember { SnackbarHostState() }
+
+        // Goes through the same worker as the periodic update instead of refreshing inline, so a
+        // manual refresh survives leaving the screen and reports progress the same way.
+        val onClickRefresh: () -> Unit = {
+            val started = AnimeLibraryUpdateJob.startNow(context.workManager)
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    context.stringResource(
+                        if (started) MR.strings.updating_library else MR.strings.update_already_running,
+                    ),
+                )
+            }
+        }
 
         Scaffold(
             topBar = { scrollBehavior ->
@@ -65,8 +90,7 @@ data object AnimeLibraryTab : Tab {
                     title = stringResource(ANMR.strings.label_anime_library),
                     actions = {
                         IconButton(
-                            onClick = viewModel::refresh,
-                            enabled = !state.isRefreshing,
+                            onClick = onClickRefresh,
                         ) {
                             Icon(
                                 imageVector = MaterialSymbols.Rounded.Refresh,
@@ -89,6 +113,7 @@ data object AnimeLibraryTab : Tab {
                     scrollBehavior = scrollBehavior,
                 )
             },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { contentPadding ->
             when {
                 state.isLoading -> LoadingScreen(Modifier.padding(contentPadding))
