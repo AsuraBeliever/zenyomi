@@ -73,30 +73,10 @@ no un accidente: el lado anime todavía no tiene el equivalente de
 
 ## Sin verificar en dispositivo
 
-**El doble toque del player.** Se han intentado tres vías: `input motionevent`, dos `input tap`
-concurrentes y `sendevent` desde el propio dispositivo. Las dos primeras llegan tarde a la
-ventana de 300 ms porque cada `input` arranca una JVM; la tercera falla porque el emulador es
-una imagen de producción sin root y SELinux bloquea `/dev/input`. Peor: los taps concurrentes
-inyectan eventos inconsistentes y cuelgan el input del sistema. **Necesita un dedo humano.**
+Lo que necesita una persona con el dispositivo delante, o una cuenta que aquí no hay, está
+en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): el doble toque del player, vincular un tracker real
+y una descarga HTTP completada.
 
-**Vincular un anime a una cuenta real de tracker.** No hay credenciales de MyAnimeList ni de
-AniList en el entorno de desarrollo, y no se va a crear una cuenta en nombre del cliente. Lo
-que sí se ha comprobado: los nombres de campo del DTO de MAL coinciden **exactamente** con lo
-que devuelve hoy `api.myanimelist.net/v2/anime` (ni falta ni sobra ninguno), la pantalla de
-tracking se abre sin fallos y la de ajustes de trackers de Mihon sigue intacta.
-
-**AniList está caída al escribir esto.** `graphql.anilist.co` responde `403 - The AniList API
-has been temporarily disabled due to severe stability issues` incluso a la consulta más
-trivial y sin autenticar. No es nada nuestro: afecta igual al tracking de manga de Mihon.
-Por eso se añadió MyAnimeList en la misma tanda, para que el tracking sirva de algo hoy.
-
-**Una descarga de vídeo HTTP completada de punta a punta.** El emulador no tiene instalada
-ninguna fuente de anime accesible por red: la única extensión presente (Jellyfin) apunta a un
-servidor que no existe. Se ha verificado todo lo que rodea a la descarga — encolado, cola
-persistida entre muertes del proceso, worker en primer plano, notificación de progreso y de
-error, desencolado y borrado del fichero — pero el bucle que copia los bytes solo se ha
-ejercitado hasta el punto en que la fuente falla al resolver el vídeo. Queda pendiente de la
-primera extensión real que instale el cliente.
 
 ## Aviso conocido: alineación de 16 KB
 
