@@ -1,0 +1,6 @@
+Zenyomi 0.4.0
+
+Install anime extensions from inside the app by adding a repository.
+The anime library now updates in the background and tells you what gained episodes.
+Downloaded episodes: a queue that survives leaving the screen, plus a delete button.
+Anime is now included in backups, in the same file as manga.

@@ -6,7 +6,7 @@ cumplimiento y se revisa **antes de cada release**.
 ## Checklist que pide Mihon
 
 Mihon publica sus requisitos para forks en su `CONTRIBUTING.md`, sección *Forks*.
-Estado a 2026-09-08:
+Estado a 2026-09-10 (revisado antes de la v0.4.0):
 
 | Requisito de Mihon | Estado | Cómo se cumple |
 |---|---|---|
@@ -33,9 +33,21 @@ nombre y metadatos de tienda.
 
 ## Cómo auditar
 
+**Dos coincidencias son esperadas y no son incumplimientos**, así que la auditoría las
+excluye en vez de volver a discutirlas cada release:
+
+- `Theme.Tachiyomi.*` y compañía en `res/values/` son **identificadores internos de estilo**,
+  no marca visible para el usuario. Renombrarlos no aporta nada legalmente y encarecería
+  cada merge con Mihon.
+- `fastlane/` menciona a Mihon **como atribución** ("built on Mihon"), que es precisamente
+  lo que la licencia obliga a conservar. El `title.txt` es Zenyomi.
+
+Lo que sí sería un incumplimiento: un icono, logo o captura ajenos, o metadatos de tienda
+que se hagan pasar por Mihon o Aniyomi.
+
 ```sh
-# assets o textos con marca ajena fuera de los sitios de atribución legítima
-grep -rli "mihon\|aniyomi\|tachiyomi" --include="*.xml" --include="*.png" app/src/main/res/
+# marca ajena visible para el usuario (excluye identificadores internos de estilo)
+grep -rli "mihon\|aniyomi" app/src/main/res/ | grep -v themes.xml
 grep -rli "mihon" fastlane/
 find . -name "google-services.json" -not -path "*/build/*"
 ```

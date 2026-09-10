@@ -10,6 +10,21 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.4.0] - 2026-09-10
+### Added
+- Anime extensions can be installed from inside the app: add a repository by its index url and install from the list it publishes, signature checked the way Mihon checks manga extensions.
+- The anime library updates itself in the background, on the same schedule and device restrictions you already set for manga, and notifies which anime gained episodes.
+- Downloaded episodes: a queue that survives leaving the screen and being killed, progress and error notifications, and a delete button on anything already on disk.
+- Anime now travels in the same backup file as manga. Restoring merges instead of replacing, so an older backup can never un-watch an episode.
+
+### Fixed
+- Adding an anime extension repository silently did nothing for Aniyomi's official index. Its repo.json omits two fields that were declared nullable but, without defaults, kotlinx.serialization still required.
+- The add-repository dialog closed on failure without saying anything; it now stays open and reports the error.
+- Downloading an episode was cancelled by navigating away from the entry screen.
+
+### Other
+- A Mihon backup still restores here, and Mihon can still read the manga half of a backup written by Zenyomi.
+
 ## [0.3.0] - 2026-09-09
 ### Added
 - Anime, alongside the manga side Mihon already provided and without taking anything away from it.
