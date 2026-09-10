@@ -136,6 +136,45 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     val duration: Int? get() = MPVLib.getPropertyInt("duration")
     val paused: Boolean? get() = MPVLib.getPropertyBoolean("pause")
 
+    /**
+     * The tracks mpv found in the current file.
+     *
+     * mpv exposes track-list as a node, which MPVLib cannot hand over directly, so the
+     * entries are read one property at a time through the track-list/N/... paths.
+     */
+    fun tracks(): List<Track> {
+        val count = MPVLib.getPropertyInt("track-list/count") ?: return emptyList()
+        return (0 until count).mapNotNull { index ->
+            val type = MPVLib.getPropertyString("track-list/$index/type") ?: return@mapNotNull null
+            val id = MPVLib.getPropertyInt("track-list/$index/id") ?: return@mapNotNull null
+            Track(
+                id = id,
+                type = type,
+                lang = MPVLib.getPropertyString("track-list/$index/lang"),
+                title = MPVLib.getPropertyString("track-list/$index/title"),
+                selected = MPVLib.getPropertyBoolean("track-list/$index/selected") ?: false,
+            )
+        }
+    }
+
+    fun selectAudio(trackId: Int?) = MPVLib.setPropertyString("aid", trackId?.toString() ?: "no")
+
+    fun selectSubtitle(trackId: Int?) = MPVLib.setPropertyString("sid", trackId?.toString() ?: "no")
+
+    data class Track(
+        val id: Int,
+        val type: String,
+        val lang: String?,
+        val title: String?,
+        val selected: Boolean,
+    ) {
+        val isAudio: Boolean get() = type == "audio"
+        val isSubtitle: Boolean get() = type == "sub"
+
+        /** What to show in a picker: the track's own title, else its language, else its id. */
+        val label: String get() = title ?: lang ?: "#$id"
+    }
+
     fun release() {
         if (!initialised) return
         observer?.let { MPVLib.removeObserver(it) }
