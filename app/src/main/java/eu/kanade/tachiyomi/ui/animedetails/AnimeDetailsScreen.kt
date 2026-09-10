@@ -34,9 +34,11 @@ import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerScreen
+import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackScreen
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Download
 import mihon.icons.materialsymbols.rounded.Favorite
+import mihon.icons.materialsymbols.rounded.Sync
 import mihon.icons.materialsymbols.roundedfilled.CheckCircle
 import mihon.icons.materialsymbols.roundedfilled.Favorite
 import tachiyomi.domain.anime.model.Anime
@@ -50,8 +52,8 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 /**
  * One anime entry: cover, description and the list of episodes.
  *
- * Reading state, downloads and playback are not wired yet, so an episode row is
- * informational; tapping one does nothing until the player lands.
+ * An episode row resolves its video and opens the player, shows download state and offers
+ * tracking once the anime is in the library.
  */
 class AnimeDetailsScreen(private val animeId: Long) : Screen() {
 
@@ -88,6 +90,16 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                                         },
                                     ),
                                 )
+                            }
+                            // Tracking is only meaningful for something in the library, so the
+                            // action follows the favourite rather than standing on its own.
+                            if (anime.favorite) {
+                                IconButton(onClick = { navigator.push(AnimeTrackScreen(anime.id)) }) {
+                                    Icon(
+                                        imageVector = MaterialSymbols.Rounded.Sync,
+                                        contentDescription = stringResource(MR.strings.manga_tracking_tab),
+                                    )
+                                }
                             }
                         }
                     },

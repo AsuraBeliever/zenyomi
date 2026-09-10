@@ -9,6 +9,7 @@ import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
+import eu.kanade.domain.track.anime.interactor.TrackEpisode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +34,14 @@ class AnimePlayerViewModel(
     private val getEpisode: GetEpisode,
     private val updateEpisode: UpdateEpisode,
     private val upsertAnimeHistory: UpsertAnimeHistory,
+    private val trackEpisode: TrackEpisode,
 ) : ViewModel() {
+
+    /**
+     * Guards the tracker push so it happens once per playback, on the transition to seen,
+     * rather than on every progress save after the threshold is crossed.
+     */
+    private var pushedToTrackers = false
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
@@ -60,14 +68,21 @@ class AnimePlayerViewModel(
             upsertAnimeHistory.await(
                 AnimeHistoryUpdate(episodeId = episodeId, seenAt = Date()),
             )
+            val seen = positionSeconds >= durationSeconds * SEEN_THRESHOLD
             updateEpisode.await(
                 EpisodeUpdate(
                     id = episodeId,
                     lastSecondSeen = positionSeconds.toLong(),
                     totalSeconds = durationSeconds.toLong(),
-                    seen = positionSeconds >= durationSeconds * SEEN_THRESHOLD,
+                    seen = seen,
                 ),
             )
+
+            if (seen && !pushedToTrackers) {
+                pushedToTrackers = true
+                val episode = getEpisode.await(episodeId) ?: return@launch
+                trackEpisode.await(episode.animeId, episode.episodeNumber)
+            }
         }
     }
 

@@ -19,7 +19,7 @@
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | Release 0.4.0 | ✅ | tag `v0.4.0`, APK firmado y verificado en release |
-| Fase 3 completa | ⏳ | falta trackers de anime; lo demás de la fase está entregado |
+| Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
 | Dominio anime | ✅ | 33 ficheros: modelos, repositorios e interactors; compila y corre |
 | Capa data de anime | ✅ | mapper + 3 repositorios, reescritos al estilo de Mihon |
@@ -46,7 +46,7 @@
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
 | Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
-| Trackers de anime | ⬜ | fase 3 |
+| Trackers de anime | ⚠️ | MyAnimeList y AniList: buscar, vincular, desvincular y empujar progreso; sin verificar con cuenta real (ver abajo) |
 | Backup de anime | ✅ | mismo fichero .tachibk que el manga; verificado backup → borrado → restauración |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
@@ -63,6 +63,17 @@ no un accidente: el lado anime todavía no tiene el equivalente de
 `mangaRepository.getReadMangaNotInLibrary()`.
 
 ## Sin verificar en dispositivo
+
+**Vincular un anime a una cuenta real de tracker.** No hay credenciales de MyAnimeList ni de
+AniList en el entorno de desarrollo, y no se va a crear una cuenta en nombre del cliente. Lo
+que sí se ha comprobado: los nombres de campo del DTO de MAL coinciden **exactamente** con lo
+que devuelve hoy `api.myanimelist.net/v2/anime` (ni falta ni sobra ninguno), la pantalla de
+tracking se abre sin fallos y la de ajustes de trackers de Mihon sigue intacta.
+
+**AniList está caída al escribir esto.** `graphql.anilist.co` responde `403 - The AniList API
+has been temporarily disabled due to severe stability issues` incluso a la consulta más
+trivial y sin autenticar. No es nada nuestro: afecta igual al tracking de manga de Mihon.
+Por eso se añadió MyAnimeList en la misma tanda, para que el tracking sirva de algo hoy.
 
 **Una descarga de vídeo HTTP completada de punta a punta.** El emulador no tiene instalada
 ninguna fuente de anime accesible por red: la única extensión presente (Jellyfin) apunta a un
