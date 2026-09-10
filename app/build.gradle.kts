@@ -33,8 +33,8 @@ android {
     defaultConfig {
         applicationId = "app.zenyomi"
 
-        versionCode = 7
-        versionName = "0.5.1"
+        versionCode = 8
+        versionName = "0.5.2"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getLatestCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getLatestCommitSha()}\"")
