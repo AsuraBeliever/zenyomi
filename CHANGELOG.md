@@ -10,6 +10,15 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.5.2] - 2026-09-10
+### Added
+- A Player settings screen: double tap jump, when an episode counts as watched, playback speed, preferred audio and subtitle languages, and whether to hide the system bars.
+
+### Fixed
+- **Going back to a part-watched episode opened a black screen.** The resume position was passed to mpv in the wrong argument slot, so mpv rejected the command and never loaded the file. Resuming has never worked in any release until now.
+- **Leaving an episode shortly after opening it froze the app.** Every call into mpv waits on mpv's own thread, and the player was making those calls from the UI thread. All of mpv's lifecycle now runs on a dedicated thread, and teardown waits with a cap that cannot reach Android's ANR threshold.
+- mpv's own log was only being captured after startup, which hid its complaints about rejected options — including the one above.
+
 ## [0.5.1] - 2026-09-10
 ### Fixed
 - **The player crashed the whole app in release builds, on every release since 0.3.0.** libmpv calls back into Java over JNI, and because nothing in Kotlin calls those methods R8 removed them; the first frame of any video killed the process with `NoSuchMethodError: MPVLib.eventProperty`. Debug builds were never affected, which is why it went unnoticed. If you installed 0.3.0 or 0.4.0 and playback closed the app, this was why.

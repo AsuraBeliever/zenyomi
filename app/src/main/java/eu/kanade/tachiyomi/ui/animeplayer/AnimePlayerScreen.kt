@@ -38,7 +38,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import `is`.xyz.mpv.MPVLib
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Close
 import mihon.icons.materialsymbols.rounded.FlipToBack
@@ -92,12 +94,21 @@ fun AnimePlayerContent(
 
     DisposableEffect(playerState.loaded) {
         if (playerState.loaded) {
-            view.initialise(File(context.filesDir, "mpv"))
+            view.initialise(
+                configDir = File(context.filesDir, "mpv"),
+                audioLanguages = viewModel.preferences.preferredAudioLanguages.get(),
+                subtitleLanguages = viewModel.preferences.preferredSubtitleLanguages.get(),
+                speedPercent = viewModel.preferences.defaultSpeed.get(),
+            )
             view.playFile(videoUrl, resumeAt = playerState.resumeAt)
         }
         onDispose {
             if (playerState.loaded) {
-                view.timePos?.let { pos -> viewModel.saveProgress(pos, view.duration ?: 0) }
+                // Uses what the polling loop already read instead of asking mpv again:
+                // mpv_get_property waits on mpv's own event loop, and onDispose runs on the
+                // main thread, so leaving the player hung the UI until Android raised an ANR.
+                // The cost is losing at most the last two seconds of progress.
+                if (duration > 0) viewModel.saveProgress(position, duration)
                 view.release()
             }
         }
@@ -105,20 +116,29 @@ fun AnimePlayerContent(
 
     // mpv reports progress through property observers; polling keeps this first cut
     // small, and a second of drift on a seek bar is not worth an observer plumbing.
+    //
+    // Every one of these reads blocks on mpv's event loop, so they happen off the main
+    // thread: doing them on the composition's dispatcher is what turned a busy player into
+    // an ANR.
     LaunchedEffect(Unit) {
         while (true) {
             if (!view.isReady) {
                 delay(200)
                 continue
             }
-            position = view.timePos ?: position
-            duration = view.duration ?: duration
-            paused = view.paused ?: paused
+            val snapshot = withContext(Dispatchers.IO) {
+                Triple(view.timePos, view.duration, view.paused)
+            }
+            position = snapshot.first ?: position
+            duration = snapshot.second ?: duration
+            paused = snapshot.third ?: paused
             // Written as it plays, so a process death mid-episode still leaves a
             // usable resume point rather than losing the whole session.
             if (!paused) viewModel.saveProgress(position, duration)
             // Tracks only exist once the file is open, and can change on a new file.
-            if (tracks.isEmpty() && duration > 0) tracks = view.tracks()
+            if (tracks.isEmpty() && duration > 0) {
+                tracks = withContext(Dispatchers.IO) { view.tracks() }
+            }
             delay(2000)
         }
     }
@@ -150,9 +170,10 @@ fun AnimePlayerContent(
                         detectTapGestures(
                             onDoubleTap = { offset ->
                                 val forward = offset.x > size.width / 2
-                                val target = (view.timePos ?: 0) + if (forward) SEEK_STEP else -SEEK_STEP
+                                val step = viewModel.preferences.seekStep.get()
+                                val target = (view.timePos ?: 0) + if (forward) step else -step
                                 view.seekTo(target.coerceAtLeast(0))
-                                seekFeedback = if (forward) "+$SEEK_STEP s" else "-$SEEK_STEP s"
+                                seekFeedback = if (forward) "+$step s" else "-$step s"
                             },
                             onTap = { view.togglePause() },
                         )
@@ -255,8 +276,6 @@ fun AnimePlayerContent(
         }
     }
 }
-
-private const val SEEK_STEP = 10
 
 /** Used only until mpv reports the real one, which takes a moment after the file opens. */
 private const val DEFAULT_ASPECT = 16f / 9f

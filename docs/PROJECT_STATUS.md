@@ -18,8 +18,10 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Release 0.4.0 | ✅ | tag `v0.4.0`, APK firmado y verificado en release |
+| Release 0.5.1 | ✅ | tag `v0.5.1`, prueba de humo completa de release (arranque, extensiones, reproducción, PiP) |
 | Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
+| Trackers de anime (código) | ✅ | MyAnimeList y AniList |
+| PiP del player | ✅ | Activity propia |
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
 | Dominio anime | ✅ | 33 ficheros: modelos, repositorios e interactors; compila y corre |
 | Capa data de anime | ✅ | mapper + 3 repositorios, reescritos al estilo de Mihon |
@@ -36,7 +38,7 @@
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
-| Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque no se puede disparar por adb, ver TESTING.md |
+| Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque sigue sin poder dispararse por adb, ver TESTING.md |
 | PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
 | Resolución de vídeo desde la fuente | ✅ | verificada de punta a punta con la fuente local |
 | Progreso de reproducción | ✅ | verificado en la BD: `seen=1`, `last_second_seen=9`, `total_seconds=10` |
@@ -71,24 +73,10 @@ no un accidente: el lado anime todavía no tiene el equivalente de
 
 ## Sin verificar en dispositivo
 
-**Vincular un anime a una cuenta real de tracker.** No hay credenciales de MyAnimeList ni de
-AniList en el entorno de desarrollo, y no se va a crear una cuenta en nombre del cliente. Lo
-que sí se ha comprobado: los nombres de campo del DTO de MAL coinciden **exactamente** con lo
-que devuelve hoy `api.myanimelist.net/v2/anime` (ni falta ni sobra ninguno), la pantalla de
-tracking se abre sin fallos y la de ajustes de trackers de Mihon sigue intacta.
+Lo que necesita una persona con el dispositivo delante, o una cuenta que aquí no hay, está
+en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): el doble toque del player, vincular un tracker real
+y una descarga HTTP completada.
 
-**AniList está caída al escribir esto.** `graphql.anilist.co` responde `403 - The AniList API
-has been temporarily disabled due to severe stability issues` incluso a la consulta más
-trivial y sin autenticar. No es nada nuestro: afecta igual al tracking de manga de Mihon.
-Por eso se añadió MyAnimeList en la misma tanda, para que el tracking sirva de algo hoy.
-
-**Una descarga de vídeo HTTP completada de punta a punta.** El emulador no tiene instalada
-ninguna fuente de anime accesible por red: la única extensión presente (Jellyfin) apunta a un
-servidor que no existe. Se ha verificado todo lo que rodea a la descarga — encolado, cola
-persistida entre muertes del proceso, worker en primer plano, notificación de progreso y de
-error, desencolado y borrado del fichero — pero el bucle que copia los bytes solo se ha
-ejercitado hasta el punto en que la fuente falla al resolver el vídeo. Queda pendiente de la
-primera extensión real que instale el cliente.
 
 ## Aviso conocido: alineación de 16 KB
 

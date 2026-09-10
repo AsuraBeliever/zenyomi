@@ -10,6 +10,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
+import eu.kanade.tachiyomi.ui.animeplayer.setting.PlayerPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +36,7 @@ class AnimePlayerViewModel(
     private val updateEpisode: UpdateEpisode,
     private val upsertAnimeHistory: UpsertAnimeHistory,
     private val trackEpisode: TrackEpisode,
+    private val playerPreferences: PlayerPreferences,
 ) : ViewModel() {
 
     /**
@@ -68,7 +70,8 @@ class AnimePlayerViewModel(
             upsertAnimeHistory.await(
                 AnimeHistoryUpdate(episodeId = episodeId, seenAt = Date()),
             )
-            val seen = positionSeconds >= durationSeconds * SEEN_THRESHOLD
+            val threshold = playerPreferences.seenThreshold.get().coerceIn(1, 100) / 100.0
+            val seen = positionSeconds >= durationSeconds * threshold
             updateEpisode.await(
                 EpisodeUpdate(
                     id = episodeId,
@@ -98,8 +101,6 @@ class AnimePlayerViewModel(
         fun create(episodeId: Long): AnimePlayerViewModel
     }
 
-    companion object {
-        /** Past this fraction an episode counts as watched, matching what readers do for chapters. */
-        private const val SEEN_THRESHOLD = 0.85
-    }
+    /** Exposed so the player can apply them to mpv when a file opens. */
+    val preferences: PlayerPreferences get() = playerPreferences
 }

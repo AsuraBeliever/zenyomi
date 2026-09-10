@@ -1,0 +1,5 @@
+Zenyomi 0.5.2
+
+Fixes resuming an episode, which opened a black screen in every release so far.
+Fixes the app freezing when you leave an episode right after opening it.
+Adds a Player settings screen: jump size, playback speed, preferred languages.

@@ -633,4 +633,16 @@
     <string name="anime_track_search_failed">Search failed</string>
     <string name="anime_track_episode_count">%1$d episodes</string>
     <string name="player_picture_in_picture">Picture in picture</string>
+    <string name="pref_category_player">Player</string>
+    <string name="pref_player_summary">Seek step, playback speed, preferred languages</string>
+    <string name="player_seconds">%1$d seconds</string>
+    <string name="pref_player_seek_step">Double tap jump</string>
+    <string name="pref_player_seek_step_summary">How far a double tap skips forward or back</string>
+    <string name="pref_player_seen_threshold">Mark as seen at</string>
+    <string name="pref_player_seen_threshold_summary">How much of an episode counts as watched</string>
+    <string name="pref_player_default_speed">Playback speed</string>
+    <string name="pref_player_audio_languages">Preferred audio languages</string>
+    <string name="pref_player_subtitle_languages">Preferred subtitle languages</string>
+    <string name="pref_player_languages_summary">Language codes in order of preference, such as "jpn,eng". Leave empty to let the player decide.</string>
+    <string name="pref_player_fullscreen">Hide system bars while playing</string>
 </resources>

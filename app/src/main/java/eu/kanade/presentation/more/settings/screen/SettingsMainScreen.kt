@@ -44,7 +44,9 @@ import mihon.icons.materialsymbols.rounded.Search
 import mihon.icons.materialsymbols.rounded.Security
 import mihon.icons.materialsymbols.rounded.Storage
 import mihon.icons.materialsymbols.rounded.Sync
+import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import cafe.adriel.voyager.core.screen.Screen as VoyagerScreen
@@ -188,6 +190,12 @@ object SettingsMainScreen : Screen() {
             subtitleRes = MR.strings.pref_reader_summary,
             icon = MaterialSymbols.AutoMirroredRounded.ChromeReaderMode,
             screen = SettingsReaderScreen,
+        ),
+        Item(
+            titleRes = ANMR.strings.pref_category_player,
+            subtitleRes = ANMR.strings.pref_player_summary,
+            icon = MaterialSymbols.RoundedFilled.PlayArrow,
+            screen = SettingsPlayerScreen,
         ),
         Item(
             titleRes = MR.strings.pref_category_downloads,

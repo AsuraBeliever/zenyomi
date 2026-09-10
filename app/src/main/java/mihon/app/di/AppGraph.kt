@@ -34,6 +34,7 @@ import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.extension.util.ExtensionInstallActivity
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.NetworkPreferences
+import eu.kanade.tachiyomi.ui.animeplayer.setting.PlayerPreferences
 import eu.kanade.tachiyomi.ui.base.delegate.SecureActivityDelegateImpl
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
@@ -89,6 +90,8 @@ interface AppGraph : ViewModelGraph {
     val basePreferences: BasePreferences
     val uiPreferences: UiPreferences
     val readerPreferences: ReaderPreferences
+
+    val playerPreferences: PlayerPreferences
     val networkPreferences: NetworkPreferences
     val libraryPreferences: LibraryPreferences
     val sourcePreferences: SourcePreferences
