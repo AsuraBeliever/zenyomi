@@ -49,6 +49,8 @@
 | Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ⚠️ | MyAnimeList y AniList: buscar, vincular, desvincular y empujar progreso; sin verificar con cuenta real (ver abajo) |
+| Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
+| Estadísticas de anime | ✅ | contadores verificados uno a uno contra la BD |
 | Backup de anime | ✅ | mismo fichero .tachibk que el manga; verificado backup → borrado → restauración |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
