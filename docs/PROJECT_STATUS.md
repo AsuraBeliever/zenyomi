@@ -1,7 +1,7 @@
 # Estado del proyecto
 
 **Actualizado:** 2026-09-08
-**Fase actual:** 2 — Reproductor (fase 1 funcionalmente cerrada)
+**Fase actual:** 3 — Paridad de funciones (fases 1 y 2 funcionalmente cerradas)
 **Versión objetivo inmediata:** v0.1.0
 **¿Compila?** sí — línea base de Mihon verde en 5m 42s
 **¿Instalado en el dispositivo del cliente?** sí — v0.1.0 verificada en Galaxy S25 Ultra
@@ -38,7 +38,11 @@
 | Progreso de reproducción | ✅ | verificado en la BD: `seen=1`, `last_second_seen=9`, `total_seconds=10` |
 | Fuente local de anime | ✅ | reproduce vídeos de la carpeta `localanime` |
 | Sincronización de episodios | ✅ | la ficha pide los episodios a la fuente y los guarda |
-| Descargas / historial / tracker anime | ⬜ | fase 3 |
+| Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
+| Descargas de anime | ⬜ | fase 3 |
+| Actualizaciones de biblioteca de anime | ⬜ | fase 3 |
+| Trackers de anime | ⬜ | fase 3 |
+| Backup de anime | ⬜ | fase 3 |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
