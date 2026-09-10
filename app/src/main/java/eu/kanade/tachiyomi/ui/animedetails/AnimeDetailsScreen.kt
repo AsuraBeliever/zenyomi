@@ -134,6 +134,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                                         imageVector = MaterialSymbols.RoundedFilled.CheckCircle,
                                         contentDescription = stringResource(MR.strings.label_downloaded),
                                     )
+                                !state.canDownload -> Unit
                                 else ->
                                     IconButton(onClick = { viewModel.downloadEpisode(episode) }) {
                                         Icon(
