@@ -45,13 +45,20 @@
 | Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ⬜ | fase 3 |
-| Backup de anime | ⬜ | fase 3 |
+| Backup de anime | ✅ | mismo fichero .tachibk que el manga; verificado backup → borrado → restauración |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
 ## Bloqueos activos
 
 Ninguno.
+
+## Diferencia conocida con el manga
+
+La opción **"All read entries"** del backup solo aplica al manga. El backup de anime incluye
+lo que está en la biblioteca, no los animes vistos y luego quitados de ella. Es una carencia,
+no un accidente: el lado anime todavía no tiene el equivalente de
+`mangaRepository.getReadMangaNotInLibrary()`.
 
 ## Sin verificar en dispositivo
 

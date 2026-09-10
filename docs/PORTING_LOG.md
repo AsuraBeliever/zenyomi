@@ -192,3 +192,28 @@ kotlinx.serialization un campo nulable *sin valor por defecto* sigue siendo
 obligatorio, así que el modelo de manga rechazaba el repo oficial de Aniyomi. Ambos
 campos llevan ahora `= null`. Es el tipo de detalle que no se ve derivando a ojo: el
 código compila igual y falla solo contra datos reales.
+
+## Backup de anime
+
+El anime viaja en **el mismo fichero** `.tachibk` que el manga, no en uno aparte: dos ficheros
+obligarían al usuario a acordarse de guardar y restaurar los dos, y perder uno sería perder
+media app.
+
+Campos nuevos en `Backup`, a partir del número 200 para dejar sitio de sobra a Mihon:
+
+| Campo | Número |
+|---|---|
+| `backupAnime` | 200 |
+| `backupAnimeSources` | 201 |
+
+Protobuf ignora los campos que no conoce, así que la compatibilidad va en los dos sentidos:
+un backup de Mihon restaura aquí con estos campos vacíos, y un backup de Zenyomi lo puede
+leer Mihon quedándose con la parte de manga. **Verificado en el emulador** fabricando un
+backup al que se le quitaron los campos 200 y 201: `BackupRestoreJob` termina con SUCCESS,
+sin excepciones de serialización, y deja la biblioteca de anime intacta.
+
+`BackupAnime` y `BackupEpisode` numeran desde 1 por su cuenta: no comparten mensaje con
+`BackupManga`/`BackupChapter`, así que reutilizar los números bajos no cuesta nada.
+
+La restauración **fusiona, no reemplaza**: gana el progreso más avanzado de los dos lados, de
+modo que restaurar un backup viejo nunca des-marca un episodio ya visto.

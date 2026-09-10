@@ -8,6 +8,7 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.data.backup.BackupFileValidator
+import eu.kanade.tachiyomi.data.backup.create.creators.AnimeBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.CategoriesBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.ExtensionStoresBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.MangaBackupCreator
@@ -27,6 +28,7 @@ import okio.gzip
 import okio.sink
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.anime.interactor.GetAnimeFavorites
 import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.manga.interactor.GetFavorites
 import tachiyomi.domain.manga.model.Manga
@@ -48,6 +50,8 @@ class BackupCreator(
     private val mangaRepository: MangaRepository,
     private val categoriesBackupCreator: CategoriesBackupCreator,
     private val mangaBackupCreator: MangaBackupCreator,
+    private val animeBackupCreator: AnimeBackupCreator,
+    private val getAnimeFavorites: GetAnimeFavorites,
     private val preferenceBackupCreator: PreferenceBackupCreator,
     private val extensionStoresBackupCreator: ExtensionStoresBackupCreator,
     private val sourcesBackupCreator: SourcesBackupCreator,
@@ -85,6 +89,12 @@ class BackupCreator(
             val nonFavoriteManga = if (options.readEntries) mangaRepository.getReadMangaNotInLibrary() else emptyList()
             val backupManga = backupMangas(getFavorites.await() + nonFavoriteManga, options)
 
+            val backupAnime = if (options.libraryEntries) {
+                animeBackupCreator(getAnimeFavorites.await(), options)
+            } else {
+                emptyList()
+            }
+
             val backup = Backup(
                 backupManga = backupManga,
                 backupCategories = backupCategories(options),
@@ -92,6 +102,8 @@ class BackupCreator(
                 backupPreferences = backupAppPreferences(options),
                 backupExtensionStores = backupExtensionStores(options),
                 backupSourcePreferences = backupSourcePreferences(options),
+                backupAnime = backupAnime,
+                backupAnimeSources = animeBackupCreator.sources(backupAnime),
             )
 
             val byteArray = parser.encodeToByteArray(Backup.serializer(), backup)
