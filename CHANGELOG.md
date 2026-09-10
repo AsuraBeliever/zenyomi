@@ -10,6 +10,22 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.3.0] - 2026-09-09
+### Added
+- Anime, alongside the manga side Mihon already provided and without taking anything away from it.
+- An anime library with its own tab, entries added from a source's catalogue with the favourite button, and an on-demand refresh that refetches episodes for everything it holds.
+- Anime browsing: the sources loaded extensions provide, the extensions themselves with trust and uninstall, and each source's own settings screen hosted from its extension.
+- A local anime source that plays video files from a `localanime` folder beside the manga one, so the app is useful without installing any extension.
+- An entry screen with the episode list, and watch history recorded as you play.
+- A video player built on mpv: play and pause, a seek bar, tap to pause, double tap to jump, audio and subtitle track selection, resume where you left off and episodes marked seen past 85 per cent.
+
+### Fixed
+- Release builds loaded no anime extension at all. R8 finalises methods no subclass inside the app overrides, which breaks extensions that do override them from outside the APK.
+- Debug builds could not install over an existing one after the signing key was introduced, because release signing was configured on the config named debug.
+
+### Other
+- Anime lives in its own database and its own domain tree; Mihon's manga schema and code are untouched, which is what keeps upstream merges cheap.
+
 ## [0.1.2] - 2026-09-08
 ### Other
 - First properly signed release, using the project's own key so that future updates install cleanly over each other. It installs alongside Mihon and Aniyomi rather than over them, and alongside the `app.zenyomi.dev` debug builds, which use a separate application id.
