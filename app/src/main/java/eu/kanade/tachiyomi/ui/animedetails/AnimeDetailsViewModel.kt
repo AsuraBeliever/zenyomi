@@ -124,7 +124,12 @@ class AnimeDetailsViewModel(
                 .filter { downloader.isDownloaded(anime, source, it) }
                 .map { it.id }
                 .toSet()
-            _state.update { it.copy(downloadedEpisodeIds = ids) }
+            _state.update {
+                it.copy(
+                    downloadedEpisodeIds = ids,
+                    canDownload = downloader.isDownloadableSource(source),
+                )
+            }
         }
     }
 
@@ -141,6 +146,7 @@ class AnimeDetailsViewModel(
         val episodes: List<Episode> = emptyList(),
         val resolvingEpisodeId: Long? = null,
         val downloadedEpisodeIds: Set<Long> = emptySet(),
+        val canDownload: Boolean = false,
     )
 
     @AssistedFactory

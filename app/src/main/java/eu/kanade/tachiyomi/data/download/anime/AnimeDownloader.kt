@@ -38,6 +38,18 @@ class AnimeDownloader(
     /** Episode id to percentage, for rows that are downloading right now. */
     val progress: StateFlow<Map<Long, Int>> = _progress.asStateFlow()
 
+    /**
+     * Whether an episode can be downloaded at all.
+     *
+     * Local entries already live on the device, and their urls are content:// handles
+     * from the storage framework, which an HTTP client cannot fetch. Offering a download
+     * for them would fail and would be pointless if it worked.
+     */
+    fun isDownloadable(source: AnimeSource, video: Video?): Boolean =
+        source.id != LOCAL_ANIME_SOURCE_ID && video?.videoUrl?.startsWith("http") == true
+
+    fun isDownloadableSource(source: AnimeSource): Boolean = source.id != LOCAL_ANIME_SOURCE_ID
+
     fun isDownloaded(anime: Anime, source: AnimeSource, episode: Episode): Boolean =
         provider.findEpisodeFile(anime, source, episode) != null
 
@@ -97,5 +109,8 @@ class AnimeDownloader(
 
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
+
+        /** Matches tachiyomi.source.local.anime.LocalAnimeSource.ID without depending on it. */
+        private const val LOCAL_ANIME_SOURCE_ID = 0L
     }
 }
