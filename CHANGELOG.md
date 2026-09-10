@@ -10,6 +10,13 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.5.1] - 2026-09-10
+### Fixed
+- **The player crashed the whole app in release builds, on every release since 0.3.0.** libmpv calls back into Java over JNI, and because nothing in Kotlin calls those methods R8 removed them; the first frame of any video killed the process with `NoSuchMethodError: MPVLib.eventProperty`. Debug builds were never affected, which is why it went unnoticed. If you installed 0.3.0 or 0.4.0 and playback closed the app, this was why.
+
+### Other
+- Release builds are now smoke-tested by actually playing a video, not only by launching the app and loading an extension.
+
 ## [0.5.0] - 2026-09-10
 ### Added
 - Anime tracking on MyAnimeList and AniList: search, link, unlink, and progress pushed when an episode is watched. Signing in is shared with the manga side, so one account covers both.

@@ -55,6 +55,13 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
 Ninguno.
 
+## Aviso: v0.3.0 y v0.4.0 tienen el player roto
+
+En ambas releases publicadas R8 eliminó los métodos que `libmpv` llama por JNI, así que
+reproducir cualquier vídeo mata la app. **Verificado** desempaquetando los APK publicados:
+cero referencias a `eventProperty` en sus `classes*.dex`. Corregido en la v0.5.1; quien tenga
+una de esas dos versiones necesita actualizar.
+
 ## Diferencia conocida con el manga
 
 La opción **"All read entries"** del backup solo aplica al manga. El backup de anime incluye

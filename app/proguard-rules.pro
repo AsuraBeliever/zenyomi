@@ -99,3 +99,13 @@
     public <init>();
     public void destroy();
 }
+
+# mpv
+#
+# libmpv calls back into Java over JNI: MPVLib.eventProperty, MPVLib.event and the rest are
+# invoked from native code and from nowhere in Kotlin, so R8 sees them as unused and removes
+# them. The result is a release-only native abort the moment a video starts:
+#   NoSuchMethodError: no static method "Lis/xyz/mpv/MPVLib;.eventProperty(Ljava/lang/String;)V"
+# No allowoptimization here for the same reason as the extension API: a signature R8 is free to
+# rewrite is a signature JNI can no longer find.
+-keep class is.xyz.mpv.** { *; }

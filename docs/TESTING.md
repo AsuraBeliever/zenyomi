@@ -143,3 +143,25 @@ Anime (a partir de v0.2.0):
 
 Los crashes van a `docs/logs/` como `YYYY-MM-DD-<slug>.log` y se abre una entrada
 en `docs/PROJECT_STATUS.md`.
+
+## Qué hay que probar en una build de **release**, no solo en debug
+
+R8 solo corre en release, así que hay una clase entera de fallos que el debug no puede
+enseñar: todo lo que se invoca por **reflexión o desde código nativo**. Ya ha pasado dos veces.
+
+| Cuándo | Qué se rompió | Por qué |
+|---|---|---|
+| v0.3.0 | Las extensiones de anime no cargaban | R8 finaliza métodos que nadie sobrescribe *dentro* del APK; las extensiones los sobrescriben desde fuera |
+| v0.3.0–v0.4.0 | El player mataba la app al primer fotograma | `libmpv` llama a `MPVLib.eventProperty` por JNI; ningún Kotlin la llama, así que R8 la borró |
+
+El segundo se publicó dos veces porque la prueba de humo de release se quedaba en *arranca y
+carga una extensión*. **No basta.** Antes de publicar, sobre el APK de release firmado:
+
+1. Abrir la app y comprobar que no hay crash.
+2. Cargar la lista de extensiones de anime (cubre las reglas de `source-api`).
+3. **Reproducir un vídeo de verdad hasta pasar del primer fotograma** (cubre el puente JNI de mpv).
+4. Entrar y salir de picture-in-picture.
+5. `adb logcat -d | grep -cE 'Fatal signal|FATAL EXCEPTION|NoSuchMethodError'` debe dar 0.
+
+Un crash **nativo** no aparece como `FATAL EXCEPTION`: el proceso muere y solo queda un
+`Abort message:` en el logcat. Buscar únicamente `FATAL EXCEPTION` los deja pasar.
