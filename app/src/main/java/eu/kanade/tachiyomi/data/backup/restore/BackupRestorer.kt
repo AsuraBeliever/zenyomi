@@ -7,11 +7,13 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import eu.kanade.tachiyomi.data.backup.BackupDecoder
 import eu.kanade.tachiyomi.data.backup.BackupNotifier
+import eu.kanade.tachiyomi.data.backup.models.BackupAnime
 import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupExtensionStore
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
 import eu.kanade.tachiyomi.data.backup.models.BackupSourcePreferences
+import eu.kanade.tachiyomi.data.backup.restore.restorers.AnimeRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.CategoriesRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.ExtensionStoreRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.MangaRestorer
@@ -49,6 +51,7 @@ class BackupRestorer(
     private val preferenceRestorer: PreferenceRestorer,
     private val extensionStoreRestorer: ExtensionStoreRestorer,
     private val mangaRestorer: MangaRestorer,
+    private val animeRestorer: AnimeRestorer,
     private val backupDecoder: BackupDecoder,
 ) {
 
@@ -65,6 +68,7 @@ class BackupRestorer(
      * Mapping of source ID to source name from backup data
      */
     private var sourceMapping: Map<Long, String> = emptyMap()
+    private var animeSourceMapping: Map<Long, String> = emptyMap()
 
     suspend fun restore(uri: Uri, options: RestoreOptions) {
         val startTime = System.currentTimeMillis()
@@ -99,9 +103,11 @@ class BackupRestorer(
         // Store source mapping for error messages
         val backupMaps = backup.backupSources
         sourceMapping = backupMaps.associate { it.sourceId to it.name }
+        animeSourceMapping = backup.backupAnimeSources.associate { it.sourceId to it.name }
 
         if (options.libraryEntries) {
             restoreAmount += backup.backupManga.size
+            restoreAmount += backup.backupAnime.size
         }
         if (options.categories) {
             restoreAmount += 1
@@ -139,11 +145,37 @@ class BackupRestorer(
                     restoreCategoriesJob,
                 )
             }
+            if (options.libraryEntries) {
+                restoreAnime(backup.backupAnime)
+            }
             if (options.extensionStores) {
                 restoreExtensionStores(backup.backupExtensionStores)
             }
 
             // TODO: optionally trigger online library + tracker update
+        }
+    }
+
+    /**
+     * Restores anime one at a time rather than in batched transactions like manga.
+     *
+     * The anime database is a separate SQLDelight instance, so it cannot join the transaction
+     * the manga restore runs in, and an anime library is small enough that the batching is not
+     * worth a second transaction path. A failing entry is recorded and the rest continue.
+     */
+    private fun CoroutineScope.restoreAnime(backupAnime: List<BackupAnime>) = launch {
+        backupAnime.forEach {
+            ensureActive()
+
+            try {
+                animeRestorer.restore(it)
+            } catch (e: Exception) {
+                ensureActive()
+                val sourceName = animeSourceMapping[it.source] ?: it.source.toString()
+                errors.add(Date() to "${it.title} [$sourceName]: ${e.message}")
+            }
+
+            notifier.showRestoreProgress(it.title, restoreProgress.incrementAndFetch(), restoreAmount, isSync)
         }
     }
 
