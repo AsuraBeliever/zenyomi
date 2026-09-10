@@ -53,6 +53,11 @@ object Notifications {
      * channels rather than sharing the manga ones so a user who only cares about one of the
      * two libraries can silence the other from the system settings.
      */
+    const val CHANNEL_ANIME_DOWNLOADER_PROGRESS = "anime_downloader_progress_channel"
+    const val ID_DOWNLOAD_EPISODE_PROGRESS = -211
+    const val CHANNEL_ANIME_DOWNLOADER_ERROR = "anime_downloader_error_channel"
+    const val ID_DOWNLOAD_EPISODE_ERROR = -212
+
     const val CHANNEL_ANIME_LIBRARY_PROGRESS = "anime_library_progress_channel"
     const val ID_ANIME_LIBRARY_PROGRESS = -111
     const val CHANNEL_ANIME_LIBRARY_ERROR = "anime_library_errors_channel"
@@ -169,6 +174,16 @@ object Notifications {
                 },
                 buildNotificationChannel(CHANNEL_INCOGNITO_MODE, IMPORTANCE_LOW) {
                     setName(context.stringResource(MR.strings.pref_incognito_mode))
+                },
+                buildNotificationChannel(CHANNEL_ANIME_DOWNLOADER_PROGRESS, IMPORTANCE_LOW) {
+                    setName(context.stringResource(ANMR.strings.anime_channel_progress))
+                    setGroup(GROUP_DOWNLOADER)
+                    setShowBadge(false)
+                },
+                buildNotificationChannel(CHANNEL_ANIME_DOWNLOADER_ERROR, IMPORTANCE_LOW) {
+                    setName(context.stringResource(ANMR.strings.anime_channel_errors))
+                    setGroup(GROUP_DOWNLOADER)
+                    setShowBadge(false)
                 },
                 buildNotificationChannel(CHANNEL_ANIME_LIBRARY_PROGRESS, IMPORTANCE_LOW) {
                     setName(context.stringResource(ANMR.strings.anime_channel_progress))

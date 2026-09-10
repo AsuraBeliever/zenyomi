@@ -11,10 +11,12 @@ import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.anime.interactor.SyncEpisodesWithSource
-import eu.kanade.tachiyomi.data.download.anime.AnimeDownloader
+import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
@@ -40,7 +42,7 @@ class AnimeDetailsViewModel(
     private val syncEpisodesWithSource: SyncEpisodesWithSource,
     private val sourceManager: AnimeSourceManager,
     private val updateAnime: UpdateAnime,
-    private val downloader: AnimeDownloader,
+    private val downloadManager: AnimeDownloadManager,
 ) : ViewModel() {
 
     private var episodesFetched = false
@@ -81,7 +83,7 @@ class AnimeDetailsViewModel(
         viewModelScope.launch {
             // A downloaded copy wins: it plays offline and costs the source nothing.
             val source = sourceManager.get(anime.source)
-            val local = source?.let { downloader.downloadedUri(anime, it, episode) }
+            val local = source?.let { downloadManager.downloadedUri(anime, it, episode) }
             if (local != null) {
                 _state.update { it.copy(resolvingEpisodeId = null) }
                 return@launch onResolved(local)
@@ -94,40 +96,56 @@ class AnimeDetailsViewModel(
         }
     }
 
-    val downloadProgress = downloader.progress
+    val downloadProgress = downloadManager.progress
+
+    val downloadQueue = downloadManager.queue
+
+    init {
+        // The job, not this ViewModel, does the downloading, so the only signal that a file
+        // landed is the queue shrinking.
+        viewModelScope.launch {
+            downloadManager.queue
+                .map { it.size }
+                .distinctUntilChanged()
+                .collect { refreshDownloaded() }
+        }
+    }
 
     /**
-     * Downloads an episode for offline watching.
+     * Queues an episode for offline watching.
      *
-     * Resolution runs again here rather than being reused from playback: the two happen
-     * at different times and a source can hand back different videos.
+     * The download runs in [eu.kanade.tachiyomi.data.download.anime.AnimeDownloadJob], not here:
+     * a video takes long enough that tying it to this ViewModel meant navigating back cancelled
+     * it halfway. Video resolution happens in the job too, as late as possible, because a source
+     * can hand back a different (or expired) url between queueing and downloading.
      */
     fun downloadEpisode(episode: Episode) {
         val anime = state.value.anime ?: return
+        downloadManager.enqueue(anime, listOf(episode))
+    }
+
+    fun deleteDownload(episode: Episode) {
+        val anime = state.value.anime ?: return
         viewModelScope.launch {
             val source = sourceManager.get(anime.source) ?: return@launch
-            val video = runCatching { getEpisodeVideos.await(anime.source, episode) }
-                .getOrDefault(emptyList())
-                .let { with(getEpisodeVideos) { it.best() } }
-                ?: return@launch
-            downloader.download(anime, source, episode, video)
+            downloadManager.deleteEpisode(anime, source, episode)
             refreshDownloaded()
         }
     }
 
     /** Which episodes already have a file on disk, so rows can show it. */
-    private fun refreshDownloaded() {
+    fun refreshDownloaded() {
         val anime = state.value.anime ?: return
         viewModelScope.launch {
             val source = sourceManager.get(anime.source) ?: return@launch
             val ids = state.value.episodes
-                .filter { downloader.isDownloaded(anime, source, it) }
+                .filter { downloadManager.isDownloaded(anime, source, it) }
                 .map { it.id }
                 .toSet()
             _state.update {
                 it.copy(
                     downloadedEpisodeIds = ids,
-                    canDownload = downloader.isDownloadableSource(source),
+                    canDownload = downloadManager.isDownloadableSource(source),
                 )
             }
         }

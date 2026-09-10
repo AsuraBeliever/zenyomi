@@ -63,6 +63,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
         }
         val state by viewModel.state.collectAsStateWithLifecycle()
         val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
+        val downloadQueue by viewModel.downloadQueue.collectAsStateWithLifecycle()
         val anime = state.anime
 
         Scaffold(
@@ -121,6 +122,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         },
                         trailingContent = {
                             val percent = downloadProgress[episode.id]
+                            val queued = downloadQueue.any { it.episodeId == episode.id }
                             when {
                                 state.resolvingEpisodeId == episode.id ->
                                     CircularProgressIndicator(Modifier.size(20.dp))
@@ -129,11 +131,22 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                                         progress = { percent / 100f },
                                         modifier = Modifier.size(20.dp),
                                     )
-                                episode.id in state.downloadedEpisodeIds ->
-                                    Icon(
-                                        imageVector = MaterialSymbols.RoundedFilled.CheckCircle,
-                                        contentDescription = stringResource(MR.strings.label_downloaded),
+                                // Queued but not started: an indeterminate spinner would claim
+                                // work is happening, so the row just shows it is waiting.
+                                queued ->
+                                    CircularProgressIndicator(
+                                        progress = { 0f },
+                                        modifier = Modifier.size(20.dp),
                                     )
+                                episode.id in state.downloadedEpisodeIds ->
+                                    IconButton(onClick = { viewModel.deleteDownload(episode) }) {
+                                        Icon(
+                                            imageVector = MaterialSymbols.RoundedFilled.CheckCircle,
+                                            contentDescription = stringResource(
+                                                ANMR.strings.anime_action_delete_download,
+                                            ),
+                                        )
+                                    }
                                 !state.canDownload -> Unit
                                 else ->
                                     IconButton(onClick = { viewModel.downloadEpisode(episode) }) {
