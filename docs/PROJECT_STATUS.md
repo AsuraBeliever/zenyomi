@@ -30,7 +30,7 @@
 | Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
-| Extensiones de anime | ⬜ | fase 1 |
+| Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
