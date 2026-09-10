@@ -32,16 +32,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
-import eu.kanade.presentation.util.Screen
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.delay
 import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Close
+import mihon.icons.materialsymbols.rounded.FlipToBack
 import mihon.icons.materialsymbols.rounded.Pause
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.i18n.MR
@@ -53,92 +53,96 @@ import java.util.Locale
 /**
  * Plays one video with mpv.
  *
- * A deliberate first cut: surface, play/pause and a seek bar. Aniyomi's player carries
- * gestures, picture-in-picture, track and subtitle panels across some fifty files; those
- * come later, on top of this.
+ * Lives in [AnimePlayerActivity] rather than on the main navigator so it can declare
+ * picture-in-picture and handle its own configuration changes. Doing that on MainActivity
+ * would have changed how the manga side survives rotation, which the charter does not allow.
+ *
+ * @param inPictureInPicture hides every control: in a thumbnail there is no room for them and
+ * nothing to tap them with.
  */
-class AnimePlayerScreen(
-    private val videoUrl: String,
-    private val title: String,
-    private val episodeId: Long,
-) : Screen() {
+@Composable
+fun AnimePlayerContent(
+    videoUrl: String,
+    title: String,
+    episodeId: Long,
+    inPictureInPicture: Boolean,
+    onEnterPictureInPicture: (videoAspect: Float) -> Unit,
+    onBack: () -> Unit,
+) {
+    val context = LocalContext.current
 
-    @Composable
-    override fun Content() {
-        val navigator = LocalNavigator.currentOrThrow
-        val context = LocalContext.current
+    var position by remember { mutableIntStateOf(0) }
+    var duration by remember { mutableIntStateOf(0) }
+    var paused by remember { mutableStateOf(false) }
+    var tracks by remember { mutableStateOf(emptyList<ZenyomiMPVView.Track>()) }
+    var seekFeedback by remember { mutableStateOf<String?>(null) }
 
-        var position by remember { mutableIntStateOf(0) }
-        var duration by remember { mutableIntStateOf(0) }
-        var paused by remember { mutableStateOf(false) }
-        var tracks by remember { mutableStateOf(emptyList<ZenyomiMPVView.Track>()) }
-        var seekFeedback by remember { mutableStateOf<String?>(null) }
-
-        // The jump indicator is a flash, not a state: clear it shortly after it appears.
-        LaunchedEffect(seekFeedback) {
-            if (seekFeedback != null) {
-                delay(700)
-                seekFeedback = null
-            }
+    // The jump indicator is a flash, not a state: clear it shortly after it appears.
+    LaunchedEffect(seekFeedback) {
+        if (seekFeedback != null) {
+            delay(700)
+            seekFeedback = null
         }
-        val view = remember { ZenyomiMPVView(context) }
-        val viewModel = assistedMetroViewModel<AnimePlayerViewModel, AnimePlayerViewModel.Factory> {
-            create(episodeId = episodeId)
-        }
-        val playerState by viewModel.state.collectAsStateWithLifecycle()
+    }
+    val view = remember { ZenyomiMPVView(context) }
+    val viewModel = assistedMetroViewModel<AnimePlayerViewModel, AnimePlayerViewModel.Factory> {
+        create(episodeId = episodeId)
+    }
+    val playerState by viewModel.state.collectAsStateWithLifecycle()
 
-        DisposableEffect(playerState.loaded) {
+    DisposableEffect(playerState.loaded) {
+        if (playerState.loaded) {
+            view.initialise(File(context.filesDir, "mpv"))
+            view.playFile(videoUrl, resumeAt = playerState.resumeAt)
+        }
+        onDispose {
             if (playerState.loaded) {
-                view.initialise(File(context.filesDir, "mpv"))
-                view.playFile(videoUrl, resumeAt = playerState.resumeAt)
-            }
-            onDispose {
-                if (playerState.loaded) {
-                    view.timePos?.let { pos -> viewModel.saveProgress(pos, view.duration ?: 0) }
-                    view.release()
-                }
+                view.timePos?.let { pos -> viewModel.saveProgress(pos, view.duration ?: 0) }
+                view.release()
             }
         }
+    }
 
-        // mpv reports progress through property observers; polling keeps this first cut
-        // small, and a second of drift on a seek bar is not worth an observer plumbing.
-        LaunchedEffect(Unit) {
-            while (true) {
-                if (!view.isReady) {
-                    delay(200)
-                    continue
-                }
-                position = view.timePos ?: position
-                duration = view.duration ?: duration
-                paused = view.paused ?: paused
-                // Written as it plays, so a process death mid-episode still leaves a
-                // usable resume point rather than losing the whole session.
-                if (!paused) viewModel.saveProgress(position, duration)
-                // Tracks only exist once the file is open, and can change on a new file.
-                if (tracks.isEmpty() && duration > 0) tracks = view.tracks()
-                delay(2000)
+    // mpv reports progress through property observers; polling keeps this first cut
+    // small, and a second of drift on a seek bar is not worth an observer plumbing.
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (!view.isReady) {
+                delay(200)
+                continue
             }
+            position = view.timePos ?: position
+            duration = view.duration ?: duration
+            paused = view.paused ?: paused
+            // Written as it plays, so a process death mid-episode still leaves a
+            // usable resume point rather than losing the whole session.
+            if (!paused) viewModel.saveProgress(position, duration)
+            // Tracks only exist once the file is open, and can change on a new file.
+            if (tracks.isEmpty() && duration > 0) tracks = view.tracks()
+            delay(2000)
         }
+    }
 
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Color.Black),
-        ) {
-            // Gestures sit over the surface, not on it: the SurfaceView itself stays a
-            // plain video output and all input is handled in Compose.
-            AndroidView(
-                factory = {
-                    view.apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxSize(),
-            )
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
+        // Gestures sit over the surface, not on it: the SurfaceView itself stays a
+        // plain video output and all input is handled in Compose.
+        AndroidView(
+            factory = {
+                view.apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
 
+        if (!inPictureInPicture) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -154,13 +158,39 @@ class AnimePlayerScreen(
                         )
                     },
             )
+        }
 
-            seekFeedback?.let { text ->
+        seekFeedback?.let { text ->
+            Text(
+                text = text,
+                color = Color.White,
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+
+        if (!inPictureInPicture) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .systemBarsPadding()
+                    .padding(16.dp),
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = MaterialSymbols.Rounded.Close,
+                        contentDescription = stringResource(MR.strings.action_close),
+                        tint = Color.White,
+                    )
+                }
                 Text(
-                    text = text,
+                    text = title,
                     color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.align(Alignment.Center),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(start = 8.dp),
                 )
             }
 
@@ -183,6 +213,13 @@ class AnimePlayerScreen(
                     tracks = tracks.filter { it.isSubtitle },
                     onSelect = view::selectSubtitle,
                 )
+                IconButton(onClick = { onEnterPictureInPicture(view.videoAspect ?: DEFAULT_ASPECT) }) {
+                    Icon(
+                        imageVector = MaterialSymbols.Rounded.FlipToBack,
+                        contentDescription = stringResource(ANMR.strings.player_picture_in_picture),
+                        tint = Color.White,
+                    )
+                }
             }
 
             Row(
@@ -220,6 +257,9 @@ class AnimePlayerScreen(
 }
 
 private const val SEEK_STEP = 10
+
+/** Used only until mpv reports the real one, which takes a moment after the file opens. */
+private const val DEFAULT_ASPECT = 16f / 9f
 
 private fun formatTime(seconds: Int): String {
     val h = seconds / 3600

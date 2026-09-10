@@ -239,3 +239,21 @@ los de manga en la llamada.
 valor por defecto. Un campo nulable *sin* default sigue siendo obligatorio para
 kotlinx.serialization, que es exactamente lo que rompió la tienda de extensiones con el
 `repo.json` de Aniyomi.
+
+## El player pasa a Activity propia
+
+`AnimePlayerScreen` era una pantalla del navegador de `MainActivity`. Picture-in-picture no
+puede vivir ahí: se declara **por actividad**, y además necesita `configChanges` para que
+entrar en PiP no destruya y recree el player a mitad de reproducción.
+
+Ponerle `supportsPictureInPicture` y `configChanges` a `MainActivity` habría cambiado también
+cómo sobrevive a la rotación el lado de manga, que es exactamente lo que prohíbe la regla 1.
+Mihon ya separa su lector en `ReaderActivity` por el mismo motivo, así que el player sigue esa
+misma forma: `AnimePlayerActivity`, lanzada con un `Intent`, y el contenido extraído a un
+composable `AnimePlayerContent` reutilizable.
+
+Al dejar de haber navegador que hacer *pop*, la pantalla gana barra propia con título y botón
+de cerrar — dos parámetros (`title`, `onBack`) que antes se pasaban y no se usaban.
+
+Los iconos salen del set del proyecto (`Close`, `FlipToBack`); no hay `picture_in_picture` en
+`icons/material-symbols`, y dibujar un SVG a mano por un botón no compensa.

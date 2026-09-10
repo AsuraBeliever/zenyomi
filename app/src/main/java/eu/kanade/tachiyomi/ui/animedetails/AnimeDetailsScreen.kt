@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,7 +34,7 @@ import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
-import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerScreen
+import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
 import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackScreen
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Download
@@ -60,6 +61,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val context = LocalContext.current
         val viewModel = assistedMetroViewModel<AnimeDetailsViewModel, AnimeDetailsViewModel.Factory> {
             create(animeId = animeId)
         }
@@ -174,7 +176,9 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         ) {
                             viewModel.resolveVideo(episode) { url ->
                                 if (url != null) {
-                                    navigator.push(AnimePlayerScreen(url, episode.name, episode.id))
+                                    context.startActivity(
+                                        AnimePlayerActivity.newIntent(context, url, episode.name, episode.id),
+                                    )
                                 }
                             }
                         },
