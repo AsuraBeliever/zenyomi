@@ -632,4 +632,5 @@
     <string name="anime_track_not_bound">Not tracked</string>
     <string name="anime_track_search_failed">Search failed</string>
     <string name="anime_track_episode_count">%1$d episodes</string>
+    <string name="player_picture_in_picture">Picture in picture</string>
 </resources>

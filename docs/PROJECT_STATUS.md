@@ -37,7 +37,7 @@
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
 | Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque no se puede disparar por adb, ver TESTING.md |
-| PiP del player | ⬜ | pendiente |
+| PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
 | Resolución de vídeo desde la fuente | ✅ | verificada de punta a punta con la fuente local |
 | Progreso de reproducción | ✅ | verificado en la BD: `seen=1`, `last_second_seen=9`, `total_seconds=10` |
 | Fuente local de anime | ✅ | reproduce vídeos de la carpeta `localanime` |

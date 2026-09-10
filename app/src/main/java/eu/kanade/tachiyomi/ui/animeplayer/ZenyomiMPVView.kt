@@ -137,6 +137,19 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     val paused: Boolean? get() = MPVLib.getPropertyBoolean("pause")
 
     /**
+     * Width over height of the video actually being decoded, or null before it is known.
+     * Picture-in-picture needs this to size its window; guessing 16:9 would letterbox
+     * anything that is not.
+     */
+    val videoAspect: Float?
+        get() {
+            val width = MPVLib.getPropertyInt("width") ?: return null
+            val height = MPVLib.getPropertyInt("height") ?: return null
+            if (width <= 0 || height <= 0) return null
+            return width.toFloat() / height
+        }
+
+    /**
      * The tracks mpv found in the current file.
      *
      * mpv exposes track-list as a node, which MPVLib cannot hand over directly, so the
