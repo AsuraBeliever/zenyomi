@@ -103,6 +103,26 @@ que es la que está mantenida.
 Lo que **no** se renombra al derivar: `BasePreferences.ExtensionInstaller` es un enum
 de preferencias compartido de Mihon y lo usan ambos motores.
 
+### Reglas de R8 para la API de extensiones
+
+Mihon protege su `source-api` de manga con `-keep` **sin** `allowoptimization`
+(`source-api/consumer-proguard.pro`). No es cosmético: con optimización, R8 marca como
+`final` los métodos que ninguna subclase *dentro de la app* sobrescribe, y `getId()` es
+uno de ellos. Las extensiones viven fuera del APK, R8 no las ve, y al cargarlas revientan:
+
+```
+LinkageError: Method ...Jellyfin.getId() overrides final method
+in class AnimeHttpSource
+```
+
+El fallo **solo existe en release**; en debug no hay R8 y todo funciona. Se detectó
+compilando el release y probándolo, no leyendo el código. Las reglas equivalentes para
+`eu.kanade.tachiyomi.animesource.**` están ahora en el mismo fichero.
+
+**Regla derivada:** cualquier tipo nuevo que las extensiones puedan extender necesita su
+`-keep` sin `allowoptimization`, y el release hay que probarlo con una extensión real
+antes de publicar.
+
 ### Pendientes conocidos
 
 | Qué | Por qué espera |
