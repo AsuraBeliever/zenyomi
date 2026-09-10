@@ -257,3 +257,28 @@ de cerrar — dos parámetros (`title`, `onBack`) que antes se pasaban y no se u
 
 Los iconos salen del set del proyecto (`Close`, `FlipToBack`); no hay `picture_in_picture` en
 `icons/material-symbols`, y dibujar un SVG a mano por un botón no compensa.
+
+## Ajustes del player, y tres fallos que salieron al probarlos
+
+`PlayerPreferences` es propia, no un añadido a `ReaderPreferences`: nada de lo que hay aquí
+significa algo para un lector de manga.
+
+Al conectar las preferencias salieron tres fallos que **ya estaban** en el código:
+
+1. **Reanudar nunca funcionó.** `loadfile` es `<url> [<flags> [<index> [<options>]]]` y se
+   pasaba `start=71` en la posición del *index*. mpv rechazaba el comando entero, así que
+   cualquier episodio con progreso guardado abría a negro. Solo se veía en el log de mpv.
+2. **Llamar a mpv desde el hilo principal colgaba la app.** Toda llamada a libmpv espera al
+   hilo del núcleo de mpv. El sondeo y el `onDispose` lo hacían desde el hilo de UI, y salir de
+   un episodio recién abierto congelaba la interfaz hasta que Android lanzaba un ANR.
+3. **El observador de log se registraba después de `init()`**, así que cualquier queja de mpv
+   sobre las opciones era invisible. Es lo que hizo que (1) tardara en aparecer.
+
+Ahora **todo el ciclo de vida de libmpv va por un único hilo** (`mpv-lifecycle`). libmpv es un
+singleton de proceso: crear y destruir en paralelo lo corrompe. El desmontaje espera a ese
+hilo con un tope de 1,5 s — mpv tiene que soltar el surface antes de que muera, así que no se
+puede lanzar y olvidar, pero una espera acotada nunca llega al límite de ANR de 5 s.
+
+`alang`, `slang` y `speed` se fijan como **opciones antes de `init()`**, no como propiedades
+después: mpv las aplica al abrir el fichero, así que ponerlas más tarde no hace nada hasta el
+siguiente. Verificado midiendo: a 2x el vídeo avanza 64 s en 32 s reales.
