@@ -18,6 +18,7 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
+| Fase 3 (extensiones, actualizaciones, descargas, backup) | ✅ | tag `v0.4.0`, APK firmado y verificado en release |
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
 | Dominio anime | ✅ | 33 ficheros: modelos, repositorios e interactors; compila y corre |
 | Capa data de anime | ✅ | mapper + 3 repositorios, reescritos al estilo de Mihon |
