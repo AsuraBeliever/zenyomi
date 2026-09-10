@@ -83,6 +83,10 @@ class AnimePlayerScreen(
         // small, and a second of drift on a seek bar is not worth an observer plumbing.
         LaunchedEffect(Unit) {
             while (true) {
+                if (!view.isReady) {
+                    delay(200)
+                    continue
+                }
                 position = view.timePos ?: position
                 duration = view.duration ?: duration
                 paused = view.paused ?: paused

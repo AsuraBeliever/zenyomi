@@ -19,12 +19,14 @@ import kotlinx.coroutines.launch
 import tachiyomi.domain.source.anime.model.StubAnimeSource
 import tachiyomi.domain.source.anime.repository.AnimeStubSourceRepository
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
+import tachiyomi.source.local.anime.LocalAnimeSource
 import java.util.concurrent.ConcurrentHashMap
 
 @Inject
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
 class AndroidAnimeSourceManager(
+    private val localAnimeSource: LocalAnimeSource,
     private val extensionManager: AnimeExtensionManager,
     private val sourceRepository: AnimeStubSourceRepository,
 ) : AnimeSourceManager {
@@ -46,9 +48,9 @@ class AndroidAnimeSourceManager(
         scope.launch {
             extensionManager.installedExtensionsFlow
                 .collectLatest { extensions ->
-                    // TODO: sembrar con la fuente local de anime cuando se porte
-                    // source-local; la de Mihon es de manga y no aplica aqui.
-                    val mutableMap = ConcurrentHashMap<Long, AnimeSource>()
+                    val mutableMap = ConcurrentHashMap<Long, AnimeSource>(
+                        mapOf(LocalAnimeSource.ID to localAnimeSource),
+                    )
                     extensions.forEach { extension ->
                         extension.sources.forEach {
                             mutableMap[it.id] = it
