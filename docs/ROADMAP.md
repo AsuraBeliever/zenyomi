@@ -57,11 +57,11 @@ La fase de mayor riesgo: dependencias nativas y ABIs.
 
 ## Fase 3 — Paridad de funciones · `v0.4.0`
 
-- [ ] Descargas de anime (cola, notificaciones, almacenamiento)
-- [ ] Historial y "Recientes" de anime
-- [ ] Actualizaciones de biblioteca de anime (job periódico)
-- [ ] Trackers de anime (AniList, MAL, Simkl, Bangumi)
-- [ ] Backup y restauración incluyendo anime
+- [x] Descargas de anime (cola, notificaciones, almacenamiento) — falta verificar una descarga HTTP real
+- [x] Historial y "Recientes" de anime
+- [x] Actualizaciones de biblioteca de anime (job periódico)
+- [x] Trackers de anime — AniList y MAL. Simkl y Bangumi no: Bangumi es solo manga en Mihon y Simkl no existe ahí, así que ninguno sale gratis
+- [x] Backup y restauración incluyendo anime
 - [ ] Ajustes de anime y del player
 - [ ] Estadísticas de anime
 

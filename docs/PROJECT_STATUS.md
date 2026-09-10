@@ -38,7 +38,7 @@
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
-| Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque no se puede disparar por adb, ver TESTING.md |
+| Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque sigue sin poder dispararse por adb, ver TESTING.md |
 | PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
 | Resolución de vídeo desde la fuente | ✅ | verificada de punta a punta con la fuente local |
 | Progreso de reproducción | ✅ | verificado en la BD: `seen=1`, `last_second_seen=9`, `total_seconds=10` |
@@ -72,6 +72,12 @@ no un accidente: el lado anime todavía no tiene el equivalente de
 `mangaRepository.getReadMangaNotInLibrary()`.
 
 ## Sin verificar en dispositivo
+
+**El doble toque del player.** Se han intentado tres vías: `input motionevent`, dos `input tap`
+concurrentes y `sendevent` desde el propio dispositivo. Las dos primeras llegan tarde a la
+ventana de 300 ms porque cada `input` arranca una JVM; la tercera falla porque el emulador es
+una imagen de producción sin root y SELinux bloquea `/dev/input`. Peor: los taps concurrentes
+inyectan eventos inconsistentes y cuelgan el input del sistema. **Necesita un dedo humano.**
 
 **Vincular un anime a una cuenta real de tracker.** No hay credenciales de MyAnimeList ni de
 AniList en el entorno de desarrollo, y no se va a crear una cuenta en nombre del cliente. Lo

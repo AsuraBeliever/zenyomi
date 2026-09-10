@@ -10,6 +10,9 @@ import `is`.xyz.mpv.MPVLib
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 import java.io.File
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * Surface that hosts an mpv instance.
@@ -40,47 +43,58 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     /** Observers are registered against MPVLib globally, so keep ours to remove it later. */
     private var observer: MPVLib.EventObserver? = null
 
-    fun initialise(configDir: File) {
+    /**
+     * @param audioLanguages / [subtitleLanguages] mpv's `alang` and `slang`: comma separated
+     * codes in order of preference. Empty is left unset, because mpv reads an empty list as
+     * "prefer no track at all".
+     * @param speedPercent playback speed, 100 being normal.
+     */
+    fun initialise(
+        configDir: File,
+        audioLanguages: String = "",
+        subtitleLanguages: String = "",
+        speedPercent: Int = 100,
+    ) {
         if (initialised) return
-        configDir.mkdirs()
-
-        MPVLib.create(context, "v")
-        MPVLib.setOptionString("config", "yes")
-        MPVLib.setOptionString("config-dir", configDir.path)
-        // Hardware decoding where the device offers it, falling back to software.
-        MPVLib.setOptionString("hwdec", "auto-safe")
-        MPVLib.setOptionString("vo", "gpu")
-        MPVLib.setOptionString("gpu-context", "android")
-        MPVLib.setOptionString("force-window", "no")
-        MPVLib.setOptionString("keep-open", "always")
-        MPVLib.setOptionString("ao", "audiotrack")
-        MPVLib.init()
-
-        MPVLib.observeProperty("time-pos", MPVLib.mpvFormat.MPV_FORMAT_INT64)
-        MPVLib.observeProperty("duration", MPVLib.mpvFormat.MPV_FORMAT_INT64)
-        MPVLib.observeProperty("pause", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
-
-        // Without this a failed loadfile is silent: mpv reports it on its own log.
-        MPVLib.addLogObserver { prefix, level, text ->
-            logcat(LogPriority.DEBUG) { "mpv [$prefix] $text".trim() }
-        }
-        MPVLib.setOptionString("msg-level", "all=v")
-
-        holder.addCallback(this)
         initialised = true
+        configDir.mkdirs()
+        holder.addCallback(this)
+
+        // All of libmpv is driven from one thread; see runOnMpvThread.
+        postToMpv {
+            MPVLib.create(context, "v")
+            // Registered before anything else: without it a rejected option or a failed
+            // loadfile is silent, and mpv only ever complains on its own log.
+            MPVLib.setOptionString("msg-level", "all=v")
+            MPVLib.addLogObserver { prefix, _, text ->
+                logcat(LogPriority.DEBUG) { "mpv [$prefix] $text".trim() }
+            }
+            MPVLib.setOptionString("config", "yes")
+            MPVLib.setOptionString("config-dir", configDir.path)
+            // Hardware decoding where the device offers it, falling back to software.
+            MPVLib.setOptionString("hwdec", "auto-safe")
+            MPVLib.setOptionString("vo", "gpu")
+            MPVLib.setOptionString("gpu-context", "android")
+            MPVLib.setOptionString("force-window", "no")
+            MPVLib.setOptionString("keep-open", "always")
+            MPVLib.setOptionString("ao", "audiotrack")
+            // These have to be options rather than properties: mpv applies them while opening
+            // a file, so setting them after init does nothing until the *next* file.
+            if (audioLanguages.isNotBlank()) MPVLib.setOptionString("alang", audioLanguages)
+            if (subtitleLanguages.isNotBlank()) MPVLib.setOptionString("slang", subtitleLanguages)
+            MPVLib.setOptionString("speed", (speedPercent.coerceIn(25, 400) / 100.0).toString())
+            MPVLib.init()
+
+            MPVLib.observeProperty("time-pos", MPVLib.mpvFormat.MPV_FORMAT_INT64)
+            MPVLib.observeProperty("duration", MPVLib.mpvFormat.MPV_FORMAT_INT64)
+            MPVLib.observeProperty("pause", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
+        }
 
         // AndroidView hands over a SurfaceView whose surface may already exist, and
         // surfaceCreated only fires for surfaces created after the callback is added.
         // Without this the pending file waits forever and the screen stays black.
         if (holder.surface?.isValid == true) {
             attach(holder)
-        }
-
-        // The surface may already exist by the time this runs, and a callback added
-        // afterwards is never told about a surface that was created before it. Attach it
-        // here, or the file stays pending forever and the screen sits black.
-        if (holder.surface?.isValid == true) {
-            surfaceCreated(holder)
         }
     }
 
@@ -98,13 +112,22 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
-    /** mpv takes the start position as a loadfile option, avoiding a visible seek. */
+    /**
+     * mpv takes the start position as a loadfile option, which avoids a visible seek.
+     *
+     * The command is `loadfile <url> [<flags> [<index> [<options>]]]`, so the options belong in
+     * the *fourth* argument. Passing them third made mpv try to read "start=71" as the integer
+     * index and refuse the whole command — the file simply never loaded, so every episode with
+     * a saved position opened to a black screen. INSERT_AT_END is the documented default index.
+     */
     private fun load(uri: String, resumeAt: Int) {
         val target = resolve(uri) ?: return
-        if (resumeAt > 0) {
-            MPVLib.command(arrayOf("loadfile", target, "replace", "start=$resumeAt"))
-        } else {
-            MPVLib.command(arrayOf("loadfile", target))
+        postToMpv {
+            if (resumeAt > 0) {
+                MPVLib.command(arrayOf("loadfile", target, "replace", INSERT_AT_END, "start=$resumeAt"))
+            } else {
+                MPVLib.command(arrayOf("loadfile", target))
+            }
         }
     }
 
@@ -188,39 +211,96 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         val label: String get() = title ?: lang ?: "#$id"
     }
 
+    /**
+     * Tears mpv down without letting it hang the caller.
+     *
+     * Every libmpv call queues behind mpv's own core thread, so tearing the player down while
+     * it is still opening a file blocks for as long as that takes. Doing that from the main
+     * thread — which is where a screen is disposed — is what made backing out of a
+     * just-opened episode freeze the UI until Android raised an ANR.
+     *
+     * The work is handed to a background thread and waited on with a cap. mpv has to finish
+     * detaching before the surface goes, so this cannot simply be fired and forgotten, but a
+     * bounded wait can never reach the ANR threshold.
+     */
     fun release() {
         if (!initialised) return
-        observer?.let { MPVLib.removeObserver(it) }
-        observer = null
-        holder.removeCallback(this)
-        MPVLib.destroy()
-        openFds.forEach { runCatching { it.close() } }
-        openFds.clear()
         initialised = false
+        holder.removeCallback(this)
+        val fds = openFds.toList()
+        openFds.clear()
+        val toRemove = observer
+        observer = null
+
+        runOnMpvThread {
+            toRemove?.let { MPVLib.removeObserver(it) }
+            MPVLib.destroy()
+            fds.forEach { runCatching { it.close() } }
+        }
+    }
+
+    /** Queues [block] on the mpv thread without waiting. Ordering is what matters here. */
+    private fun postToMpv(block: () -> Unit) {
+        mpvThread.execute(block)
+    }
+
+    /**
+     * Runs [block] on the single mpv thread and waits up to [TEARDOWN_TIMEOUT_MS].
+     *
+     * One thread, so create and destroy can never race each other: libmpv is a process-wide
+     * singleton and interleaving those corrupts it.
+     */
+    private fun runOnMpvThread(block: () -> Unit) {
+        val done = mpvThread.submit(block)
+        runCatching { done.get(TEARDOWN_TIMEOUT_MS, TimeUnit.MILLISECONDS) }
+            .onFailure { logcat(LogPriority.WARN) { "mpv teardown did not finish in time" } }
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) = attach(holder)
 
     private fun attach(holder: SurfaceHolder) {
         if (surfaceReady) return
-        MPVLib.attachSurface(holder.surface)
-        MPVLib.setOptionString("force-window", "yes")
-        MPVLib.setOptionString("vo", "gpu")
         surfaceReady = true
-        pendingFile?.let {
-            pendingFile = null
-            load(it, pendingResumeAt)
+        val surface = holder.surface
+        val file = pendingFile
+        pendingFile = null
+        postToMpv {
+            MPVLib.attachSurface(surface)
+            MPVLib.setOptionString("force-window", "yes")
+            MPVLib.setOptionString("vo", "gpu")
         }
+        file?.let { load(it, pendingResumeAt) }
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        MPVLib.setPropertyString("android-surface-size", "${width}x$height")
+        postToMpv { MPVLib.setPropertyString("android-surface-size", "${width}x$height") }
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
         surfaceReady = false
-        MPVLib.setOptionString("vo", "null")
-        MPVLib.setOptionString("force-window", "no")
-        MPVLib.detachSurface()
+        if (!initialised) return
+        // Same reasoning as release(): these are blocking libmpv calls and this runs on the
+        // main thread, but mpv must stop drawing before the surface is gone, so the wait is
+        // bounded rather than skipped.
+        runOnMpvThread {
+            MPVLib.setOptionString("vo", "null")
+            MPVLib.setOptionString("force-window", "no")
+            MPVLib.detachSurface()
+        }
+    }
+
+    companion object {
+        /** mpv's default playlist index for loadfile, meaning "append". */
+        private const val INSERT_AT_END = "-1"
+
+        /**
+         * How long the UI thread will wait for mpv to finish tearing down. Well under
+         * Android's five second input timeout, so a wedged mpv costs a dropped frame or two
+         * rather than an ANR.
+         */
+        private const val TEARDOWN_TIMEOUT_MS = 1500L
+
+        private val mpvThread: ExecutorService =
+            Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "mpv-lifecycle") }
     }
 }
