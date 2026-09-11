@@ -1,13 +1,18 @@
 package eu.kanade.tachiyomi.ui.animebrowse
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -15,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,15 +33,17 @@ import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
+import eu.kanade.tachiyomi.ui.webview.WebViewScreen
+import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
+import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
 
 /**
  * One anime source's catalogue.
  *
- * Shows the source's popular listing. Search and filters exist in [GetRemoteAnime] but
- * have no UI yet; the entry detail screen they would lead to is also still to come, so
- * tapping an entry does nothing for now.
+ * Shows the source's popular listing; tapping an entry opens it. Search and filters exist in
+ * the interactor but have no UI yet.
  */
 class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
 
@@ -59,9 +67,13 @@ class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
         ) { contentPadding ->
             when (val refresh = animeList.loadState.refresh) {
                 is LoadState.Loading -> LoadingScreen(Modifier.padding(contentPadding))
-                is LoadState.Error -> Text(
-                    text = refresh.error.message ?: refresh.error.toString(),
-                    color = MaterialTheme.colorScheme.error,
+                is LoadState.Error -> CatalogError(
+                    message = refresh.error.message ?: refresh.error.toString(),
+                    baseUrl = state.baseUrl,
+                    onRetry = animeList::retry,
+                    onOpenInWebView = { url ->
+                        navigator.push(WebViewScreen(url, state.sourceName, sourceId))
+                    },
                     modifier = Modifier.padding(contentPadding).padding(16.dp),
                 )
                 else -> LazyVerticalGrid(
@@ -94,6 +106,46 @@ class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * What to show when a source's catalogue will not load.
+ *
+ * The message alone was a dead end: a Cloudflare challenge, an expired session or a site that
+ * happens to be down all looked the same and left nothing to do but go back. Retry covers the
+ * transient cases, and opening the site in a WebView is how a challenge actually gets solved —
+ * once it passes there, the cookies are shared and the source works.
+ */
+@Composable
+private fun CatalogError(
+    message: String,
+    baseUrl: String?,
+    onRetry: () -> Unit,
+    onOpenInWebView: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onRetry) {
+                Text(stringResource(MR.strings.action_retry))
+            }
+            if (baseUrl != null) {
+                OutlinedButton(onClick = { onOpenInWebView(baseUrl) }) {
+                    Text(stringResource(MR.strings.action_open_in_web_view))
                 }
             }
         }

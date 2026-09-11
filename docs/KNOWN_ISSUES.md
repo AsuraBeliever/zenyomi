@@ -73,3 +73,24 @@ configurada, y montar una biblioteca real de prueba es más trabajo que valor ap
 **Cómo probarlo:** restaurar tu backup de Mihon, abrir un manga y leer un capítulo. La
 auditoría completa de paridad está en [`MIHON_PARITY.md`](MIHON_PARITY.md).
 
+---
+
+## 5. Qué esperar de las extensiones de anime
+
+El ecosistema de Aniyomi está en mal estado: el índice oficial se ha quedado en 3 extensiones
+y las de la comunidad envejecen sin mantenimiento. **Que una fuente falle no significa que la
+app esté rota.**
+
+Comprobado en el emulador el 2026-09-10 con el repo `aniyomi-revived-anime-extensions`:
+
+| Fuente | Resultado |
+|---|---|
+| AnimeOnsen, AllAnime, Jkanime, Latanime | **cargan catálogo** |
+| AnimeFLV | `HTTP 522` — el servidor del sitio no responde |
+| Animetsu | devuelve HTML donde la extensión espera JSON: el sitio cambió |
+| AnimeLatinoHD | pasa Cloudflare vía WebView, luego `HTTP 404`: endpoint desaparecido |
+
+Cuando una falle, el camino es: **Reintentar**, y si persiste **Abrir en WebView** para
+resolver un posible desafío. Si después sigue fallando, esa extensión está desactualizada y no
+hay nada que arreglar de nuestro lado.
+
