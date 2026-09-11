@@ -650,4 +650,8 @@
     <string name="stats_total_episodes">Total</string>
     <string name="stats_seen_episodes">Seen</string>
     <string name="label_anime_statistics">Anime statistics</string>
+    <string name="sort_anime_title">Title</string>
+    <string name="sort_anime_last_seen">Last watched</string>
+    <string name="sort_anime_unseen">Unwatched episodes</string>
+    <string name="anime_library_no_results">No anime matches that</string>
 </resources>

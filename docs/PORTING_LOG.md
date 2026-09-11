@@ -301,3 +301,21 @@ manga. No acumula revisionados; para eso haría falta una columna nueva.
 
 Solo se cuentan como *tracked* los servicios que implementan `AnimeTracker`. Incluir los de
 manga inflaría el número con entradas que no son de anime.
+
+## Búsqueda, orden e insignias en la biblioteca de anime
+
+La rejilla de anime se escribió aparte en su día porque los componentes de la de Mihon son
+internos a su paquete. Eso sigue: aquí se añaden búsqueda, orden e insignia de episodios
+pendientes sin tocar nada suyo, reutilizando solo `SearchToolbar`, que sí es público.
+
+El filtrado y la ordenación se hacen **en memoria**, no en SQL. La biblioteca entera ya está
+cargada para dibujarse, filtrar decenas de entradas no cuesta nada frente a otra consulta, y
+así el orden es el mismo haya búsqueda o no.
+
+Dos detalles que no son casualidad:
+
+- La insignia solo aparece si quedan episodios por ver. Un `0` sobre cada anime terminado es
+  ruido, no información.
+- Una búsqueda sin resultados **no** es una biblioteca vacía. Decirle al usuario que añada
+  algo cuando lo que pasa es que no encuentra lo que buscó es un mal consejo, así que son dos
+  estados distintos.

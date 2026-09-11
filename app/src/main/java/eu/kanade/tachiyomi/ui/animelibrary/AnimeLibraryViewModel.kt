@@ -14,14 +14,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tachiyomi.domain.anime.interactor.GetLibraryAnime
 import tachiyomi.domain.library.anime.LibraryAnime
+import tachiyomi.i18n.anime.ANMR
 
 /**
- * Backs the anime library tab.
+ * The anime library: what is in it, and how the user wants it shown.
  *
- * Deliberately smaller than Mihon's [eu.kanade.tachiyomi.ui.library.LibraryViewModel]:
- * no categories, filtering, sorting or selection yet. What it does do is real, it reads
- * the anime library straight out of the anime database rather than showing placeholder
- * data, which is also what causes anime.db to be created on first launch.
+ * Search and sorting are applied here rather than in SQL. The whole library is already in
+ * memory to be drawn, and filtering a list of tens of entries costs nothing next to another
+ * query — and it keeps the sort order the same whether or not a search is active.
  */
 @Inject
 @ViewModelKey
@@ -33,18 +33,55 @@ class AnimeLibraryViewModel(
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
+    private var all: List<LibraryAnime> = emptyList()
+
     init {
         viewModelScope.launch {
             getLibraryAnime.subscribe().collect { library ->
-                _state.update { it.copy(isLoading = false, library = library) }
+                all = library
+                _state.update { it.copy(isLoading = false, library = it.arrange(all)) }
             }
         }
+    }
+
+    fun search(query: String?) {
+        _state.update { it.copy(searchQuery = query).let { s -> s.copy(library = s.arrange(all)) } }
+    }
+
+    fun setSort(sort: Sort) {
+        _state.update { it.copy(sort = sort).let { s -> s.copy(library = s.arrange(all)) } }
+    }
+
+    enum class Sort(val label: dev.icerock.moko.resources.StringResource) {
+        TITLE(ANMR.strings.sort_anime_title),
+        LAST_SEEN(ANMR.strings.sort_anime_last_seen),
+        UNSEEN(ANMR.strings.sort_anime_unseen),
     }
 
     data class State(
         val isLoading: Boolean = true,
         val library: List<LibraryAnime> = emptyList(),
+        val searchQuery: String? = null,
+        val sort: Sort = Sort.TITLE,
     ) {
         val isEmpty: Boolean get() = library.isEmpty()
+
+        /** No results for a search is a different situation from an empty library. */
+        val isFilteredEmpty: Boolean get() = library.isEmpty() && !searchQuery.isNullOrBlank()
+
+        internal fun arrange(source: List<LibraryAnime>): List<LibraryAnime> {
+            val query = searchQuery?.trim().orEmpty()
+            val filtered = if (query.isEmpty()) {
+                source
+            } else {
+                source.filter { it.anime.title.contains(query, ignoreCase = true) }
+            }
+            return when (sort) {
+                Sort.TITLE -> filtered.sortedBy { it.anime.title.lowercase() }
+                // Most recently watched first; anything never opened sorts to the bottom.
+                Sort.LAST_SEEN -> filtered.sortedByDescending { it.lastSeen }
+                Sort.UNSEEN -> filtered.sortedByDescending { it.unseenCount }
+            }
+        }
     }
 }
