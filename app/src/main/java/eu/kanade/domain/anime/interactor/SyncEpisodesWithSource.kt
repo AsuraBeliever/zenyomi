@@ -4,6 +4,7 @@ import dev.zacsweers.metro.Inject
 import eu.kanade.domain.anime.model.toSAnime
 import eu.kanade.domain.episode.model.copyFromSEpisode
 import eu.kanade.tachiyomi.animesource.AnimeSource
+import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.model.Episode
 import tachiyomi.domain.episode.model.toEpisodeUpdate
@@ -24,7 +25,13 @@ class SyncEpisodesWithSource(
     private val episodeRepository: EpisodeRepository,
 ) {
 
-    suspend fun await(anime: Anime, source: AnimeSource): List<Episode> {
+    /**
+     * Runs on IO: asking a source for its episode list is a network call, and extensions do
+     * not dispatch it themselves. Called from a ViewModel's default scope it threw
+     * NetworkOnMainThreadException, which was swallowed and showed up as "0 episodes" —
+     * indistinguishable from a source that genuinely had none.
+     */
+    suspend fun await(anime: Anime, source: AnimeSource): List<Episode> = withIOContext {
         val sourceEpisodes = source.getEpisodeList(anime.toSAnime())
         val dbEpisodes = episodeRepository.getEpisodeByAnimeId(anime.id)
         val byUrl = dbEpisodes.associateBy { it.url }
@@ -69,6 +76,6 @@ class SyncEpisodesWithSource(
         } else {
             emptyList()
         }
-        return inserted
+        inserted
     }
 }

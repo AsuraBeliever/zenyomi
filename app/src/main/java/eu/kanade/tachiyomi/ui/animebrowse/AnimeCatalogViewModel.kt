@@ -13,6 +13,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
+import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,11 +47,21 @@ class AnimeCatalogViewModel(
     init {
         viewModelScope.launch {
             val source = sourceManager.getOrStub(sourceId)
-            _state.update { it.copy(sourceName = source.name) }
+            _state.update {
+                it.copy(
+                    sourceName = source.name,
+                    // Only an HTTP source has a site to open; a local or stub one does not,
+                    // and offering WebView for those would lead nowhere.
+                    baseUrl = (source as? AnimeHttpSource)?.baseUrl,
+                )
+            }
         }
     }
 
-    data class State(val sourceName: String = "")
+    data class State(
+        val sourceName: String = "",
+        val baseUrl: String? = null,
+    )
 
     @AssistedFactory
     @ManualViewModelAssistedFactoryKey

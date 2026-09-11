@@ -13,11 +13,11 @@ no perdemos nada.
 
 - [x] Repo git con `mihon` y `aniyomi` como remotes; `main` desde `mihon/main`
 - [x] Charter (`CLAUDE.md`), arquitectura, roadmap, ADRs
-- [ ] Build de línea base verde (Mihon sin modificar)
-- [ ] Wireless debugging operativo contra el dispositivo del cliente
-- [ ] Repo publicado en GitHub + CI que compile el debug en cada push
-- [ ] Rebranding: `applicationId` `app.zenyomi`, nombre, icono, versión 0.1.0
-- [ ] APK instalado y abierto en el dispositivo
+- [x] Build de línea base verde (Mihon sin modificar)
+- [x] Wireless debugging operativo contra el dispositivo del cliente
+- [x] Repo publicado en GitHub + CI que compile el debug en cada push
+- [x] Rebranding: `applicationId` `app.zenyomi`, nombre, icono, versión 0.1.0
+- [x] APK instalado y abierto en el dispositivo
 
 **Entregable:** "Mihon con otro nombre", verificado en tu celular.
 
@@ -27,13 +27,13 @@ no perdemos nada.
 
 Objetivo: el anime existe en la app aunque todavía no se reproduzca.
 
-- [ ] Segunda BD sqldelight `sqldelightanime` portada de Aniyomi
-- [ ] Dominio `domain/anime` + `domain/episode` (desde `entries/anime`, `items/episode`)
-- [ ] Capa `data` de anime + repositorios + inyección de dependencias
-- [ ] `source-api` de anime (`AnimeSource`, `AnimeCatalogueSource`, `Video`, `Hoster`)
-- [ ] Cargador de extensiones de Mihon extendido para APKs de anime
-- [ ] Módulo `i18n-anime`
-- [ ] Navegación: pestañas Anime / Manga separadas
+- [x] Segunda BD sqldelight `sqldelightanime` portada de Aniyomi
+- [x] Dominio `domain/anime` + `domain/episode` (desde `entries/anime`, `items/episode`)
+- [x] Capa `data` de anime + repositorios + inyección de dependencias
+- [x] `source-api` de anime (`AnimeSource`, `AnimeCatalogueSource`, `Video`, `Hoster`)
+- [x] Cargador de extensiones de Mihon extendido para APKs de anime
+- [x] Módulo `i18n-anime`
+- [x] Navegación: pestañas Anime / Manga separadas
 
 **Entregable:** instalar una extensión de anime, buscar, ver la ficha y la lista de
 episodios, añadir a biblioteca. Sin reproducción.
@@ -44,12 +44,12 @@ episodios, añadir a biblioteca. Sin reproducción.
 
 La fase de mayor riesgo: dependencias nativas y ABIs.
 
-- [ ] Integrar mpv-android, FFmpeg-kit, mediasession, seeker, truetypeparser
-- [ ] Portar la UI del player y sus controles
-- [ ] Extracción de vídeo desde las fuentes (`Hoster` / `Video`)
-- [ ] Subtítulos y pistas de audio
-- [ ] Progreso de reproducción y marcado de episodio visto
-- [ ] Verificar tamaño de APK y splits por ABI
+- [x] Integrar mpv-android, FFmpeg-kit, mediasession, seeker, truetypeparser
+- [x] Portar la UI del player y sus controles
+- [x] Extracción de vídeo desde las fuentes (`Hoster` / `Video`)
+- [x] Subtítulos y pistas de audio
+- [x] Progreso de reproducción y marcado de episodio visto
+- [x] Verificar tamaño de APK y splits por ABI
 
 **Entregable:** ver un episodio de principio a fin en tu celular.
 
@@ -72,7 +72,7 @@ La fase de mayor riesgo: dependencias nativas y ABIs.
 - [x] Auditoría: **ninguna feature de Mihon perdida** — ver `docs/MIHON_PARITY.md`
 - [ ] Streaming por torrent (torrserver) — opcional, se evalúa
 - [ ] Rendimiento, baseline profile, R8
-- [ ] Release firmado, changelog, fastlane
+- [x] Release firmado, changelog, fastlane
 
 ---
 

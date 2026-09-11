@@ -48,12 +48,14 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      * codes in order of preference. Empty is left unset, because mpv reads an empty list as
      * "prefer no track at all".
      * @param speedPercent playback speed, 100 being normal.
+     * @param httpHeaders "Name: value" pairs for mpv's `http-header-fields`.
      */
     fun initialise(
         configDir: File,
         audioLanguages: String = "",
         subtitleLanguages: String = "",
         speedPercent: Int = 100,
+        httpHeaders: List<String> = emptyList(),
     ) {
         if (initialised) return
         initialised = true
@@ -83,6 +85,11 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             if (audioLanguages.isNotBlank()) MPVLib.setOptionString("alang", audioLanguages)
             if (subtitleLanguages.isNotBlank()) MPVLib.setOptionString("slang", subtitleLanguages)
             MPVLib.setOptionString("speed", (speedPercent.coerceIn(25, 400) / 100.0).toString())
+            // Video hosts that check the Referer answer mpv's bare request with 403, so the
+            // headers the source resolved the video with have to travel with it.
+            if (httpHeaders.isNotEmpty()) {
+                MPVLib.setOptionString("http-header-fields", httpHeaders.toMpvList())
+            }
             MPVLib.init()
 
             MPVLib.observeProperty("time-pos", MPVLib.mpvFormat.MPV_FORMAT_INT64)
@@ -288,6 +295,15 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             MPVLib.detachSurface()
         }
     }
+
+    /**
+     * mpv's escaped list syntax: each item prefixed with `%<byte length>%`.
+     *
+     * A plain comma-separated list breaks the moment a header value contains a comma — which
+     * cookies and Accept headers routinely do — and mpv then drops or mangles the lot.
+     */
+    private fun List<String>.toMpvList(): String =
+        joinToString(",") { "%${it.toByteArray().size}%$it" }
 
     companion object {
         /** mpv's default playlist index for loadfile, meaning "append". */

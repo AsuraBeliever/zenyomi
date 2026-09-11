@@ -67,6 +67,7 @@ fun AnimePlayerContent(
     videoUrl: String,
     title: String,
     episodeId: Long,
+    headers: List<String>,
     inPictureInPicture: Boolean,
     onEnterPictureInPicture: (videoAspect: Float) -> Unit,
     onBack: () -> Unit,

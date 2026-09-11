@@ -46,6 +46,7 @@ class AnimePlayerActivity : BaseActivity() {
         val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL)
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val episodeId = intent.getLongExtra(EXTRA_EPISODE_ID, -1L)
+        val headers = intent.getStringArrayListExtra(EXTRA_HEADERS).orEmpty()
 
         if (videoUrl.isNullOrBlank() || episodeId == -1L) {
             // Nothing to play; leaving a blank black activity on the stack would be worse.
@@ -60,6 +61,7 @@ class AnimePlayerActivity : BaseActivity() {
                 videoUrl = videoUrl,
                 title = title,
                 episodeId = episodeId,
+                headers = headers,
                 inPictureInPicture = inPictureInPicture,
                 onEnterPictureInPicture = ::enterPictureInPicture,
                 onBack = ::finish,
@@ -93,14 +95,31 @@ class AnimePlayerActivity : BaseActivity() {
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_EPISODE_ID = "episode_id"
 
+        /**
+         * One "Name: value" per entry, handed to mpv as `http-header-fields`. Hosts that check
+         * the Referer answer a bare request with 403, which reaches the user as a player that
+         * opens and then plays nothing.
+         */
+        private const val EXTRA_HEADERS = "headers"
+
         private const val MIN_ASPECT = 0.5f
         private const val MAX_ASPECT = 2.35f
 
-        fun newIntent(context: Context, videoUrl: String, title: String, episodeId: Long): Intent {
+        fun newIntent(
+            context: Context,
+            videoUrl: String,
+            title: String,
+            episodeId: Long,
+            headers: Map<String, String> = emptyMap(),
+        ): Intent {
             return Intent(context, AnimePlayerActivity::class.java).apply {
                 putExtra(EXTRA_VIDEO_URL, videoUrl)
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_EPISODE_ID, episodeId)
+                putStringArrayListExtra(
+                    EXTRA_HEADERS,
+                    ArrayList(headers.map { "${it.key}: ${it.value}" }),
+                )
             }
         }
     }

@@ -344,3 +344,81 @@ y hay un botón de recarga manual.
 
 Verificado de punta a punta en el emulador con el repo `aniyomi-revived-anime-extensions`:
 añadir el repo, ver las disponibles, instalar, confiar en la firma y que la fuente aparezca.
+
+## Recuperarse de un catálogo que no carga
+
+Cuando una fuente fallaba, la pantalla mostraba el texto de la excepción y nada más. Un
+desafío de Cloudflare, una sesión caducada y un sitio caído se veían exactamente igual, y no
+quedaba más salida que volver atrás.
+
+Ahora hay **Reintentar** y **Abrir en WebView**, que es como se resuelve de verdad un desafío:
+el usuario lo pasa en el WebView, las cookies se comparten con el cliente de red, y al
+reintentar la fuente funciona. Solo se ofrece WebView para fuentes HTTP; una local o un stub
+no tienen sitio que abrir.
+
+**Verificado con AnimeLatinoHD**, que fallaba con "Failed to bypass Cloudflare": abrir el
+WebView carga el sitio y, al reintentar, el error cambia a `HTTP 404` — la petición ya pasa
+Cloudflare y lo que falla es el endpoint de una extensión desactualizada. Es exactamente la
+distinción que antes era imposible de hacer desde la app.
+
+## Cinco fallos que solo aparecen con extensiones reales
+
+Probando nueve extensiones de verdad salieron cinco fallos propios que ninguna prueba con la
+fuente local podía enseñar.
+
+**1. `NetworkOnMainThreadException` al pedir episodios.** `SyncEpisodesWithSource` se llamaba
+desde el scope por defecto de un ViewModel, o sea el hilo principal, y pedir la lista de
+episodios es una llamada de red. La excepción se tragaba y la ficha decía "0 episodes" — igual
+que una serie sin episodios. Ahora el interactor despacha en IO, que es la capa correcta.
+
+**2. `AbstractMethodError` en `ParsedAnimeHttpSource`.** `hosterListSelector`,
+`hosterFromElement`, `seasonListSelector` y `seasonFromElement` llegaron con extensions-lib 16
+y se declararon **abstractas**. Prácticamente toda extensión publicada sigue compilada contra
+la 14 y no las implementa, así que el cargador lanzaba `AbstractMethodError` en cuanto se le
+pedían vídeos. Ahora tienen implementación por defecto que lanza `UnsupportedOperationException`.
+
+**3. El camino antiguo no era un respaldo real.** `GetEpisodeVideos` solo caía a
+`getVideoList(episode)` ante `IllegalStateException` y `UnsupportedOperationException`. Pero el
+`hosterListRequest` por defecto construye `baseUrl + episode.url`, y una fuente cuyo episodio
+es un id suelto produce un host inventado y una `IOException` — que no estaba contemplada. Se
+cae al camino antiguo ante **cualquier** fallo, y también cuando los hosters resuelven a cero.
+
+**4. Las portadas pedían la url a pelo.** Muchos sitios responden 403 sin su Referer.
+`AnimeCoverFetcher` las pide a través de la fuente que las publicó, con sus cabeceras. Es una
+versión delgada del de Mihon: sin caché de portadas en disco, que puede venir después.
+
+**5. Las cabeceras del vídeo se tiraban.** Se le pasaba a mpv solo la url, así que un host que
+comprueba el Referer devolvía 403 y el player abría sin reproducir. Ahora viajan con ella, en
+la sintaxis de lista escapada de mpv (`%<longitud>%`): una lista separada por comas se rompe en
+cuanto un valor lleva una coma, cosa que las cookies hacen a diario.
+
+**Y lo que era más difícil de ver:** los tres primeros se manifestaban como *nada*. Una ficha
+vacía, un toque que no hace nada. Ahora cada fallo se dice: la ficha muestra por qué no hay
+episodios, y tocar un episodio que no resuelve explica el motivo en vez de quedarse quieto.
+
+## Browse: anime al lado del manga
+
+Browse pasa de tres pestañas a cinco: **Sources · Manga extensions · Anime sources · Anime
+extensions · Migrate**. La de Mihon se renombra a "Manga extensions" — es lo único que se le
+toca, un texto.
+
+La petición original era *un* listado de fuentes con filtro anime/manga/todas. Se hizo con
+pestañas separadas en su lugar, y la razón es concreta: las fuentes de anime y las de manga
+son tipos distintos, con repositorios, fijado y preferencias propios. Fundirlas obligaría a
+reescribir `SourcesViewModel` y `SourcesScreen` de Mihon, que son justo los ficheros que deben
+seguir mergeando limpio desde upstream, y a cambio el usuario gana un filtro más en vez de un
+toque en una pestaña. Cada listado tiene **su** filtro de idioma, que era lo que faltaba.
+
+### Identificar extensiones que no sirven
+
+No hay una lista curada nuestra, y es deliberado: probé nueve extensiones y los resultados
+cambian de una semana a otra, así que una lista mantenida a mano mentiría enseguida. Se usa lo
+que **sí** es dato: los repositorios marcan las abandonadas poniendo `(Dead)` en el nombre, y
+eso se muestra como aviso en rojo antes de instalar nada.
+
+El nombre se limpia para mostrarlo: fuera el prefijo `Aniyomi: ` que llevan todas y fuera el
+marcador. Con varios cientos de entradas, ese prefijo repetido solo gasta ancho de pantalla.
+
+El filtrado y la agrupación se calculan sobre el estado ya cargado en memoria, no en otro
+flow: re-filtrar unos cientos de entradas cuesta menos que mantener una segunda copia
+sincronizada.
