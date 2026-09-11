@@ -62,3 +62,14 @@ worker en primer plano, la notificación de error, el desencolado y el borrado d
 accesible por red — la única extensión instalada (Jellyfin) apunta a un servidor que no
 existe—, así que el camino solo se ejercita hasta que la fuente falla al resolver el vídeo.
 
+---
+
+## 4. Leer un manga y restaurar un backup grande
+
+**Estado:** el código de Mihon está intacto (diff vacío contra `mihon/main` en lector,
+biblioteca y dominio de manga), pero no se ha ejercitado en el emulador.
+**Por qué no se puede aquí:** no hay manga en la biblioteca del emulador ni fuente
+configurada, y montar una biblioteca real de prueba es más trabajo que valor aporta.
+**Cómo probarlo:** restaurar tu backup de Mihon, abrir un manga y leer un capítulo. La
+auditoría completa de paridad está en [`MIHON_PARITY.md`](MIHON_PARITY.md).
+

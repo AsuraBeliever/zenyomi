@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.ui.animelibrary
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -58,15 +60,31 @@ private fun AnimeLibraryGridItem(item: LibraryAnime, onClick: () -> Unit) {
             .padding(4.dp)
             .clickable(onClick = onClick),
     ) {
-        AsyncImage(
-            model = item.anime.thumbnailUrl,
-            contentDescription = item.anime.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(4.dp)),
-        )
+        Box {
+            AsyncImage(
+                model = item.anime.thumbnailUrl,
+                contentDescription = item.anime.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2f / 3f)
+                    .clip(RoundedCornerShape(4.dp)),
+            )
+            // Only when there is something to say: a "0" on every finished anime is noise.
+            if (item.unseenCount > 0) {
+                Text(
+                    text = item.unseenCount.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.primary)
+                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                )
+            }
+        }
         Text(
             text = item.anime.title,
             style = MaterialTheme.typography.bodySmall,

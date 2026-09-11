@@ -1,0 +1,5 @@
+Zenyomi 0.5.3
+
+Fixes installing anime extensions, which downloaded the APK and then did nothing.
+The extension list no longer looks empty after reopening the app.
+Adds search, sorting and unwatched badges to the anime library.

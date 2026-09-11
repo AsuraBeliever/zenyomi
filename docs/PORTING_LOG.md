@@ -282,3 +282,65 @@ puede lanzar y olvidar, pero una espera acotada nunca llega al límite de ANR de
 `alang`, `slang` y `speed` se fijan como **opciones antes de `init()`**, no como propiedades
 después: mpv las aplica al abrir el fichero, así que ponerlas más tarde no hace nada hasta el
 siguiente. Verificado midiendo: a 2x el vídeo avanza 64 s en 32 s reales.
+
+## Estadísticas de anime
+
+Pantalla propia, accesible desde la biblioteca de anime igual que el historial, en vez de una
+sección dentro de la de Mihon: el árbol es paralelo y así su pantalla queda intacta. Reutiliza
+las cadenas de Mihon donde significan lo mismo (`label_overview_section`, `label_started`,
+`label_mean_score`…), que es donde compartir sí sale gratis.
+
+Los contadores se calculan recorriendo la biblioteca con los interactors existentes, no con
+vistas agregadas nuevas. Una biblioteca de anime son decenas de entradas, no los miles que
+puede tener una de manga, y unas cuantas consultas son más fáciles de mantener correctas que
+un SQL agregado escrito a mano — que es justo donde ya me equivoqué al derivar mappers.
+
+**"Tiempo visto" es la suma de `last_second_seen`**, es decir lo más lejos que se ha llegado en
+cada episodio. `animehistory` no guarda duración propia que sumar, al contrario que el lado
+manga. No acumula revisionados; para eso haría falta una columna nueva.
+
+Solo se cuentan como *tracked* los servicios que implementan `AnimeTracker`. Incluir los de
+manga inflaría el número con entradas que no son de anime.
+
+## Búsqueda, orden e insignias en la biblioteca de anime
+
+La rejilla de anime se escribió aparte en su día porque los componentes de la de Mihon son
+internos a su paquete. Eso sigue: aquí se añaden búsqueda, orden e insignia de episodios
+pendientes sin tocar nada suyo, reutilizando solo `SearchToolbar`, que sí es público.
+
+El filtrado y la ordenación se hacen **en memoria**, no en SQL. La biblioteca entera ya está
+cargada para dibujarse, filtrar decenas de entradas no cuesta nada frente a otra consulta, y
+así el orden es el mismo haya búsqueda o no.
+
+Dos detalles que no son casualidad:
+
+- La insignia solo aparece si quedan episodios por ver. Un `0` sobre cada anime terminado es
+  ruido, no información.
+- Una búsqueda sin resultados **no** es una biblioteca vacía. Decirle al usuario que añada
+  algo cuando lo que pasa es que no encuentra lo que buscó es un mal consejo, así que son dos
+  estados distintos.
+
+## Instalar extensiones de anime: dos cosas que faltaban
+
+Instalar una extensión de anime desde la app **no funcionaba**, y fallaba en silencio: el APK
+se descargaba (HTTP 200) y ahí se acababa todo. Dos causas encadenadas, las dos por haber
+portado las clases sin portar lo que las rodea.
+
+1. **`AnimeExtensionInstallActivity` y `AnimeExtensionInstallService` no estaban declaradas en
+   el manifest.** Las clases existían desde el porte, pero Android no puede arrancar un
+   componente que no está declarado: `Unable to start service ... not found`.
+2. **`InstallerAnime` pide `AnimeExtensionManager` por Injekt**, igual que el instalador de
+   manga pide el suyo, pero solo el de manga estaba registrado en `MetroInteropModule`. El
+   servicio arrancaba y moría al instante con `InjektionException`.
+
+Mihon usa Metro para casi todo pero mantiene Injekt como puente para el código que las
+extensiones tocan. Al portar el instalador se trajo la dependencia de Injekt sin el registro
+que la sostiene.
+
+Además, la lista de extensiones disponibles **solo se cargaba al añadir un repositorio**. Al
+reabrir la app la pantalla salía vacía y parecía que se hubieran perdido los repositorios
+configurados, cuando seguían en la base de datos. Ahora se recarga al abrir, como hace Mihon,
+y hay un botón de recarga manual.
+
+Verificado de punta a punta en el emulador con el repo `aniyomi-revived-anime-extensions`:
+añadir el repo, ver las disponibles, instalar, confiar en la firma y que la fuente aparezca.

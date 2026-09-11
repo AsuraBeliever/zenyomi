@@ -645,4 +645,13 @@
     <string name="pref_player_subtitle_languages">Preferred subtitle languages</string>
     <string name="pref_player_languages_summary">Language codes in order of preference, such as "jpn,eng". Leave empty to let the player decide.</string>
     <string name="pref_player_fullscreen">Hide system bars while playing</string>
+    <string name="stats_time_watched">Time watched</string>
+    <string name="stats_episodes_section">Episodes</string>
+    <string name="stats_total_episodes">Total</string>
+    <string name="stats_seen_episodes">Seen</string>
+    <string name="label_anime_statistics">Anime statistics</string>
+    <string name="sort_anime_title">Title</string>
+    <string name="sort_anime_last_seen">Last watched</string>
+    <string name="sort_anime_unseen">Unwatched episodes</string>
+    <string name="anime_library_no_results">No anime matches that</string>
 </resources>

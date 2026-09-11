@@ -55,7 +55,21 @@ class AnimeExtensionsViewModel(
                     },
                     storeCount = stores.size,
                 )
-            }.collect { next -> _state.update { next } }
+                // The combine rebuilds the whole state, so the refresh flag is carried
+                // over by hand or it would be cleared on every emission.
+            }.collect { next -> _state.update { current -> next.copy(isRefreshing = current.isRefreshing) } }
+        }
+
+        // The available list lives only in memory, so without this the screen opens empty
+        // after every restart and looks as though the configured repositories were lost.
+        refreshAvailable()
+    }
+
+    fun refreshAvailable() {
+        viewModelScope.launch {
+            _state.update { it.copy(isRefreshing = true) }
+            runCatching { extensionManager.findAvailableExtensions() }
+            _state.update { it.copy(isRefreshing = false) }
         }
     }
 
@@ -90,6 +104,7 @@ class AnimeExtensionsViewModel(
         val installed: List<AnimeExtension.Installed> = emptyList(),
         val untrusted: List<AnimeExtension.Untrusted> = emptyList(),
         val available: List<AnimeExtension.Available> = emptyList(),
+        val isRefreshing: Boolean = false,
         val storeCount: Int = 0,
     ) {
         val isEmpty: Boolean
