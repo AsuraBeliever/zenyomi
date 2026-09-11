@@ -10,6 +10,23 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.5.4] - 2026-09-11
+### Added
+- **Browse now holds anime beside manga**: Sources, Manga extensions, Anime sources, Anime extensions, Migrate. Mihon's tab is renamed to "Manga extensions".
+- **Search and language filtering for anime extensions**, grouped under language headers the way Mihon groups manga ones, with only the languages actually present offered. Anime sources get the same filter.
+- Extensions the repositories mark as abandoned say so in the list, so you do not install one to find out.
+- Search, sorting (title, last watched, unwatched episodes) and an unwatched-episode badge in the anime library.
+- Anime statistics, reachable from the anime library.
+
+### Fixed
+- **Asking a source for its episode list ran on the main thread**, so it threw and was swallowed, and the entry read "0 episodes" — indistinguishable from a series that has none. One source went from 0 to 21 episodes with this alone.
+- **Extensions built against the older API died with AbstractMethodError** the moment they were asked for videos. Practically every published anime extension is built that way.
+- The fallback to the older video path only triggered for two exception types, and the common failure was a third. Any failure now falls back.
+- **Covers were requested without the source's headers**, so plenty of sites answered 403 and the library showed blanks.
+- A video's headers were dropped on the way to the player, so hosts that check the Referer returned 403 and the player opened without playing.
+- A source whose catalogue fails now offers Retry and Open in WebView instead of a dead end — which is how a Cloudflare challenge actually gets solved.
+- An entry that cannot fetch episodes, and an episode that resolves to no video, now say why instead of doing nothing.
+
 ## [0.5.3] - 2026-09-10
 ### Fixed
 - **Installing an anime extension did nothing.** The APK downloaded and then stopped, with no error shown: the installer's activity and service were never declared in the manifest, and the installer could not reach the extension manager. Both are fixed, so installing from a repository now works.

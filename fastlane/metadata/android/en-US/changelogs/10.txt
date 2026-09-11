@@ -1,0 +1,7 @@
+Zenyomi 0.5.4
+
+Browse now has tabs for anime sources and anime extensions beside the manga ones.
+Search and filter anime extensions by language; abandoned ones are marked.
+The anime library gains search, sorting and unwatched badges, plus statistics.
+Fixes several faults that made real extensions look broken: empty episode lists,
+blank covers, and episodes that would not play.
