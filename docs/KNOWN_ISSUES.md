@@ -91,6 +91,18 @@ Comprobado en el emulador el 2026-09-10 con el repo `aniyomi-revived-anime-exten
 | AnimeLatinoHD | pasa Cloudflare vía WebView, luego `HTTP 404`: endpoint desaparecido |
 
 Cuando una falle, el camino es: **Reintentar**, y si persiste **Abrir en WebView** para
-resolver un posible desafío. Si después sigue fallando, esa extensión está desactualizada y no
-hay nada que arreglar de nuestro lado.
+resolver un posible desafío.
+
+### Si aun así falla, ¿se puede arreglar?
+
+**Sí.** El código fuente de las extensiones está publicado y es Apache-2.0: el repo trae 61
+extensiones en español con su Kotlin completo. Arreglar una es editar su fuente, compilar el
+APK y firmarlo con nuestra propia clave, publicándolo en un repositorio nuestro.
+
+Ejemplo real, AnimeLatinoHD: pide `GET /animes/populares` y ese endpoint devuelve 404 hoy.
+Arreglarlo es averiguar la ruta actual del sitio y cambiar esa línea.
+
+Lo que **no** es viable es mantener las 260. Cada sitio cambia por su cuenta y eso es trabajo
+continuo de una comunidad entera. Lo razonable, si hace falta, es adoptar solo las que el
+cliente use de verdad. Es un frente de trabajo aparte, no parte de la app.
 
