@@ -10,6 +10,14 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.5.3] - 2026-09-10
+### Fixed
+- **Installing an anime extension did nothing.** The APK downloaded and then stopped, with no error shown: the installer's activity and service were never declared in the manifest, and the installer could not reach the extension manager. Both are fixed, so installing from a repository now works.
+- The available extension list was only fetched when a repository was added, so reopening the app showed an empty screen as though the configured repositories had been lost. It now loads on open, with a refresh button beside it.
+
+### Added
+- Search, sorting (title, last watched, unwatched episodes) and an unwatched-episode badge in the anime library.
+
 ## [0.5.2] - 2026-09-10
 ### Added
 - A Player settings screen: double tap jump, when an episode counts as watched, playback speed, preferred audio and subtitle languages, and whether to hide the system bars.
