@@ -319,3 +319,28 @@ Dos detalles que no son casualidad:
 - Una búsqueda sin resultados **no** es una biblioteca vacía. Decirle al usuario que añada
   algo cuando lo que pasa es que no encuentra lo que buscó es un mal consejo, así que son dos
   estados distintos.
+
+## Instalar extensiones de anime: dos cosas que faltaban
+
+Instalar una extensión de anime desde la app **no funcionaba**, y fallaba en silencio: el APK
+se descargaba (HTTP 200) y ahí se acababa todo. Dos causas encadenadas, las dos por haber
+portado las clases sin portar lo que las rodea.
+
+1. **`AnimeExtensionInstallActivity` y `AnimeExtensionInstallService` no estaban declaradas en
+   el manifest.** Las clases existían desde el porte, pero Android no puede arrancar un
+   componente que no está declarado: `Unable to start service ... not found`.
+2. **`InstallerAnime` pide `AnimeExtensionManager` por Injekt**, igual que el instalador de
+   manga pide el suyo, pero solo el de manga estaba registrado en `MetroInteropModule`. El
+   servicio arrancaba y moría al instante con `InjektionException`.
+
+Mihon usa Metro para casi todo pero mantiene Injekt como puente para el código que las
+extensiones tocan. Al portar el instalador se trajo la dependencia de Injekt sin el registro
+que la sostiene.
+
+Además, la lista de extensiones disponibles **solo se cargaba al añadir un repositorio**. Al
+reabrir la app la pantalla salía vacía y parecía que se hubieran perdido los repositorios
+configurados, cuando seguían en la base de datos. Ahora se recarga al abrir, como hace Mihon,
+y hay un botón de recarga manual.
+
+Verificado de punta a punta en el emulador con el repo `aniyomi-revived-anime-extensions`:
+añadir el repo, ver las disponibles, instalar, confiar en la firma y que la fuente aparezca.

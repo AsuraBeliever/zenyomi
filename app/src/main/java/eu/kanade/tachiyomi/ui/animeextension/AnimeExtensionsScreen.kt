@@ -1,9 +1,13 @@
 package eu.kanade.tachiyomi.ui.animeextension
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -14,8 +18,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Refresh
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.i18n.pluralStringResource
@@ -48,8 +56,20 @@ fun AnimeExtensionsContent() {
     }
 
     Column {
-        TextButton(onClick = { showAddStore = true }) {
-            Text(stringResource(ANMR.strings.label_anime_extension_repos))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { showAddStore = true }) {
+                Text(stringResource(ANMR.strings.label_anime_extension_repos))
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(
+                onClick = viewModel::refreshAvailable,
+                enabled = !state.isRefreshing,
+            ) {
+                Icon(
+                    imageVector = MaterialSymbols.Rounded.Refresh,
+                    contentDescription = stringResource(MR.strings.action_webview_refresh),
+                )
+            }
         }
         AnimeExtensionsList(state, viewModel)
     }
