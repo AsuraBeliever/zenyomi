@@ -161,6 +161,9 @@ jobs:
             zenyomi-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
             zenyomi-x86-${{ needs.get_tag.outputs.tag }}.apk
             zenyomi-x86_64-${{ needs.get_tag.outputs.tag }}.apk
-          draft: true
+          # Published, not a draft. When this created drafts, every tag ended up with two
+          # entries — CI's draft and the one published by hand — sharing a tag name, and
+          # `gh release delete <tag>` then removes whichever it picks first.
+          draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
