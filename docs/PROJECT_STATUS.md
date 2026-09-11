@@ -29,7 +29,7 @@
 | Dominio de fuentes de anime | ✅ | modelos, repositorios, `AnimeSourceManager` |
 | Motor de extensiones de anime | ✅ | derivado del de Mihon; carga APK con `tachiyomi.animeextension` |
 | `AndroidAnimeSourceManager` | ✅ | conecta extensiones cargadas con fuentes usables |
-| Biblioteca de anime (UI) | ✅ | pestaña propia, lee de la BD; `anime.db` se crea al abrirla |
+| Biblioteca de anime (UI) | ✅ | pestaña propia; búsqueda, orden (título / visto / sin ver) e insignia de episodios pendientes |
 | Explorar anime (fuentes + extensiones) | ✅ | dos pestañas; verificado: las 3 fuentes de una extensión real llegan a la UI |
 | Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
