@@ -344,3 +344,19 @@ y hay un botón de recarga manual.
 
 Verificado de punta a punta en el emulador con el repo `aniyomi-revived-anime-extensions`:
 añadir el repo, ver las disponibles, instalar, confiar en la firma y que la fuente aparezca.
+
+## Recuperarse de un catálogo que no carga
+
+Cuando una fuente fallaba, la pantalla mostraba el texto de la excepción y nada más. Un
+desafío de Cloudflare, una sesión caducada y un sitio caído se veían exactamente igual, y no
+quedaba más salida que volver atrás.
+
+Ahora hay **Reintentar** y **Abrir en WebView**, que es como se resuelve de verdad un desafío:
+el usuario lo pasa en el WebView, las cookies se comparten con el cliente de red, y al
+reintentar la fuente funciona. Solo se ofrece WebView para fuentes HTTP; una local o un stub
+no tienen sitio que abrir.
+
+**Verificado con AnimeLatinoHD**, que fallaba con "Failed to bypass Cloudflare": abrir el
+WebView carga el sitio y, al reintentar, el error cambia a `HTTP 404` — la petición ya pasa
+Cloudflare y lo que falla es el endpoint de una extensión desactualizada. Es exactamente la
+distinción que antes era imposible de hacer desde la app.
