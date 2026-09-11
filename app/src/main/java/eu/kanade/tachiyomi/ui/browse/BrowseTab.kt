@@ -16,6 +16,8 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.components.TabbedScreen
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.ui.animebrowse.animeSourcesTab
+import eu.kanade.tachiyomi.ui.animeextension.animeExtensionsTab
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsViewModel
 import eu.kanade.tachiyomi.ui.browse.extension.extensionsTab
 import eu.kanade.tachiyomi.ui.browse.migration.sources.migrateSourceTab
@@ -64,6 +66,11 @@ data object BrowseTab : Tab {
         val tabs = listOf(
             sourcesTab(),
             extensionsTab(extensionsViewModel),
+            // Anime sits beside manga here rather than in a screen of its own: a user
+            // browsing for something to watch expects to find it where they browse for
+            // something to read.
+            animeSourcesTab(),
+            animeExtensionsTab(),
             migrateSourceTab(),
         )
 

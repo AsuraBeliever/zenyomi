@@ -395,3 +395,30 @@ cuanto un valor lleva una coma, cosa que las cookies hacen a diario.
 **Y lo que era más difícil de ver:** los tres primeros se manifestaban como *nada*. Una ficha
 vacía, un toque que no hace nada. Ahora cada fallo se dice: la ficha muestra por qué no hay
 episodios, y tocar un episodio que no resuelve explica el motivo en vez de quedarse quieto.
+
+## Browse: anime al lado del manga
+
+Browse pasa de tres pestañas a cinco: **Sources · Manga extensions · Anime sources · Anime
+extensions · Migrate**. La de Mihon se renombra a "Manga extensions" — es lo único que se le
+toca, un texto.
+
+La petición original era *un* listado de fuentes con filtro anime/manga/todas. Se hizo con
+pestañas separadas en su lugar, y la razón es concreta: las fuentes de anime y las de manga
+son tipos distintos, con repositorios, fijado y preferencias propios. Fundirlas obligaría a
+reescribir `SourcesViewModel` y `SourcesScreen` de Mihon, que son justo los ficheros que deben
+seguir mergeando limpio desde upstream, y a cambio el usuario gana un filtro más en vez de un
+toque en una pestaña. Cada listado tiene **su** filtro de idioma, que era lo que faltaba.
+
+### Identificar extensiones que no sirven
+
+No hay una lista curada nuestra, y es deliberado: probé nueve extensiones y los resultados
+cambian de una semana a otra, así que una lista mantenida a mano mentiría enseguida. Se usa lo
+que **sí** es dato: los repositorios marcan las abandonadas poniendo `(Dead)` en el nombre, y
+eso se muestra como aviso en rojo antes de instalar nada.
+
+El nombre se limpia para mostrarlo: fuera el prefijo `Aniyomi: ` que llevan todas y fuera el
+marcador. Con varios cientos de entradas, ese prefijo repetido solo gasta ancho de pantalla.
+
+El filtrado y la agrupación se calculan sobre el estado ya cargado en memoria, no en otro
+flow: re-filtrar unos cientos de entradas cuesta menos que mantener una segunda copia
+sincronizada.

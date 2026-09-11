@@ -9,6 +9,7 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.tachiyomi.animeextension.AnimeExtensionManager
 import eu.kanade.tachiyomi.animeextension.model.AnimeExtension
+import eu.kanade.tachiyomi.util.system.LocaleHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,8 +34,13 @@ class AnimeExtensionsViewModel(
     private val storeRepository: AnimeExtensionStoreRepository,
 ) : ViewModel() {
 
+    private val _searchQuery = MutableStateFlow<String?>(null)
+
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
+
+    /** Exposed so a search bar hosted by the surrounding tab can drive it. */
+    val searchQuery: StateFlow<String?> = _searchQuery.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -54,6 +60,7 @@ class AnimeExtensionsViewModel(
                             untrusted.any { it.pkgName == remote.pkgName }
                     },
                     storeCount = stores.size,
+                    languages = available.map { it.lang }.distinct().sorted(),
                 )
                 // The combine rebuilds the whole state, so the refresh flag is carried
                 // over by hand or it would be cleared on every emission.
@@ -64,6 +71,13 @@ class AnimeExtensionsViewModel(
         // after every restart and looks as though the configured repositories were lost.
         refreshAvailable()
     }
+
+    fun search(query: String?) {
+        _searchQuery.value = query
+        _state.update { it.copy(searchQuery = query) }
+    }
+
+    fun setLanguage(lang: String?) = _state.update { it.copy(selectedLanguage = lang) }
 
     fun refreshAvailable() {
         viewModelScope.launch {
@@ -105,9 +119,36 @@ class AnimeExtensionsViewModel(
         val untrusted: List<AnimeExtension.Untrusted> = emptyList(),
         val available: List<AnimeExtension.Available> = emptyList(),
         val isRefreshing: Boolean = false,
+        val searchQuery: String? = null,
+        val selectedLanguage: String? = null,
+        val languages: List<String> = emptyList(),
         val storeCount: Int = 0,
     ) {
         val isEmpty: Boolean
             get() = installed.isEmpty() && untrusted.isEmpty() && available.isEmpty()
+
+        /**
+         * Available extensions, filtered and grouped by language the way Mihon groups the
+         * manga ones. Computed here rather than kept in another flow: the list is already in
+         * memory, and re-filtering a few hundred entries costs less than keeping a second
+         * copy in sync.
+         */
+        val groupedAvailable: List<Pair<String, List<AnimeExtension.Available>>>
+            get() {
+                val query = searchQuery?.trim().orEmpty()
+                return available
+                    .asSequence()
+                    .filter { selectedLanguage == null || it.lang == selectedLanguage }
+                    .filter { query.isEmpty() || it.name.contains(query, ignoreCase = true) }
+                    .groupBy { it.lang }
+                    .toSortedMap(LocaleHelper.comparator)
+                    .map { (lang, extensions) -> lang to extensions.sortedBy { it.name } }
+            }
+
+        /** True when a search or a language filter is hiding everything there is. */
+        val isFilteredEmpty: Boolean
+            get() = groupedAvailable.isEmpty() &&
+                available.isNotEmpty() &&
+                (!searchQuery.isNullOrBlank() || selectedLanguage != null)
     }
 }

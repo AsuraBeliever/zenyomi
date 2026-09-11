@@ -73,3 +73,18 @@ sealed class AnimeExtension {
         override val isNsfw: Boolean = false,
     ) : AnimeExtension()
 }
+
+/**
+ * Repositories flag an abandoned source by putting "(Dead)" in its name, which is the only
+ * signal there is: nothing in the index says whether a source still works. Reading it is
+ * better than a list of our own, which would be stale within a week.
+ */
+val AnimeExtension.isDead: Boolean
+    get() = name.contains("(Dead)", ignoreCase = true)
+
+/** The name without the repository's "Aniyomi: " prefix or its dead marker. */
+val AnimeExtension.displayName: String
+    get() = name
+        .removePrefix("Aniyomi: ")
+        .replace("(Dead)", "", ignoreCase = true)
+        .trim()

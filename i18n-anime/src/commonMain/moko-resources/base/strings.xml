@@ -654,4 +654,10 @@
     <string name="sort_anime_last_seen">Last watched</string>
     <string name="sort_anime_unseen">Unwatched episodes</string>
     <string name="anime_library_no_results">No anime matches that</string>
+    <string name="anime_extension_dead">Marked as no longer maintained</string>
+    <string name="anime_extension_no_results">No extension matches that</string>
+    <string name="anime_extension_all_languages">All languages</string>
+    <string name="label_anime_extensions_tab">Anime extensions</string>
+    <string name="label_anime_sources_tab">Anime sources</string>
+    <string name="anime_sources_no_results">No source in that language</string>
 </resources>
