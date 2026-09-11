@@ -40,10 +40,23 @@ class AnimeSourcesViewModel(
         }
     }
 
+    fun setLanguage(lang: String?) = _state.update { it.copy(selectedLanguage = lang) }
+
     data class State(
         val isLoading: Boolean = true,
         val sources: List<AnimeSource> = emptyList(),
+        val selectedLanguage: String? = null,
     ) {
+        /** Languages actually present, so the filter never offers one that matches nothing. */
+        val languages: List<String>
+            get() = sources.map { it.lang }.distinct().sorted()
+
+        val visibleSources: List<AnimeSource>
+            get() = sources.filter { selectedLanguage == null || it.lang == selectedLanguage }
+
         val isEmpty: Boolean get() = sources.isEmpty()
+
+        val isFilteredEmpty: Boolean
+            get() = visibleSources.isEmpty() && sources.isNotEmpty()
     }
 }
