@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import logcat.LogPriority
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
 import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.anime.model.Anime
@@ -57,13 +59,23 @@ class AnimeDetailsViewModel(
                     it.copy(isLoading = false, anime = anime, episodes = episodes)
                 }
                 // The catalogue only stores the entry; its episodes have to be asked for.
-                // Done once, and failures are silent because a source being unreachable is
-                // ordinary and the stored episodes stay usable.
+                // Done once. A failure used to be swallowed, which left an entry reading
+                // "0 episodes" whether the source was unreachable, blocked, or genuinely
+                // empty — three very different things with the same appearance.
                 refreshDownloaded()
                 if (!episodesFetched) {
                     episodesFetched = true
                     sourceManager.get(anime.source)?.let { source ->
                         runCatching { syncEpisodesWithSource.await(anime, source) }
+                            .onFailure { error ->
+                                logcat(LogPriority.WARN, error) { "Could not fetch episodes" }
+                                _state.update { state ->
+                                    state.copy(episodeError = error.message ?: error.toString())
+                                }
+                            }
+                            .onSuccess {
+                                _state.update { state -> state.copy(episodeError = null) }
+                            }
                     }
                 }
             }
@@ -77,8 +89,8 @@ class AnimeDetailsViewModel(
      * episode that resolves to nothing is a normal outcome when a source needs
      * configuration or the host is down.
      */
-    fun resolveVideo(episode: Episode, onResolved: (String?) -> Unit) {
-        val anime = state.value.anime ?: return onResolved(null)
+    fun resolveVideo(episode: Episode, onResolved: (url: String?, headers: Map<String, String>) -> Unit) {
+        val anime = state.value.anime ?: return onResolved(null, emptyMap())
         _state.update { it.copy(resolvingEpisodeId = episode.id) }
         viewModelScope.launch {
             // A downloaded copy wins: it plays offline and costs the source nothing.
@@ -86,13 +98,35 @@ class AnimeDetailsViewModel(
             val local = source?.let { downloadManager.downloadedUri(anime, it, episode) }
             if (local != null) {
                 _state.update { it.copy(resolvingEpisodeId = null) }
-                return@launch onResolved(local)
+                return@launch onResolved(local, emptyMap())
             }
-            val video = runCatching { getEpisodeVideos.await(anime.source, episode) }
-                .getOrDefault(emptyList())
+            val result = runCatching { getEpisodeVideos.await(anime.source, episode) }
+                .onFailure { logcat(LogPriority.WARN, it) { "Could not resolve ${episode.name}" } }
+            val video = result.getOrDefault(emptyList())
                 .let { with(getEpisodeVideos) { it.best() } }
-            _state.update { it.copy(resolvingEpisodeId = null) }
-            onResolved(video?.videoUrl)
+
+            // Tapping an episode that resolves to nothing used to do nothing at all, which
+            // is indistinguishable from a tap that missed. Whatever went wrong is said out
+            // loud instead.
+            _state.update {
+                it.copy(
+                    resolvingEpisodeId = null,
+                    playbackError = when {
+                        video != null -> null
+                        result.isFailure -> result.exceptionOrNull()?.message
+                            ?: result.exceptionOrNull().toString()
+                        else -> NO_VIDEO
+                    },
+                )
+            }
+            // The headers travel with the url: a video host that checks the Referer answers
+            // 403 to mpv otherwise, which looked like a player that would not play.
+            onResolved(
+                video?.videoUrl,
+                video?.headers?.let { headers ->
+                    headers.names().associateWith { headers[it].orEmpty() }
+                }.orEmpty(),
+            )
         }
     }
 
@@ -151,6 +185,8 @@ class AnimeDetailsViewModel(
         }
     }
 
+    fun clearPlaybackError() = _state.update { it.copy(playbackError = null) }
+
     fun toggleFavorite() {
         val anime = state.value.anime ?: return
         viewModelScope.launch {
@@ -165,6 +201,8 @@ class AnimeDetailsViewModel(
         val resolvingEpisodeId: Long? = null,
         val downloadedEpisodeIds: Set<Long> = emptySet(),
         val canDownload: Boolean = false,
+        val episodeError: String? = null,
+        val playbackError: String? = null,
     )
 
     @AssistedFactory
@@ -172,5 +210,10 @@ class AnimeDetailsViewModel(
     @ContributesIntoMap(AppScope::class)
     interface Factory : ManualViewModelAssistedFactory {
         fun create(animeId: Long): AnimeDetailsViewModel
+    }
+
+    companion object {
+        /** Stands in when a source answers without error but offers no playable video. */
+        const val NO_VIDEO = "No video found for this episode"
     }
 }

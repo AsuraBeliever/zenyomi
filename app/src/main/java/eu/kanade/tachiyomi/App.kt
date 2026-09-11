@@ -31,6 +31,8 @@ import eu.kanade.tachiyomi.core.security.PrivacyPreferences
 import eu.kanade.tachiyomi.crash.CrashActivity
 import eu.kanade.tachiyomi.crash.GlobalExceptionHandler
 import eu.kanade.tachiyomi.data.cache.CoverCache
+import eu.kanade.tachiyomi.data.coil.AnimeCoverFetcher
+import eu.kanade.tachiyomi.data.coil.AnimeKeyer
 import eu.kanade.tachiyomi.data.coil.BufferedSourceFetcher
 import eu.kanade.tachiyomi.data.coil.ImageDecoder
 import eu.kanade.tachiyomi.data.coil.MangaCoverFetcher
@@ -63,6 +65,7 @@ import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.widget.WidgetManager
@@ -91,6 +94,8 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
     @Inject private lateinit var networkHelper: NetworkHelper
 
     @Inject private lateinit var sourceManager: SourceManager
+
+    @Inject private lateinit var animeSourceManager: AnimeSourceManager
 
     @Inject private lateinit var widgetManager: WidgetManager
 
@@ -221,9 +226,13 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
                 add(BufferedSourceFetcher.Factory())
                 add(MangaCoverFetcher.MangaCoverFactory(callFactoryLazy, coverCache, sourceManager))
                 add(MangaCoverFetcher.MangaFactory(callFactoryLazy, coverCache, sourceManager))
+                // Anime covers need the source's headers too; plenty of sites answer a bare
+                // request with 403.
+                add(AnimeCoverFetcher.Factory(animeSourceManager, callFactoryLazy))
                 // Keyer
                 add(MangaCoverKeyer(coverCache))
                 add(MangaKeyer())
+                add(AnimeKeyer())
             }
 
             memoryCache(

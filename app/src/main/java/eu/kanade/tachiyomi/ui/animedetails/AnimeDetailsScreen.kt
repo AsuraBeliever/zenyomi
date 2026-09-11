@@ -18,9 +18,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -70,7 +74,16 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
         val downloadQueue by viewModel.downloadQueue.collectAsStateWithLifecycle()
         val anime = state.anime
 
+        val snackbarHostState = remember { SnackbarHostState() }
+        LaunchedEffect(state.playbackError) {
+            state.playbackError?.let {
+                snackbarHostState.showSnackbar(it)
+                viewModel.clearPlaybackError()
+            }
+        }
+
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = { scrollBehavior ->
                 AppBar(
                     title = anime?.title.orEmpty(),
@@ -126,6 +139,16 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
+                    // An empty list and a source that refused to answer look the same
+                    // otherwise, and only one of them is worth retrying.
+                    state.episodeError?.let { error ->
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
                     HorizontalDivider()
                 }
                 items(state.episodes, key = { it.id }) { episode ->
@@ -174,10 +197,16 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         modifier = Modifier.clickable(
                             enabled = state.resolvingEpisodeId == null,
                         ) {
-                            viewModel.resolveVideo(episode) { url ->
+                            viewModel.resolveVideo(episode) { url, headers ->
                                 if (url != null) {
                                     context.startActivity(
-                                        AnimePlayerActivity.newIntent(context, url, episode.name, episode.id),
+                                        AnimePlayerActivity.newIntent(
+                                            context,
+                                            url,
+                                            episode.name,
+                                            episode.id,
+                                            headers,
+                                        ),
                                     )
                                 }
                             }
@@ -193,7 +222,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
 private fun AnimeHeader(anime: Anime) {
     Row(Modifier.padding(16.dp)) {
         AsyncImage(
-            model = anime.thumbnailUrl,
+            model = anime,
             contentDescription = anime.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier

@@ -206,7 +206,13 @@ abstract class ParsedAnimeHttpSource : AnimeHttpSource() {
      *
      * @since extensions-lib 16
      */
-    protected abstract fun seasonListSelector(): String
+// Not abstract: this arrived with extensions-lib 16, and practically every
+        // published extension is still built against 14. Declaring it abstract made the
+        // class loader raise AbstractMethodError the moment one of them was asked for
+        // videos, which killed the source outright instead of falling back to the old
+        // path that those extensions do implement.
+    protected open fun seasonListSelector(): String =
+        throw UnsupportedOperationException()
 
     /**
      * Returns a season from the given element.
@@ -214,7 +220,13 @@ abstract class ParsedAnimeHttpSource : AnimeHttpSource() {
      * @since extensions-lib 16
      * @param element an element obtained from [seasonListSelector].
      */
-    protected abstract fun seasonFromElement(element: Element): SAnime
+// Not abstract: this arrived with extensions-lib 16, and practically every
+        // published extension is still built against 14. Declaring it abstract made the
+        // class loader raise AbstractMethodError the moment one of them was asked for
+        // videos, which killed the source outright instead of falling back to the old
+        // path that those extensions do implement.
+    protected open fun seasonFromElement(element: Element): SAnime =
+        throw UnsupportedOperationException()
 
     /**
      * Parses the response from the site and returns the hoster list.
@@ -236,7 +248,13 @@ abstract class ParsedAnimeHttpSource : AnimeHttpSource() {
      *
      * @since extensions-lib 16
      */
-    protected abstract fun hosterListSelector(): String
+// Not abstract: this arrived with extensions-lib 16, and practically every
+        // published extension is still built against 14. Declaring it abstract made the
+        // class loader raise AbstractMethodError the moment one of them was asked for
+        // videos, which killed the source outright instead of falling back to the old
+        // path that those extensions do implement.
+    protected open fun hosterListSelector(): String =
+        throw UnsupportedOperationException()
 
     /**
      * Returns a hoster from the given element.
@@ -244,7 +262,13 @@ abstract class ParsedAnimeHttpSource : AnimeHttpSource() {
      * @since extensions-lib 16
      * @param element an element obtained from [hosterListSelector].
      */
-    protected abstract fun hosterFromElement(element: Element): Hoster
+// Not abstract: this arrived with extensions-lib 16, and practically every
+        // published extension is still built against 14. Declaring it abstract made the
+        // class loader raise AbstractMethodError the moment one of them was asked for
+        // videos, which killed the source outright instead of falling back to the old
+        // path that those extensions do implement.
+    protected open fun hosterFromElement(element: Element): Hoster =
+        throw UnsupportedOperationException()
 
     /**
      * Parses the response from the site and returns the page list.
