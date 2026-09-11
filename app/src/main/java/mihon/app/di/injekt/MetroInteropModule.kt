@@ -2,6 +2,7 @@ package mihon.app.di.injekt
 
 import dev.zacsweers.metro.Inject
 import eu.kanade.domain.track.service.TrackPreferences
+import eu.kanade.tachiyomi.animeextension.AnimeExtensionManager
 import eu.kanade.tachiyomi.data.cache.CoverCache
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.network.JavaScriptEngine
@@ -27,6 +28,7 @@ class MetroInteropModule(
     private val trackPreferences: TrackPreferences,
 
     private val extensionManager: ExtensionManager,
+    private val animeExtensionManager: AnimeExtensionManager,
 
     private val coverCache: CoverCache,
 ) : InjektModule {
@@ -43,6 +45,8 @@ class MetroInteropModule(
         addSingleton(trackPreferences)
 
         addSingleton(extensionManager)
+        // The anime installers reach for this through Injekt exactly as the manga ones do.
+        addSingleton(animeExtensionManager)
 
         addSingleton(coverCache)
     }

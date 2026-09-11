@@ -188,6 +188,11 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <activity
+            android:name=".animeextension.util.AnimeExtensionInstallActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
             android:name=".ui.setting.track.TrackLoginActivity"
             android:exported="true"
             android:label="@string/track_activity_name">
@@ -214,6 +219,11 @@
 
         <service
             android:name=".extension.util.ExtensionInstallService"
+            android:exported="false"
+            android:foregroundServiceType="shortService" />
+
+        <service
+            android:name=".animeextension.util.AnimeExtensionInstallService"
             android:exported="false"
             android:foregroundServiceType="shortService" />
 
