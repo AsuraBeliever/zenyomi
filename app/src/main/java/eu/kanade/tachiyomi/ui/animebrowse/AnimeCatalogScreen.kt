@@ -89,7 +89,9 @@ class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
                                 .clickable { navigator.push(AnimeDetailsScreen(anime.id)) },
                         ) {
                             AsyncImage(
-                                model = anime.thumbnailUrl,
+                                // The Anime itself, not its url: AnimeCoverFetcher needs
+                                // the source to attach its headers.
+                                model = anime,
                                 contentDescription = anime.title,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier

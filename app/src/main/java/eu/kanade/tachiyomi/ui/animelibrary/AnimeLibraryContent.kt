@@ -30,9 +30,9 @@ import tachiyomi.domain.library.anime.LibraryAnime
  * are internal to its own package; sharing them would mean widening their visibility and
  * touching files that need to keep merging cleanly from upstream.
  *
- * Covers load straight from the thumbnail URL. Mihon routes manga covers through a Coil
- * fetcher that adds the source's headers and caching; an anime equivalent still has to
- * be ported, so covers from sources that require headers will not resolve yet.
+ * Covers go through [eu.kanade.tachiyomi.data.coil.AnimeCoverFetcher], which asks the source
+ * that published them and carries its headers. Requesting the thumbnail url directly, as this
+ * used to, gets a 403 from any site that checks the Referer.
  */
 @Composable
 fun AnimeLibraryContent(
@@ -62,7 +62,7 @@ private fun AnimeLibraryGridItem(item: LibraryAnime, onClick: () -> Unit) {
     ) {
         Box {
             AsyncImage(
-                model = item.anime.thumbnailUrl,
+                model = item.anime,
                 contentDescription = item.anime.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
