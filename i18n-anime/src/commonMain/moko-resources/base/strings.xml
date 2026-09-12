@@ -689,4 +689,6 @@
     <string name="anime_filter_bookmarked">Bookmarked</string>
     <string name="anime_filter_completed">Completed</string>
     <string name="anime_library_no_matches">No anime matches these filters.</string>
+    <string name="anime_global_search">Search all anime sources</string>
+    <string name="anime_global_search_hint">Type something to search every installed anime source at once.</string>
 </resources>
