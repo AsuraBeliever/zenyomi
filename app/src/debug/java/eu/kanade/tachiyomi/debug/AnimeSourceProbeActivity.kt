@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.WindowManager
 import android.widget.TextView
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
+import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +50,42 @@ class AnimeSourceProbeActivity : Activity() {
                 .filterIsInstance<AnimeCatalogueSource>()
                 .filter { only == null || it.name.contains(only, ignoreCase = true) }
                 .sortedBy { it.name }
+
+            val coverage = intent.getStringExtra("coverage")
+            if (coverage != null) {
+                val titles = coverage.split('|').map { it.trim() }.filter { it.isNotEmpty() }
+                val rows = mutableListOf(
+                    row("source", "lang", "found", "of", *titles.toTypedArray()),
+                )
+                sources.forEachIndexed { index, source ->
+                    runOnUiThread {
+                        status.text = "Coverage ${index + 1}/${sources.size}: ${source.name}"
+                    }
+                    val hits = titles.map { title ->
+                        step {
+                            withTimeout(STEP_TIMEOUT) {
+                                source.getSearchAnime(1, title, AnimeFilterList()).animes.size
+                            }
+                        }.value ?: -1
+                    }
+                    val found = hits.count { it > 0 }
+                    val cells = hits.map { if (it < 0) "err" else it.toString() }
+                    val line = row(
+                        source.name,
+                        source.lang,
+                        found.toString(),
+                        titles.size.toString(),
+                        *cells.toTypedArray(),
+                    )
+                    Log.i(TAG, line)
+                    rows += line
+                }
+                File(filesDir, "source-coverage.tsv")
+                    .writeText(rows.joinToString("\n", postfix = "\n"))
+                Log.i(TAG, "done: coverage over ${sources.size} source(s)")
+                runOnUiThread { status.text = "Done: coverage" }
+                return@launch
+            }
 
             if (intent.getStringExtra("list") != null) {
                 sources.forEach { Log.i(TAG, row(it.id.toString(), it.name, it.lang)) }

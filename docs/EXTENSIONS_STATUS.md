@@ -106,3 +106,48 @@ Que una extensión esté rota es trabajo de quien la mantiene. Nosotros podemos:
 3. **Arreglar una concreta** si el cliente la usa de verdad: el código de las extensiones es
    Apache-2.0 y se puede compilar y firmar con nuestra clave. AnimeFenix, por ejemplo, es
    cambiar un dominio. Mantener las 260 no lo es.
+
+---
+
+## Cobertura en inglés (medida el 2026-09-12)
+
+"¿Cuál tiene más anime subtitulado al inglés?" no se responde mirando la portada de una
+fuente: su página de populares no dice si tiene el título que buscas. El arnés tiene un modo
+que pregunta por una lista de títulos a cada fuente y cuenta cuántos encuentra:
+
+```sh
+adb shell am start -n app.zenyomi.dev/eu.kanade.tachiyomi.debug.AnimeSourceProbeActivity \
+  -e coverage "'Frieren|Cowboy Bebop|Mushishi|Dandadan|Monster'"
+adb exec-out run-as app.zenyomi.dev cat files/source-coverage.tsv
+```
+
+Las comillas simples dentro de las dobles no son decorativas: sin ellas la shell del
+dispositivo parte la cadena por el `|` e intenta ejecutar cada trozo.
+
+| Fuente | Títulos hallados | Resultados por título | ¿Reproduce hoy? |
+|---|---|---|---|
+| AniWave (Unoriginal) | **5/5** | 4, 4, 5, 3, 30 | no resuelve vídeo |
+| Anichi | 5/5 | 3, 4, 5, 2, 30 | no resuelve vídeo |
+| AnimeKai (Unoriginal) | 5/5 | 3, 4, 5, 2, 30 | no resuelve vídeo |
+| AnimePahe | 4/5 | —, 3, 6, 2, 8 | catálogo da 403 |
+| AnimeOnsen | 4/5 | 2, 1, 0, 2, 7 | **sí**, 1 vídeo |
+| KickAssAnime | 0/5 (caída al medir) | — | **sí**, 3 vídeos |
+| AnimeKhor | 1/5 | 0, 0, 0, 0, 10 | no resuelve vídeo |
+| Miruro.tv | 0/5 | 0 en todo | catálogo vacío |
+| AllAnime, 9AnimeTV, AniWatchtv, Kaido, AniZone, Animetsu | 0/5 | sitio caído al medir | no |
+
+**Dos avisos sobre estos números.**
+
+"Monster" es una palabra corriente y casa con decenas de títulos: ese 30 mide el buscador, no
+el catálogo. Un muestreo mejor usaría títulos sin palabras genéricas.
+
+Anichi y AnimeKai devolvieron **exactamente** los mismos conteos en los cinco títulos pese a
+vivir en dominios distintos (`anichi.to` y `animekaitv.to`). Instalar las dos probablemente no
+da dos catálogos independientes.
+
+**La tensión que sale del dato:** las tres de mayor cobertura llegan al catálogo y a la lista
+de episodios pero no resuelven vídeo, y las dos que sí reproducen tienen catálogos más
+pequeños. El arnés resuelve el primer episodio de la primera entrada de populares, así que un
+"no resuelve vídeo" no demuestra que la fuente nunca reproduzca — puede ser esa entrada, o un
+desafío de Cloudflare que la app sí pasa por WebView y el arnés no.
+
