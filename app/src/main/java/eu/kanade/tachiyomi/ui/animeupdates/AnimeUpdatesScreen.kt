@@ -39,6 +39,7 @@ import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Check
 import mihon.icons.materialsymbols.rounded.Download
+import mihon.icons.materialsymbols.rounded.SwapCalls
 import mihon.icons.materialsymbols.roundedfilled.CheckCircle
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
@@ -50,11 +51,12 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 /**
  * Episodes the anime library has gained, grouped by the day they arrived.
  *
- * Reached from the anime library rather than from Mihon's Updates tab: that tab renders its
- * own scaffold and app bar, so hosting both there would mean restructuring a screen that has
- * to keep merging from upstream. Moving it up is a later call, not a missing piece.
+ * Reachable two ways: pushed from the anime library, and hosted inside the bottom bar's
+ * Updates tab, which swaps between the two halves. [onSwitchToManga] is what tells them apart
+ * — when it is set the bar offers the swap instead of a back arrow, because inside a tab there
+ * is nothing to go back to.
  */
-class AnimeUpdatesScreen : Screen() {
+class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Screen() {
 
     @Composable
     override fun Content() {
@@ -80,7 +82,17 @@ class AnimeUpdatesScreen : Screen() {
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(ANMR.strings.label_anime_updates),
-                    navigateUp = navigator::pop,
+                    navigateUp = if (onSwitchToManga == null) ({ navigator.pop() }) else null,
+                    actions = {
+                        onSwitchToManga?.let { switch ->
+                            IconButton(onClick = switch) {
+                                Icon(
+                                    imageVector = MaterialSymbols.Rounded.SwapCalls,
+                                    contentDescription = stringResource(MR.strings.label_recent_updates),
+                                )
+                            }
+                        }
+                    },
                     scrollBehavior = scrollBehavior,
                 )
             },

@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -20,6 +23,7 @@ import eu.kanade.presentation.updates.UpdatesDeleteConfirmationDialog
 import eu.kanade.presentation.updates.UpdatesFilterDialog
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.ui.animeupdates.AnimeUpdatesScreen
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
@@ -52,6 +56,14 @@ data object UpdatesTab : Tab {
 
     @Composable
     override fun Content() {
+        // Zenyomi: the tab shows either half. The anime screen brings its own scaffold, so it
+        // replaces this one wholesale rather than being squeezed into Mihon's.
+        var showAnime by rememberSaveable { mutableStateOf(false) }
+        if (showAnime) {
+            AnimeUpdatesScreen(onSwitchToManga = { showAnime = false }).Content()
+            return
+        }
+
         val context = LocalContext.current
         val navigator = LocalNavigator.currentOrThrow
         val viewModel = metroViewModel<UpdatesViewModel>()
@@ -78,6 +90,7 @@ data object UpdatesTab : Tab {
             onCalendarClicked = { navigator.push(UpcomingScreen()) },
             onFilterClicked = viewModel::showFilterDialog,
             hasActiveFilters = state.hasActiveFilters,
+            onSwitchToAnime = { showAnime = true },
         )
 
         val onDismissDialog = { viewModel.setDialog(null) }

@@ -36,6 +36,10 @@
 | Búsqueda y filtro de idioma en extensiones de anime | ✅ | agrupado por idioma como en el manga; marca las abandonadas |
 | Catálogo de una fuente | ✅ | rejilla paginada, con búsqueda dentro de la fuente |
 | Búsqueda global de anime | ✅ | una consulta a todas las fuentes a la vez, agrupada por fuente, con el estado de cada una |
+| Fijar y ocultar fuentes de anime | ✅ | fijadas arriba, ocultas fuera de la lista y de la búsqueda global |
+| Migrar un anime entre fuentes | ✅ | reutiliza la búsqueda global; traslada visto, categorías y tracking |
+| Novedades e Historial de anime en la barra inferior | ✅ | las pestañas de Mihon intercambian entre manga y anime |
+| Baseline profile | ✅ | el generador cubre ahora las pantallas de anime; 13 → 1418 reglas de anime |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
 | Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
@@ -124,7 +128,7 @@ Fase 4. Lo que queda, por orden:
 
 | Pieza | Estado |
 |---|---|
-| Baseline profile y afinado de R8 | no empezado |
+| Afinado de R8 | pendiente; el baseline profile ya cubre el anime |
 | Alineación de librerías nativas a 16 KB | vigilando; hoy solo es un aviso |
 | Streaming por torrent (torrserver) | opcional, decisión del cliente |
 
