@@ -64,10 +64,9 @@ import java.util.Locale
  */
 @Composable
 fun AnimePlayerContent(
-    videoUrl: String,
+    request: PlaybackRequest,
     title: String,
     episodeId: Long,
-    headers: List<String>,
     inPictureInPicture: Boolean,
     onEnterPictureInPicture: (videoAspect: Float) -> Unit,
     onBack: () -> Unit,
@@ -79,6 +78,7 @@ fun AnimePlayerContent(
     var paused by remember { mutableStateOf(false) }
     var tracks by remember { mutableStateOf(emptyList<ZenyomiMPVView.Track>()) }
     var seekFeedback by remember { mutableStateOf<String?>(null) }
+    var playbackFailure by remember { mutableStateOf<String?>(null) }
 
     // The jump indicator is a flash, not a state: clear it shortly after it appears.
     LaunchedEffect(seekFeedback) {
@@ -95,15 +95,28 @@ fun AnimePlayerContent(
 
     DisposableEffect(playerState.loaded) {
         if (playerState.loaded) {
+            // mpv keeps the window open on a file it could not read, so without this a dead
+            // mirror looks exactly like one that is still loading — forever.
+            view.onPlaybackError = { reason -> playbackFailure = reason.orEmpty() }
             view.initialise(
                 configDir = File(context.filesDir, "mpv"),
                 audioLanguages = viewModel.preferences.preferredAudioLanguages.get(),
                 subtitleLanguages = viewModel.preferences.preferredSubtitleLanguages.get(),
                 speedPercent = viewModel.preferences.defaultSpeed.get(),
+                // Dropping these is what made a resolved video open to a black screen: the
+                // host answers mpv's bare request with 403 and mpv has nothing to play.
+                httpHeaders = request.headers.map { (name, value) -> "$name: $value" },
             )
-            view.playFile(videoUrl, resumeAt = playerState.resumeAt)
+            view.playFile(
+                request.url,
+                resumeAt = playerState.resumeAt,
+                subtitleTracks = request.subtitleTracks,
+                audioTracks = request.audioTracks,
+                mpvArgs = request.mpvArgs,
+            )
         }
         onDispose {
+            view.onPlaybackError = null
             if (playerState.loaded) {
                 // Uses what the polling loop already read instead of asking mpv again:
                 // mpv_get_property waits on mpv's own event loop, and onDispose runs on the
@@ -180,6 +193,31 @@ fun AnimePlayerContent(
                         )
                     },
             )
+        }
+
+        if (playbackFailure != null && !inPictureInPicture) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(32.dp),
+            ) {
+                Text(
+                    text = stringResource(ANMR.strings.anime_error_playback),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                // mpv's own words underneath: "HTTP error 404 Not Found" tells whoever is
+                // reading a bug report which half of the problem to look at.
+                playbackFailure?.takeIf { it.isNotBlank() }?.let { detail ->
+                    Text(
+                        text = detail,
+                        color = Color.White.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
         }
 
         seekFeedback?.let { text ->

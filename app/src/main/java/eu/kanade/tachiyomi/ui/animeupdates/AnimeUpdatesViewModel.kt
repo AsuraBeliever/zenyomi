@@ -12,6 +12,7 @@ import eu.kanade.domain.track.anime.interactor.TrackEpisode
 import eu.kanade.presentation.anime.NoVideoFoundException
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
+import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -179,27 +180,27 @@ class AnimeUpdatesViewModel(
      */
     fun resolveVideo(
         update: AnimeUpdatesWithRelations,
-        onResolved: (url: String?, headers: Map<String, String>) -> Unit,
+        onResolved: (PlaybackRequest?) -> Unit,
     ) {
         _state.update { it.copy(resolvingEpisodeId = update.episodeId) }
         viewModelScope.launch {
             val resolved = resolve(update)
             if (resolved == null) {
                 _state.update { it.copy(resolvingEpisodeId = null, playbackError = NoVideoFoundException()) }
-                return@launch onResolved(null, emptyMap())
+                return@launch onResolved(null)
             }
             val (anime, source, episode) = resolved
 
             val local = downloadManager.downloadedUri(anime, source, episode)
             if (local != null) {
                 _state.update { it.copy(resolvingEpisodeId = null) }
-                return@launch onResolved(local, emptyMap())
+                return@launch onResolved(PlaybackRequest.local(local))
             }
 
             val result = runCatching { getEpisodeVideos.await(anime.source, episode) }
                 .onFailure { logcat(LogPriority.WARN, it) { "Could not resolve ${episode.name}" } }
             val video = result.getOrDefault(emptyList())
-                .let { with(getEpisodeVideos) { it.best() } }
+                .let { getEpisodeVideos.playable(anime.source, it) }
 
             _state.update {
                 it.copy(
@@ -213,12 +214,7 @@ class AnimeUpdatesViewModel(
                     },
                 )
             }
-            onResolved(
-                video?.videoUrl,
-                video?.headers?.let { headers ->
-                    headers.names().associateWith { headers[it].orEmpty() }
-                }.orEmpty(),
-            )
+            onResolved(video?.let(PlaybackRequest::from))
         }
     }
 

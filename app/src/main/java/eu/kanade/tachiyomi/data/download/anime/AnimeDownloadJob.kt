@@ -93,7 +93,7 @@ class AnimeDownloadJob(private val context: Context, workerParams: WorkerParamet
 
             val video = runCatching { getEpisodeVideos.await(anime.source, episode) }
                 .getOrDefault(emptyList())
-                .let { with(getEpisodeVideos) { it.best() } }
+                .let { getEpisodeVideos.playable(anime.source, it) }
 
             if (video == null || !downloader.isDownloadable(source, video)) {
                 notifier.showError(episode.name)

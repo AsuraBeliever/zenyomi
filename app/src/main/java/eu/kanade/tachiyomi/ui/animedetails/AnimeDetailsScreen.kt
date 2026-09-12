@@ -260,15 +260,14 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         modifier = Modifier.clickable(
                             enabled = state.resolvingEpisodeId == null,
                         ) {
-                            viewModel.resolveVideo(episode) { url, headers ->
-                                if (url != null) {
+                            viewModel.resolveVideo(episode) { request ->
+                                if (request != null) {
                                     context.startActivity(
                                         AnimePlayerActivity.newIntent(
                                             context,
-                                            url,
+                                            request,
                                             episode.name,
                                             episode.id,
-                                            headers,
                                         ),
                                     )
                                 }

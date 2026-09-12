@@ -134,15 +134,14 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                                 onDownload = { viewModel.downloadEpisode(item.update) },
                                 onDeleteDownload = { viewModel.deleteDownload(item.update) },
                                 onPlay = {
-                                    viewModel.resolveVideo(item.update) { url, headers ->
-                                        if (url != null) {
+                                    viewModel.resolveVideo(item.update) { request ->
+                                        if (request != null) {
                                             context.startActivity(
                                                 AnimePlayerActivity.newIntent(
                                                     context,
-                                                    url,
+                                                    request,
                                                     item.update.episodeName,
                                                     item.update.episodeId,
-                                                    headers,
                                                 ),
                                             )
                                         }
