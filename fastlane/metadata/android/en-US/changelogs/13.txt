@@ -1,0 +1,8 @@
+Added:
+- Categories in the anime library: create them, file entries in them, switch with tabs. They travel in the backup.
+- Filters, sorting and display modes for the anime library, all remembered between visits.
+- Search inside a single source, and search every anime source at once with a row of results per source.
+
+Fixed:
+- An anime filed in two categories appeared twice under "All".
+- Category tab counts ignored the active filters.
