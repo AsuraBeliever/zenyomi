@@ -8,6 +8,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -23,6 +26,7 @@ import eu.kanade.presentation.history.components.HistoryDeleteDialog
 import eu.kanade.presentation.manga.DuplicateMangaDialog
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
@@ -60,6 +64,14 @@ data object HistoryTab : Tab {
 
     @Composable
     override fun Content() {
+        // Zenyomi: the tab shows either half. The anime screen brings its own scaffold, so it
+        // replaces this one wholesale rather than being squeezed into Mihon's.
+        var showAnime by rememberSaveable { mutableStateOf(false) }
+        if (showAnime) {
+            AnimeHistoryScreen(onSwitchToManga = { showAnime = false }).Content()
+            return
+        }
+
         val navigator = LocalNavigator.currentOrThrow
         val context = LocalContext.current
         val viewModel = metroViewModel<HistoryViewModel>()
@@ -73,6 +85,7 @@ data object HistoryTab : Tab {
             onClickResume = viewModel::getNextChapterForManga,
             onDialogChange = viewModel::setDialog,
             onClickFavorite = viewModel::addFavorite,
+            onSwitchToAnime = { showAnime = true },
         )
 
         val onDismissRequest = { viewModel.setDialog(null) }

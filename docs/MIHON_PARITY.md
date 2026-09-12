@@ -3,8 +3,14 @@
 La regla dura nº1 del charter dice que el anime se **añade** y nunca sustituye ni degrada nada
 de manga. Esto es la comprobación de esa regla. Se repite antes de cada release grande.
 
-**Revisión: 2026-09-10, contra `mihon/main`, en la v0.5.2.**
+**Revisión: 2026-09-12, contra `mihon/main`, en la v0.6.x.**
 **Resultado: no se ha perdido nada.**
+
+> Desde la revisión anterior se tocaron cuatro ficheros más de Mihon —`UpdatesScreen`,
+> `HistoryScreen`, `UpdatesTab`, `HistoryTab`— para que esas dos pestañas puedan mostrar
+> también la mitad de anime. El cambio es aditivo: un parámetro opcional que por defecto
+> es `null` y deja la barra exactamente como la dibuja Mihon. Las únicas líneas eliminadas
+> son dos `listOf(` que pasan a `listOfNotNull(` para admitir una acción nullable.
 
 ---
 
