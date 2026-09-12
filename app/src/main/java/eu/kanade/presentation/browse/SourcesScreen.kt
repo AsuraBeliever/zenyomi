@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -56,38 +57,60 @@ fun SourcesScreen(
             ScrollbarLazyColumn(
                 contentPadding = contentPadding + topSmallPaddingValues,
             ) {
-                items(
+                sourceItems(
                     items = state.items,
-                    contentType = {
-                        when (it) {
-                            is SourceUiModel.Header -> "header"
-                            is SourceUiModel.Item -> "item"
-                        }
-                    },
-                    key = {
-                        when (it) {
-                            is SourceUiModel.Header -> it.hashCode()
-                            is SourceUiModel.Item -> "source-${it.source.key()}"
-                        }
-                    },
-                ) { model ->
-                    when (model) {
-                        is SourceUiModel.Header -> {
-                            SourceHeader(
-                                modifier = Modifier.animateItem(),
-                                language = model.language,
-                            )
-                        }
-                        is SourceUiModel.Item -> SourceItem(
-                            modifier = Modifier.animateItem(),
-                            source = model.source,
-                            onClickItem = onClickItem,
-                            onLongClickItem = onLongClickItem,
-                            onClickPin = onClickPin,
-                        )
-                    }
-                }
+                    onClickItem = onClickItem,
+                    onClickPin = onClickPin,
+                    onLongClickItem = onLongClickItem,
+                )
             }
+        }
+    }
+}
+
+/**
+ * The rows of the source list, as list items rather than a whole screen.
+ *
+ * Zenyomi: extracted verbatim from [SourcesScreen] so the manga sources can share one
+ * scrolling list with the anime ones under collapsible headers. Nothing about how a row
+ * looks or behaves changes; [SourcesScreen] still calls this and is unchanged from the
+ * outside.
+ */
+fun LazyListScope.sourceItems(
+    items: List<SourceUiModel>,
+    onClickItem: (Source, Listing) -> Unit,
+    onClickPin: (Source) -> Unit,
+    onLongClickItem: (Source) -> Unit,
+) {
+    items(
+        items = items,
+        contentType = {
+            when (it) {
+                is SourceUiModel.Header -> "header"
+                is SourceUiModel.Item -> "item"
+            }
+        },
+        key = {
+            when (it) {
+                is SourceUiModel.Header -> it.hashCode()
+                is SourceUiModel.Item -> "source-${it.source.key()}"
+            }
+        },
+    ) { model ->
+        when (model) {
+            is SourceUiModel.Header -> {
+                SourceHeader(
+                    modifier = Modifier.animateItem(),
+                    language = model.language,
+                )
+            }
+            is SourceUiModel.Item -> SourceItem(
+                modifier = Modifier.animateItem(),
+                source = model.source,
+                onClickItem = onClickItem,
+                onLongClickItem = onLongClickItem,
+                onClickPin = onClickPin,
+            )
         }
     }
 }

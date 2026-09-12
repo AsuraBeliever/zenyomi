@@ -16,13 +16,10 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.components.TabbedScreen
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.ui.animebrowse.animeSourcesTab
-import eu.kanade.tachiyomi.ui.animeextension.animeExtensionsTab
+import eu.kanade.tachiyomi.ui.animeextension.AnimeExtensionsViewModel
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsViewModel
-import eu.kanade.tachiyomi.ui.browse.extension.extensionsTab
 import eu.kanade.tachiyomi.ui.browse.migration.sources.migrateSourceTab
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
-import eu.kanade.tachiyomi.ui.browse.source.sourcesTab
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -59,18 +56,18 @@ data object BrowseTab : Tab {
     override fun Content() {
         val context = LocalContext.current
 
-        // Hoisted for extensions tab's search bar
+        // Hoisted for the extensions tab's search bar, which now narrows both halves.
         val extensionsViewModel = metroViewModel<ExtensionsViewModel>()
+        val animeExtensionsViewModel = metroViewModel<AnimeExtensionsViewModel>()
         val extensionsSearchQuery by extensionsViewModel.searchQuery.collectAsStateWithLifecycle()
 
+        // Three tabs, not five. Five made the row truncate every title — "Manga …",
+        // "Anime …", "Anime …" — which is no help at all in telling the last two apart.
+        // Manga and anime are stacked inside each list instead, under a filter and a header
+        // that folds them away.
         val tabs = listOf(
-            sourcesTab(),
-            extensionsTab(extensionsViewModel),
-            // Anime sits beside manga here rather than in a screen of its own: a user
-            // browsing for something to watch expects to find it where they browse for
-            // something to read.
-            animeSourcesTab(),
-            animeExtensionsTab(),
+            combinedSourcesTab(),
+            combinedExtensionsTab(extensionsViewModel, animeExtensionsViewModel),
             migrateSourceTab(),
         )
 
@@ -81,7 +78,10 @@ data object BrowseTab : Tab {
             tabs = tabs,
             state = state,
             searchQuery = extensionsSearchQuery,
-            onChangeSearchQuery = extensionsViewModel::search,
+            onChangeSearchQuery = {
+                extensionsViewModel.search(it)
+                animeExtensionsViewModel.search(it)
+            },
         )
         LaunchedEffect(Unit) {
             switchToExtensionTabChannel.receiveAsFlow()
