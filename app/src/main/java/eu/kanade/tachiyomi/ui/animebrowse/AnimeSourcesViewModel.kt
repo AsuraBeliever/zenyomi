@@ -7,6 +7,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import eu.kanade.presentation.anime.AnimeSourceHealth
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,7 @@ import tachiyomi.domain.source.anime.service.AnimeSourceManager
 @ContributesIntoMap(AppScope::class, binding = binding<ViewModel>())
 class AnimeSourcesViewModel(
     private val sourceManager: AnimeSourceManager,
+    private val sourceHealth: AnimeSourceHealth,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -35,7 +37,16 @@ class AnimeSourcesViewModel(
     init {
         viewModelScope.launch {
             sourceManager.sources.collect { sources ->
-                _state.update { it.copy(isLoading = false, sources = sources) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        sources = sources,
+                        checkedOn = sourceHealth.checkedOn,
+                        broken = sources.mapNotNull { source ->
+                            sourceHealth.statusOf(source.id)?.let { reason -> source.id to reason }
+                        }.toMap(),
+                    )
+                }
             }
         }
     }
@@ -46,6 +57,9 @@ class AnimeSourcesViewModel(
         val isLoading: Boolean = true,
         val sources: List<AnimeSource> = emptyList(),
         val selectedLanguage: String? = null,
+        /** Sources our last sweep found broken, and why. See [AnimeSourceHealth]. */
+        val broken: Map<Long, AnimeSourceHealth.Reason> = emptyMap(),
+        val checkedOn: String = "",
     ) {
         /** Languages actually present, so the filter never offers one that matches nothing. */
         val languages: List<String>

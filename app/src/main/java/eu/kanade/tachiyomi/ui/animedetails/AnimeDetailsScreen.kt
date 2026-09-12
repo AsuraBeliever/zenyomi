@@ -36,6 +36,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
@@ -75,8 +76,11 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
         val anime = state.anime
 
         val snackbarHostState = remember { SnackbarHostState() }
-        LaunchedEffect(state.playbackError) {
-            state.playbackError?.let {
+        // Resolved outside the effect: turning a failure into words needs the string
+        // resources, which only a composable can reach.
+        val playbackErrorText = state.playbackError?.let { animeSourceErrorText(it) }
+        LaunchedEffect(playbackErrorText) {
+            playbackErrorText?.let {
                 snackbarHostState.showSnackbar(it)
                 viewModel.clearPlaybackError()
             }
@@ -143,7 +147,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                     // otherwise, and only one of them is worth retrying.
                     state.episodeError?.let { error ->
                         Text(
-                            text = error,
+                            text = animeSourceErrorText(error),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

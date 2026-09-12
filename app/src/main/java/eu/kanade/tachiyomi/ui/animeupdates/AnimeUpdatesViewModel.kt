@@ -9,6 +9,7 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
+import eu.kanade.presentation.anime.NoVideoFoundException
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -184,7 +185,7 @@ class AnimeUpdatesViewModel(
         viewModelScope.launch {
             val resolved = resolve(update)
             if (resolved == null) {
-                _state.update { it.copy(resolvingEpisodeId = null, playbackError = NO_VIDEO) }
+                _state.update { it.copy(resolvingEpisodeId = null, playbackError = NoVideoFoundException()) }
                 return@launch onResolved(null, emptyMap())
             }
             val (anime, source, episode) = resolved
@@ -203,11 +204,12 @@ class AnimeUpdatesViewModel(
             _state.update {
                 it.copy(
                     resolvingEpisodeId = null,
+                    // The throwable travels, not a string: AnimeSourceError decides what the
+                    // user is told, and it is the only place that decision is made.
                     playbackError = when {
                         video != null -> null
-                        result.isFailure -> result.exceptionOrNull()?.message
-                            ?: result.exceptionOrNull().toString()
-                        else -> NO_VIDEO
+                        result.isFailure -> result.exceptionOrNull()
+                        else -> NoVideoFoundException()
                     },
                 )
             }
@@ -235,7 +237,7 @@ class AnimeUpdatesViewModel(
         val downloadedEpisodeIds: Set<Long> = emptySet(),
         val downloadableEpisodeIds: Set<Long> = emptySet(),
         val resolvingEpisodeId: Long? = null,
-        val playbackError: String? = null,
+        val playbackError: Throwable? = null,
     ) {
         val isEmpty: Boolean get() = items.isEmpty()
     }
@@ -246,8 +248,6 @@ class AnimeUpdatesViewModel(
          * news, and the screen would otherwise grow without limit.
          */
         private val HOW_FAR_BACK = 90.days
-
-        private const val NO_VIDEO = "The source returned no video for this episode"
     }
 }
 

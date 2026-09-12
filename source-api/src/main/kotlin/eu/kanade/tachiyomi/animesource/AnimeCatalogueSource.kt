@@ -3,17 +3,23 @@ package eu.kanade.tachiyomi.animesource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimeRelation
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
-import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SAnimeEpisodeUpdate
 import eu.kanade.tachiyomi.animesource.model.SAnimeSeasonUpdate
 import eu.kanade.tachiyomi.animesource.model.SEpisode
-import eu.kanade.tachiyomi.animesource.model.Video
 import kotlinx.coroutines.async
 import kotlinx.coroutines.supervisorScope
 import rx.Observable
 import tachiyomi.core.common.util.lang.awaitSingle
 
+/**
+ * Aniyomi's own version of this interface overrides getHosterList and getVideoList with bodies
+ * that call themselves, which is an infinite recursion rather than the "not implemented" the
+ * defaults in [AnimeSource] express. It never fires there or here because every catalogue
+ * source in practice extends AnimeHttpSource, which overrides both — but a source that did not
+ * would blow the stack instead of throwing something a caller can handle, so the overrides are
+ * dropped and the defaults left to do their job.
+ */
 interface AnimeCatalogueSource : AnimeSource {
 
     /**
@@ -61,10 +67,6 @@ interface AnimeCatalogueSource : AnimeSource {
     override suspend fun getRelatedAnimeList(anime: SAnime): List<AnimeRelation> {
         throw Exception("Stub!")
     }
-
-    override suspend fun getHosterList(episode: SEpisode): List<Hoster> = getHosterList(episode)
-
-    override suspend fun getVideoList(hoster: Hoster): List<Video> = getVideoList(hoster)
 
     @Deprecated(
         "Use the non-RxJava API instead",

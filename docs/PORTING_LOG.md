@@ -422,3 +422,39 @@ marcador. Con varios cientos de entradas, ese prefijo repetido solo gasta ancho 
 El filtrado y la agrupación se calculan sobre el estado ya cargado en memoria, no en otro
 flow: re-filtrar unos cientos de entradas cuesta menos que mantener una segunda copia
 sincronizada.
+
+---
+
+## 2026-09-11 — Errores de fuente en palabras, y una lista medida
+
+Lo escrito arriba («no hay una lista curada nuestra, y es deliberado») se queda corto: era
+cierto contra una lista *a mano*, no contra una **medida**. El cliente reportó dos fallos
+—`Unable to resolve host "cached.freeanimehentai.net"` y un `NullPointerException` de Java en
+pantalla— y ambos señalan lo mismo: la app estaba enseñando la excepción tal cual.
+
+Tres cosas, en este orden:
+
+1. **`AnimeSourceError`** traduce lo que lanza una extensión a una frase accionable. La
+   distinción que importa no es qué clase de Java se lanzó sino **de quién es el problema**:
+   el sitio no responde, el sitio nos bloquea, o la extensión ya no sabe leerlo. La excepción
+   sigue yendo a logcat, que es donde sirve.
+
+   Un detalle que costó decidir: las extensiones usan excepciones genéricas para hablarle al
+   usuario —Jellyfin lanza `IllegalArgumentException("Select library in the extension
+   settings.")`— y tragarse eso habría escondido la única instrucción que arregla la fuente.
+   Solo se sustituye lo que es ruido de runtime; un mensaje que parece prosa se deja pasar.
+
+2. **`AnimeSourceProbeActivity`** (solo en debug) recorre las fuentes instaladas y anota hasta
+   dónde llega cada una. La primera versión terminaba al instante y medía desde segundo plano,
+   donde Android corta la red: las 21 fuentes dieron «host no encontrado» y parecía un dato.
+   Ahora se queda en pantalla. **Un arnés capaz de equivocarse con seguridad es peor que no
+   tenerlo.**
+
+3. **`anime-source-health.json`** lleva lo que esa pasada encontró roto, y la app lo enseña con
+   fecha bajo cada fuente. Solo entran fallos que no dependen de la red de quien mire —dominio
+   muerto, 404, la extensión ya no parsea—; los tiempos de espera y los 403 de Cloudflare
+   quedan fuera porque vuelven. Ver `docs/EXTENSIONS_STATUS.md`.
+
+De paso: `AnimeCatalogueSource` traía de Aniyomi dos `override` que se llaman a sí mismos
+(`getHosterList`, `getVideoList`). No se dispara, porque `AnimeHttpSource` los tapa, pero una
+recursión infinita no es algo que merezca conservarse por fidelidad al upstream.

@@ -11,6 +11,7 @@ import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.anime.interactor.SyncEpisodesWithSource
+import eu.kanade.presentation.anime.NoVideoFoundException
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,7 +71,7 @@ class AnimeDetailsViewModel(
                             .onFailure { error ->
                                 logcat(LogPriority.WARN, error) { "Could not fetch episodes" }
                                 _state.update { state ->
-                                    state.copy(episodeError = error.message ?: error.toString())
+                                    state.copy(episodeError = error)
                                 }
                             }
                             .onSuccess {
@@ -111,11 +112,12 @@ class AnimeDetailsViewModel(
             _state.update {
                 it.copy(
                     resolvingEpisodeId = null,
+                    // The throwable travels, not a string: what the user should be told is a
+                    // presentation decision, and AnimeSourceError is where it is made.
                     playbackError = when {
                         video != null -> null
-                        result.isFailure -> result.exceptionOrNull()?.message
-                            ?: result.exceptionOrNull().toString()
-                        else -> NO_VIDEO
+                        result.isFailure -> result.exceptionOrNull()
+                        else -> NoVideoFoundException()
                     },
                 )
             }
@@ -201,8 +203,8 @@ class AnimeDetailsViewModel(
         val resolvingEpisodeId: Long? = null,
         val downloadedEpisodeIds: Set<Long> = emptySet(),
         val canDownload: Boolean = false,
-        val episodeError: String? = null,
-        val playbackError: String? = null,
+        val episodeError: Throwable? = null,
+        val playbackError: Throwable? = null,
     )
 
     @AssistedFactory
@@ -210,10 +212,5 @@ class AnimeDetailsViewModel(
     @ContributesIntoMap(AppScope::class)
     interface Factory : ManualViewModelAssistedFactory {
         fun create(animeId: Long): AnimeDetailsViewModel
-    }
-
-    companion object {
-        /** Stands in when a source answers without error but offers no playable video. */
-        const val NO_VIDEO = "No video found for this episode"
     }
 }
