@@ -10,6 +10,20 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.6.0] - 2026-09-12
+### Added
+- **Categories in the anime library.** Create, rename, reorder and delete them from the library's menu; tabs across the top with a count on each; file an entry from its own screen. An anime can be in several at once. Categories and what is filed in them travel in the backup.
+- **Filters, sorting and display modes**, in one sheet. Four filters — unwatched, started, bookmarked, completed — each with three states, so you can ask for "started" or for "not started". Six sorts, and three ways to draw the grid. Everything but the open tab is remembered.
+- **Search inside a source.** A source catalogue could only be browsed from the top of its popular list.
+- **Search every anime source at once**, from the anime sources tab. A row per source, so you can see which source a result came from — with this ecosystem, that is what decides whether it will play. A source that fails says so in its own row instead of taking the others' results with it.
+
+### Fixed
+- An anime filed in two categories appeared twice in the "All" tab.
+- The category tab counts ignored the active filters, so a tab could read 3 above two entries.
+
+### Other
+- The anime library toolbar was six icons and about to be seven; history, statistics, categories and browse moved into an overflow menu.
+
 ## [0.5.6] - 2026-09-11
 ### Fixed
 - **Java errors no longer reach the screen.** A source that failed used to show whatever the extension threw — `Unable to resolve host "cached.freeanimehentai.net"`, or an `Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference`. Now it says which of three things happened, because they call for different responses: the site is unreachable, the site refused the request (open it in the WebView), or the extension can no longer read the site and needs an update.

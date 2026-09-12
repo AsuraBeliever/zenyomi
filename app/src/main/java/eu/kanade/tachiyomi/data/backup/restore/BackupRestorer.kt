@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.data.backup.models.BackupExtensionStore
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.models.BackupPreference
 import eu.kanade.tachiyomi.data.backup.models.BackupSourcePreferences
+import eu.kanade.tachiyomi.data.backup.restore.restorers.AnimeCategoriesRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.AnimeRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.CategoriesRestorer
 import eu.kanade.tachiyomi.data.backup.restore.restorers.ExtensionStoreRestorer
@@ -52,6 +53,7 @@ class BackupRestorer(
     private val extensionStoreRestorer: ExtensionStoreRestorer,
     private val mangaRestorer: MangaRestorer,
     private val animeRestorer: AnimeRestorer,
+    private val animeCategoriesRestorer: AnimeCategoriesRestorer,
     private val backupDecoder: BackupDecoder,
 ) {
 
@@ -146,7 +148,10 @@ class BackupRestorer(
                 )
             }
             if (options.libraryEntries) {
-                restoreAnime(backup.backupAnime)
+                restoreAnime(
+                    backup.backupAnime,
+                    if (options.categories) backup.backupAnimeCategories else emptyList(),
+                )
             }
             if (options.extensionStores) {
                 restoreExtensionStores(backup.backupExtensionStores)
@@ -163,12 +168,18 @@ class BackupRestorer(
      * the manga restore runs in, and an anime library is small enough that the batching is not
      * worth a second transaction path. A failing entry is recorded and the rest continue.
      */
-    private fun CoroutineScope.restoreAnime(backupAnime: List<BackupAnime>) = launch {
+    private fun CoroutineScope.restoreAnime(
+        backupAnime: List<BackupAnime>,
+        backupCategories: List<BackupCategory>,
+    ) = launch {
+        // The categories have to exist before anything can be filed under them.
+        animeCategoriesRestorer(backupCategories)
+
         backupAnime.forEach {
             ensureActive()
 
             try {
-                animeRestorer.restore(it)
+                animeRestorer.restore(it, backupCategories)
             } catch (e: Exception) {
                 ensureActive()
                 val sourceName = animeSourceMapping[it.source] ?: it.source.toString()

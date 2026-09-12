@@ -17,4 +17,5 @@ data class Backup(
     // backup restores here with these simply left empty.
     @ProtoNumber(200) var backupAnime: List<BackupAnime> = emptyList(),
     @ProtoNumber(201) var backupAnimeSources: List<BackupSource> = emptyList(),
+    @ProtoNumber(202) var backupAnimeCategories: List<BackupCategory> = emptyList(),
 )

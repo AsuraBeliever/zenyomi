@@ -30,11 +30,13 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.anime.AnimeSourceHealth
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
+import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Check
 import mihon.icons.materialsymbols.rounded.FilterList
 import mihon.icons.materialsymbols.rounded.Settings
+import mihon.icons.materialsymbols.rounded.TravelExplore
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -66,6 +68,14 @@ fun AnimeSourcesList(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
+                    // Here rather than in the Browse toolbar: that toolbar is shared with the
+                    // manga tabs, whose reselect already opens Mihon's own global search.
+                    IconButton(onClick = { navigator.push(AnimeGlobalSearchScreen()) }) {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.TravelExplore,
+                            contentDescription = stringResource(ANMR.strings.anime_global_search),
+                        )
+                    }
                     SourceLanguageFilter(
                         languages = state.languages,
                         selected = state.selectedLanguage,

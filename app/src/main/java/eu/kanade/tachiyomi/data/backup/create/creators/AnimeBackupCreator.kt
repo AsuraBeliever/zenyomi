@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.data.backup.models.BackupSource
 import eu.kanade.tachiyomi.data.backup.models.toBackupAnime
 import eu.kanade.tachiyomi.data.backup.models.toBackupEpisode
 import tachiyomi.domain.anime.model.Anime
+import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
 import tachiyomi.domain.episode.interactor.GetEpisode
 import tachiyomi.domain.episode.interactor.GetEpisodesByAnimeId
 import tachiyomi.domain.history.anime.interactor.GetAnimeHistory
@@ -23,6 +24,7 @@ import tachiyomi.domain.source.anime.service.AnimeSourceManager
 @Inject
 class AnimeBackupCreator(
     private val getEpisodesByAnimeId: GetEpisodesByAnimeId,
+    private val getAnimeCategories: GetAnimeCategories,
     private val getEpisode: GetEpisode,
     private val getAnimeHistory: GetAnimeHistory,
     private val sourceManager: AnimeSourceManager,
@@ -47,6 +49,15 @@ class AnimeBackupCreator(
                 .map { it.toBackupEpisode() }
                 .takeUnless { it.isEmpty() }
                 ?.let { animeObject.episodes = it }
+        }
+
+        if (options.categories) {
+            // Stored as orders, not ids: ids mean nothing on another device, and the order is
+            // what the category list is matched on when restoring. Same convention as manga.
+            getAnimeCategories.await(anime.id)
+                .map { it.order }
+                .takeUnless { it.isEmpty() }
+                ?.let { animeObject.categories = it }
         }
 
         if (options.history) {
