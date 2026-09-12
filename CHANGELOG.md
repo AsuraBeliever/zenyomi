@@ -10,6 +10,13 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.8.1] - 2026-09-12
+### Changed
+- **Extension stores takes either kind of repository and works out which it is.** Paste an anime repository url and it is stored as an anime one; paste a manga one and it is stored as a manga one. The screen lists both, labelled, once you have both. The separate "Anime extension repositories" entry in the Extensions menu is gone — it was asking you a question the app can answer.
+
+### Other
+- The kind is read from the repository's own index: an extension APK declares one of two required features, `tachiyomi.extension` or `tachiyomi.animeextension`, and neither manager will load the other's, so the package names in the index say which manager can use it. Checked against three live repositories.
+
 ## [0.8.0] - 2026-09-12
 ### Changed
 - **Browse is three tabs instead of five.** Five made the row truncate every title — "Manga …", "Anime …", "Anime …" — which was no help in telling the last two apart. Sources and Extensions each now hold manga and anime together, with a Both / Manga / Anime filter at the top and a header for each half that folds it away. The anime extension list is folded by default; it runs to a few hundred entries and expanded it buries everything under it.

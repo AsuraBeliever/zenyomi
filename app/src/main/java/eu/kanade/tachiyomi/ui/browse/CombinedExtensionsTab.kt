@@ -30,7 +30,6 @@ import eu.kanade.presentation.components.TabContent
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionStoresScreen
 import eu.kanade.tachiyomi.animeextension.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.model.Extension
-import eu.kanade.tachiyomi.ui.animeextension.AddStoreDialog
 import eu.kanade.tachiyomi.ui.animeextension.AnimeExtensionsViewModel
 import eu.kanade.tachiyomi.ui.animeextension.LanguageFilter
 import eu.kanade.tachiyomi.ui.animeextension.animeExtensionItems
@@ -52,6 +51,10 @@ import tachiyomi.presentation.core.util.plus
 /**
  * Every extension, manga and anime, in one list.
  *
+ * There is no separate entry for anime repositories: Extension stores takes either kind and
+ * works out which from the repository's own index. Two entries doing the same thing was the
+ * user being asked a question the app can answer.
+ *
  * The anime half is collapsed by default: the repositories publish several hundred entries and
  * expanded it buries everything under it, which is exactly the complaint that produced this
  * screen. The toolbar's search box drives both halves, so one query narrows the whole list
@@ -68,7 +71,6 @@ fun combinedExtensionsTab(
     val updatesCount by extensionsViewModel.updatesCount.collectAsStateWithLifecycle()
     var privateExtensionToUninstall by remember { mutableStateOf<Extension?>(null) }
     var trustState by remember { mutableStateOf<Extension.Untrusted?>(null) }
-    var showAddStore by remember { mutableStateOf(false) }
 
     val layout = metroViewModel<BrowseLayoutViewModel>()
     val media by layout.extensionsMedia.collectAsStateWithLifecycle()
@@ -91,10 +93,6 @@ fun combinedExtensionsTab(
             AppBar.OverflowAction(
                 title = stringResource(MR.strings.extensionStores),
                 onClick = { navigator.push(ExtensionStoresScreen()) },
-            ),
-            AppBar.OverflowAction(
-                title = stringResource(ANMR.strings.label_anime_extension_repos),
-                onClick = { showAddStore = true },
             ),
         ),
         content = { contentPadding, _ ->
@@ -208,17 +206,6 @@ fun combinedExtensionsTab(
                         trustState = null
                     },
                     onDismissRequest = { trustState = null },
-                )
-            }
-
-            if (showAddStore) {
-                AddStoreDialog(
-                    onDismiss = { showAddStore = false },
-                    onConfirm = { url, onFailed ->
-                        animeExtensionsViewModel.addStore(url) { ok ->
-                            if (ok) showAddStore = false else onFailed()
-                        }
-                    },
                 )
             }
 
