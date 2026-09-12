@@ -50,7 +50,11 @@
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
 | Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque sigue sin poder dispararse por adb, ver TESTING.md |
 | PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
-| Resolución de vídeo desde la fuente | ✅ | verificada de punta a punta con la fuente local |
+| Resolución de vídeo desde la fuente | ✅ | verificada de punta a punta con la fuente local **y con extensiones HTTP reales** |
+| Reproducción de una extensión online | ✅ | KickAssAnime, AnimeOnsen y TioAnime se ven en el emulador; ver `EXTENSIONS_STATUS.md` |
+| Cabeceras HTTP hasta mpv | ✅ | se resolvían bien y se perdían camino del player; corregido y comprobado contra un servidor que las imprime |
+| Subtítulos y audio externos | ✅ | las pistas que la fuente entrega aparte se añaden a mpv y se seleccionan |
+| Fallo de reproducción visible | ✅ | un mirror muerto dice por qué en vez de dejar la pantalla en negro |
 | Progreso de reproducción | ✅ | verificado en la BD: `seen=1`, `last_second_seen=9`, `total_seconds=10` |
 | Fuente local de anime | ✅ | reproduce vídeos de la carpeta `localanime` |
 | Sincronización de episodios | ✅ | la ficha pide los episodios a la fuente y los guarda |

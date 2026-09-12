@@ -151,3 +151,59 @@ pequeños. El arnés resuelve el primer episodio de la primera entrada de popula
 "no resuelve vídeo" no demuestra que la fuente nunca reproduzca — puede ser esa entrada, o un
 desafío de Cloudflare que la app sí pasa por WebView y el arnés no.
 
+
+---
+
+## Qué reproduce de verdad (medido el 2026-09-12)
+
+La tabla de arriba mide *cobertura*: cuántos títulos encuentra cada fuente. Esto mide lo
+otro, que es lo que le importa a quien quiere ver un capítulo: **abrir el vídeo en el
+player**. El arnés tiene un modo que lleva una fuente por el mismo camino que un toque —
+mismo interactor, mismo `PlaybackRequest`, misma Activity del player:
+
+```sh
+adb shell "am start -n app.zenyomi.dev/eu.kanade.tachiyomi.debug.AnimeSourceProbeActivity \
+  -e play 1 -e only 'KickAssAnime'"
+```
+
+Las comillas dobles envolviendo el comando entero no son decorativas: sin ellas la shell del
+dispositivo parte el nombre de la fuente por el espacio.
+
+| Fuente | Resuelve | Reproduce | Notas |
+|---|---|---|---|
+| KickAssAnime | 3 vídeos | ✅ | HLS + 8 subtítulos externos y 2 audios; se ven en pantalla |
+| AnimeOnsen | 1 vídeo | ✅ | DASH + 9 subtítulos externos; el selector de pistas los lista |
+| TioAnime | 3 vídeos | ✅ | HLS con subtítulos incrustados en el vídeo |
+| Jkanime | 16 vídeos | ⚠️ | abre y sabe la duración, pero el primer mirror vivo corta los paquetes |
+| Latanime | 4 vídeos | ⚠️ | el mirror elegido responde 404; ahora se dice en pantalla |
+| Anichi, AniWave, AnimeKai | 0 vídeos | ❌ | ver abajo |
+| AllAnime, AnimeKhor | 0 vídeos | ❌ | catálogo y episodios sí, vídeo no |
+
+### Por qué Anichi (y AniWave, y AnimeKai) no reproducen
+
+Las tres son la misma base de código y el mismo backend. Siguiendo el tráfico de Anichi con
+un episodio real, la extensión llega hasta el final sin error:
+
+```
+anichi.to/ajax/server/list?servers=…        200
+mapper.nekostream.site/api/mal/58567/13/…   200
+anichi.to/ajax/server?get=…                 200   (×6, los servidores HD-1, HD-2, Vidstream-2)
+megaplay.buzz/stream/s-2/135936/sub         200
+megaplay.buzz/stream/getSources?id=…        200
+megaplay.buzz/stream/getSourcesNew?id=…     200
+```
+
+…y devuelve **cero vídeos**. La última respuesta explica por qué: donde antes venía la lista
+de fuentes en claro, hoy viene cifrada.
+
+```json
+{"tracks":[…],"intro":{…},"outro":{…},"server":4,
+ "enc":"wdeBruh3qqn_i5wUNnyaPcXqidp1UWP84FfPHzGyKXBiGlRpu4FRQjbs…"}
+```
+
+La extensión no sabe descifrar ese campo, así que se queda sin nada que devolver y se lo
+traga en silencio. **No es un fallo nuestro y no se puede arreglar desde la app**: quien
+tiene que ponerse al día es la extensión. Su repositorio de origen (`yuzono/aniyomi-extensions`)
+está retirado por DMCA desde el 2026-02-05, así que tampoco se puede recompilar con un
+parche. Las tres quedan marcadas como `outdated` en `anime-source-health.json`, que es lo que
+hace que la app lo diga en vez de no hacer nada al tocar el episodio.
