@@ -33,11 +33,13 @@ import eu.kanade.tachiyomi.ui.animebrowse.AnimeBrowseScreen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
 import eu.kanade.tachiyomi.ui.animestats.AnimeStatsScreen
+import eu.kanade.tachiyomi.ui.animeupdates.AnimeUpdatesScreen
 import eu.kanade.tachiyomi.util.system.workManager
 import kotlinx.coroutines.launch
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Check
 import mihon.icons.materialsymbols.rounded.Explore
+import mihon.icons.materialsymbols.rounded.NewReleases
 import mihon.icons.materialsymbols.rounded.QueryStats
 import mihon.icons.materialsymbols.rounded.Refresh
 import mihon.icons.materialsymbols.rounded.Schedule
@@ -129,6 +131,12 @@ data object AnimeLibraryTab : Tab {
                             Icon(
                                 imageVector = MaterialSymbols.Rounded.Refresh,
                                 contentDescription = stringResource(MR.strings.action_update_library),
+                            )
+                        }
+                        IconButton(onClick = { navigator.push(AnimeUpdatesScreen()) }) {
+                            Icon(
+                                imageVector = MaterialSymbols.Rounded.NewReleases,
+                                contentDescription = stringResource(ANMR.strings.label_anime_updates),
                             )
                         }
                         IconButton(onClick = { navigator.push(AnimeStatsScreen()) }) {

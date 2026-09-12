@@ -73,7 +73,7 @@ class AnimeHistoryScreen : Screen() {
                         ListItem(
                             leadingContent = {
                                 AsyncImage(
-                                    model = entry.coverData.url,
+                                    model = entry.coverData,
                                     contentDescription = entry.title,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
