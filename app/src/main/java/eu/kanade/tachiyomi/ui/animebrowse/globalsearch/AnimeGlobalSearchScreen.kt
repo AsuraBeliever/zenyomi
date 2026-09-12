@@ -13,9 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +46,7 @@ import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
+import tachiyomi.presentation.core.screens.LoadingScreen
 
 /**
  * One query across every anime source.
@@ -52,7 +55,14 @@ import tachiyomi.presentation.core.screens.EmptyScreen
  * result in one list — loses which source a result came from, and with this ecosystem that is
  * the single most important thing about a result: it decides whether it will actually play.
  */
-class AnimeGlobalSearchScreen(private val initialQuery: String = "") : Screen() {
+class AnimeGlobalSearchScreen(
+    private val initialQuery: String = "",
+    /**
+     * When set, results are offered as a migration target for this anime instead of being
+     * opened. The search is the same search; only what a tap means changes.
+     */
+    private val migrateFromId: Long? = null,
+) : Screen() {
 
     @Composable
     override fun Content() {
@@ -67,10 +77,28 @@ class AnimeGlobalSearchScreen(private val initialQuery: String = "") : Screen() 
             }
         }
 
+        val migrated = state.migrated
+        LaunchedEffect(migrated) {
+            if (migrated) {
+                viewModel.clearMigrated()
+                navigator.pop()
+            }
+        }
+
         Scaffold(
             topBar = { scrollBehavior ->
                 SearchToolbar(
-                    titleContent = { AppBarTitle(stringResource(ANMR.strings.anime_global_search)) },
+                    titleContent = {
+                        AppBarTitle(
+                            stringResource(
+                                if (migrateFromId != null) {
+                                    ANMR.strings.anime_migrate_pick
+                                } else {
+                                    ANMR.strings.anime_global_search
+                                },
+                            ),
+                        )
+                    },
                     searchQuery = state.query ?: "",
                     onChangeSearchQuery = viewModel::setQuery,
                     onSearch = { viewModel.search() },
@@ -87,15 +115,54 @@ class AnimeGlobalSearchScreen(private val initialQuery: String = "") : Screen() 
                 return@Scaffold
             }
 
+            if (state.migrating) {
+                LoadingScreen(Modifier.padding(contentPadding))
+                return@Scaffold
+            }
+
             LazyColumn(contentPadding = contentPadding) {
                 items(state.visible, key = { it.sourceId }) { result ->
                     SourceResultRow(
                         result = result,
                         onOpenSource = { navigator.push(AnimeCatalogScreen(result.sourceId)) },
-                        onOpenAnime = { navigator.push(AnimeDetailsScreen(it.id)) },
+                        onOpenAnime = {
+                            if (migrateFromId != null) {
+                                viewModel.askToMigrate(migrateFromId, it)
+                            } else {
+                                navigator.push(AnimeDetailsScreen(it.id))
+                            }
+                        },
                     )
                 }
             }
+        }
+
+        state.migration?.let { migration ->
+            AlertDialog(
+                onDismissRequest = viewModel::dismissMigration,
+                title = { Text(stringResource(ANMR.strings.anime_migrate_title)) },
+                text = {
+                    Text(
+                        stringResource(
+                            ANMR.strings.anime_migrate_confirm,
+                            migration.current.title,
+                            migration.target.title,
+                        ),
+                    )
+                },
+                // Two ways forward, because they are genuinely different intentions: replacing
+                // a dead source, or keeping both because they are different cuts of the show.
+                confirmButton = {
+                    TextButton(onClick = { viewModel.migrate(replace = true) }) {
+                        Text(stringResource(ANMR.strings.anime_migrate_replace))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.migrate(replace = false) }) {
+                        Text(stringResource(ANMR.strings.anime_migrate_keep))
+                    }
+                },
+            )
         }
     }
 }
