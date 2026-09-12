@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -21,10 +23,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -39,15 +44,18 @@ import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
 import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackScreen
 import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.automirroredrounded.Label
 import mihon.icons.materialsymbols.rounded.Download
 import mihon.icons.materialsymbols.rounded.Favorite
 import mihon.icons.materialsymbols.rounded.Sync
 import mihon.icons.materialsymbols.roundedfilled.CheckCircle
 import mihon.icons.materialsymbols.roundedfilled.Favorite
 import tachiyomi.domain.anime.model.Anime
+import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -78,6 +86,19 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
         val snackbarHostState = remember { SnackbarHostState() }
         // Resolved outside the effect: turning a failure into words needs the string
         // resources, which only a composable can reach.
+        state.categoryDialog?.let { dialog ->
+            AnimeCategoryDialog(
+                categories = dialog.categories,
+                initiallySelected = dialog.selected,
+                onDismiss = viewModel::dismissCategoryDialog,
+                onConfirm = viewModel::setCategories,
+                onEditCategories = {
+                    viewModel.dismissCategoryDialog()
+                    navigator.push(AnimeCategoryScreen())
+                },
+            )
+        }
+
         val playbackErrorText = state.playbackError?.let { animeSourceErrorText(it) }
         LaunchedEffect(playbackErrorText) {
             playbackErrorText?.let {
@@ -110,9 +131,15 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                                     ),
                                 )
                             }
-                            // Tracking is only meaningful for something in the library, so the
-                            // action follows the favourite rather than standing on its own.
+                            // Tracking and categories are only meaningful for something in the
+                            // library, so they follow the favourite rather than standing alone.
                             if (anime.favorite) {
+                                IconButton(onClick = viewModel::showCategoryDialog) {
+                                    Icon(
+                                        imageVector = MaterialSymbols.AutoMirroredRounded.Label,
+                                        contentDescription = stringResource(MR.strings.categories),
+                                    )
+                                }
                                 IconButton(onClick = { navigator.push(AnimeTrackScreen(anime.id)) }) {
                                     Icon(
                                         imageVector = MaterialSymbols.Rounded.Sync,
@@ -251,4 +278,74 @@ private fun AnimeHeader(anime: Anime) {
             }
         }
     }
+}
+
+/**
+ * Which categories an anime belongs to.
+ *
+ * Multi-select, because an anime can sit in several — that is the whole point of categories
+ * over a single folder. The way to a library with no categories yet is through the same
+ * dialog: offering nothing but Cancel would be a dead end.
+ */
+@Composable
+private fun AnimeCategoryDialog(
+    categories: List<AnimeCategory>,
+    initiallySelected: Set<Long>,
+    onDismiss: () -> Unit,
+    onConfirm: (List<Long>) -> Unit,
+    onEditCategories: () -> Unit,
+) {
+    val selected = remember { mutableStateListOf<Long>().apply { addAll(initiallySelected) } }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(MR.strings.categories)) },
+        text = {
+            if (categories.isEmpty()) {
+                Text(stringResource(MR.strings.information_empty_category))
+            } else {
+                LazyColumn {
+                    items(categories, key = { it.id }) { category ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (category.id in selected) {
+                                        selected.remove(category.id)
+                                    } else {
+                                        selected.add(category.id)
+                                    }
+                                },
+                        ) {
+                            Checkbox(
+                                checked = category.id in selected,
+                                onCheckedChange = null,
+                            )
+                            Text(
+                                text = category.name,
+                                modifier = Modifier.padding(start = 12.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (categories.isEmpty()) {
+                TextButton(onClick = onEditCategories) {
+                    Text(stringResource(MR.strings.action_edit_categories))
+                }
+            } else {
+                TextButton(onClick = { onConfirm(selected.toList()) }) {
+                    Text(stringResource(MR.strings.action_ok))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(MR.strings.action_cancel))
+            }
+        },
+    )
 }

@@ -25,6 +25,9 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
 import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.anime.model.Anime
+import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
+import tachiyomi.domain.category.anime.interactor.SetAnimeCategories
+import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.episode.model.Episode
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
 
@@ -46,6 +49,8 @@ class AnimeDetailsViewModel(
     private val sourceManager: AnimeSourceManager,
     private val updateAnime: UpdateAnime,
     private val downloadManager: AnimeDownloadManager,
+    private val getAnimeCategories: GetAnimeCategories,
+    private val setAnimeCategories: SetAnimeCategories,
 ) : ViewModel() {
 
     private var episodesFetched = false
@@ -189,6 +194,27 @@ class AnimeDetailsViewModel(
 
     fun clearPlaybackError() = _state.update { it.copy(playbackError = null) }
 
+    /**
+     * Loads what categories exist and which of them this anime is already in, so the dialog
+     * opens with the boxes already ticked rather than asking the user to remember.
+     */
+    fun showCategoryDialog() {
+        viewModelScope.launch {
+            val all = getAnimeCategories.await().filterNot { it.isSystemCategory }
+            val current = getAnimeCategories.await(animeId).map { it.id }.toSet()
+            _state.update { it.copy(categoryDialog = CategoryDialog(all, current)) }
+        }
+    }
+
+    fun dismissCategoryDialog() = _state.update { it.copy(categoryDialog = null) }
+
+    fun setCategories(categoryIds: List<Long>) {
+        viewModelScope.launch {
+            setAnimeCategories.await(animeId, categoryIds)
+            _state.update { it.copy(categoryDialog = null) }
+        }
+    }
+
     fun toggleFavorite() {
         val anime = state.value.anime ?: return
         viewModelScope.launch {
@@ -205,6 +231,13 @@ class AnimeDetailsViewModel(
         val canDownload: Boolean = false,
         val episodeError: Throwable? = null,
         val playbackError: Throwable? = null,
+        val categoryDialog: CategoryDialog? = null,
+    )
+
+    /** The categories that exist, and the ones this anime is currently filed under. */
+    data class CategoryDialog(
+        val categories: List<AnimeCategory>,
+        val selected: Set<Long>,
     )
 
     @AssistedFactory

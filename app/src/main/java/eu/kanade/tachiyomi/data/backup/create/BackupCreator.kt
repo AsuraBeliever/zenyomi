@@ -9,6 +9,7 @@ import dev.zacsweers.metro.AssistedInject
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.data.backup.BackupFileValidator
 import eu.kanade.tachiyomi.data.backup.create.creators.AnimeBackupCreator
+import eu.kanade.tachiyomi.data.backup.create.creators.AnimeCategoriesBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.CategoriesBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.ExtensionStoresBackupCreator
 import eu.kanade.tachiyomi.data.backup.create.creators.MangaBackupCreator
@@ -52,6 +53,7 @@ class BackupCreator(
     private val categoriesBackupCreator: CategoriesBackupCreator,
     private val mangaBackupCreator: MangaBackupCreator,
     private val animeBackupCreator: AnimeBackupCreator,
+    private val animeCategoriesBackupCreator: AnimeCategoriesBackupCreator,
     private val getAnimeFavorites: GetAnimeFavorites,
     private val animeRepository: AnimeRepository,
     private val preferenceBackupCreator: PreferenceBackupCreator,
@@ -111,6 +113,7 @@ class BackupCreator(
                 backupSourcePreferences = backupSourcePreferences(options),
                 backupAnime = backupAnime,
                 backupAnimeSources = animeBackupCreator.sources(backupAnime),
+                backupAnimeCategories = backupAnimeCategories(options),
             )
 
             val byteArray = parser.encodeToByteArray(Backup.serializer(), backup)
@@ -147,6 +150,12 @@ class BackupCreator(
         if (!options.categories) return emptyList()
 
         return categoriesBackupCreator()
+    }
+
+    private suspend fun backupAnimeCategories(options: BackupOptions): List<BackupCategory> {
+        if (!options.categories) return emptyList()
+
+        return animeCategoriesBackupCreator()
     }
 
     private suspend fun backupMangas(mangas: List<Manga>, options: BackupOptions): List<BackupManga> {
