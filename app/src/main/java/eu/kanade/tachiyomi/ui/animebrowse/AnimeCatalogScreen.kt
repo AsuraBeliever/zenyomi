@@ -31,7 +31,8 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
-import eu.kanade.presentation.components.AppBar
+import eu.kanade.presentation.components.AppBarTitle
+import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
@@ -59,8 +60,10 @@ class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
 
         Scaffold(
             topBar = { scrollBehavior ->
-                AppBar(
-                    title = state.sourceName,
+                SearchToolbar(
+                    titleContent = { AppBarTitle(state.sourceName) },
+                    searchQuery = state.searchQuery,
+                    onChangeSearchQuery = viewModel::search,
                     navigateUp = navigator::pop,
                     scrollBehavior = scrollBehavior,
                 )

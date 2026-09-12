@@ -34,7 +34,8 @@
 | Filtros, orden y vista de la biblioteca de anime | ✅ | hoja con tres pestañas; 4 filtros de tres estados, 6 órdenes con sentido, 3 modos de vista; todo se recuerda |
 | Explorar anime (fuentes + extensiones) | ✅ | Explorar aloja las 5 pestañas: Sources, Manga extensions, Anime sources, Anime extensions, Migrate |
 | Búsqueda y filtro de idioma en extensiones de anime | ✅ | agrupado por idioma como en el manga; marca las abandonadas |
-| Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
+| Catálogo de una fuente | ✅ | rejilla paginada, con búsqueda dentro de la fuente |
+| Búsqueda global de anime | ✅ | una consulta a todas las fuentes a la vez, agrupada por fuente, con el estado de cada una |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
 | Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
