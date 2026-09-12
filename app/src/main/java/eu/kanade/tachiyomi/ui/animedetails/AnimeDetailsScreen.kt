@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,7 +30,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +48,7 @@ import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
 import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackScreen
@@ -51,6 +56,7 @@ import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.automirroredrounded.Label
 import mihon.icons.materialsymbols.rounded.Download
 import mihon.icons.materialsymbols.rounded.Favorite
+import mihon.icons.materialsymbols.rounded.MoreVert
 import mihon.icons.materialsymbols.rounded.Sync
 import mihon.icons.materialsymbols.roundedfilled.CheckCircle
 import mihon.icons.materialsymbols.roundedfilled.Favorite
@@ -144,6 +150,32 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                                     Icon(
                                         imageVector = MaterialSymbols.Rounded.Sync,
                                         contentDescription = stringResource(MR.strings.manga_tracking_tab),
+                                    )
+                                }
+                                var overflow by remember { mutableStateOf(false) }
+                                IconButton(onClick = { overflow = true }) {
+                                    Icon(
+                                        imageVector = MaterialSymbols.Rounded.MoreVert,
+                                        contentDescription = stringResource(
+                                            MR.strings.action_menu_overflow_description,
+                                        ),
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = overflow,
+                                    onDismissRequest = { overflow = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(ANMR.strings.anime_migrate)) },
+                                        onClick = {
+                                            overflow = false
+                                            navigator.push(
+                                                AnimeGlobalSearchScreen(
+                                                    initialQuery = anime.title,
+                                                    migrateFromId = anime.id,
+                                                ),
+                                            )
+                                        },
                                     )
                                 }
                             }

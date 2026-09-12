@@ -21,8 +21,10 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeout
 import logcat.LogPriority
 import mihon.domain.anime.model.toDomainAnime
+import mihon.domain.migration.anime.MigrateAnimeUseCase
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.anime.interactor.NetworkToLocalAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
@@ -48,6 +50,8 @@ class AnimeGlobalSearchViewModel(
     private val sourceManager: AnimeSourceManager,
     private val networkToLocalAnime: NetworkToLocalAnime,
     private val sourcePreferences: AnimeSourcePreferences,
+    private val getAnime: GetAnime,
+    private val migrateAnime: MigrateAnimeUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -113,6 +117,32 @@ class AnimeGlobalSearchViewModel(
         }
     }
 
+    /**
+     * Offers the chosen result as a migration target. The confirmation is not optional: this
+     * can take an entry out of the library and delete its downloads.
+     */
+    fun askToMigrate(from: Long, to: Anime) {
+        viewModelScope.launch {
+            val current = getAnime.await(from) ?: return@launch
+            _state.update { it.copy(migration = Migration(current, to)) }
+        }
+    }
+
+    fun dismissMigration() = _state.update { it.copy(migration = null) }
+
+    fun migrate(replace: Boolean) {
+        val migration = state.value.migration ?: return
+        _state.update { it.copy(migration = null, migrating = true) }
+        viewModelScope.launch {
+            val result = migrateAnime(migration.current, migration.target, replace)
+            _state.update { it.copy(migrating = false, migrated = result.isSuccess) }
+        }
+    }
+
+    fun clearMigrated() = _state.update { it.copy(migrated = false) }
+
+    data class Migration(val current: Anime, val target: Anime)
+
     data class SourceResult(
         val sourceId: Long,
         val sourceName: String,
@@ -126,6 +156,9 @@ class AnimeGlobalSearchViewModel(
         val query: String? = null,
         val results: List<SourceResult> = emptyList(),
         val searched: Boolean = false,
+        val migration: Migration? = null,
+        val migrating: Boolean = false,
+        val migrated: Boolean = false,
     ) {
         /**
          * Sources that found nothing are dropped once they are done, so the screen is results

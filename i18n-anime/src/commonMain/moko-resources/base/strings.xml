@@ -699,4 +699,10 @@
     <string name="anime_sources_hide_hidden">Hide hidden sources</string>
     <string name="anime_sources_all_hidden">Every source here is hidden. Show them from the menu to bring one back.</string>
     <string name="anime_sources_pinned">Pinned</string>
+    <string name="anime_migrate">Migrate to another source</string>
+    <string name="anime_migrate_pick">Pick the new source</string>
+    <string name="anime_migrate_title">Migrate</string>
+    <string name="anime_migrate_confirm">Move "%1$s" to "%2$s"? Watched episodes, categories and tracking come with it.</string>
+    <string name="anime_migrate_replace">Replace</string>
+    <string name="anime_migrate_keep">Keep both</string>
 </resources>
