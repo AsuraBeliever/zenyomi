@@ -660,4 +660,8 @@
     <string name="label_anime_extensions_tab">Anime extensions</string>
     <string name="label_anime_sources_tab">Anime sources</string>
     <string name="anime_sources_no_results">No source in that language</string>
+    <string name="label_anime_updates">Anime updates</string>
+    <string name="anime_updates_empty">No new episodes yet</string>
+    <string name="anime_action_mark_seen">Mark as watched</string>
+    <string name="anime_action_mark_unseen">Mark as not watched</string>
 </resources>

@@ -29,6 +29,7 @@ import okio.sink
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnimeFavorites
+import tachiyomi.domain.anime.repository.AnimeRepository
 import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.manga.interactor.GetFavorites
 import tachiyomi.domain.manga.model.Manga
@@ -52,6 +53,7 @@ class BackupCreator(
     private val mangaBackupCreator: MangaBackupCreator,
     private val animeBackupCreator: AnimeBackupCreator,
     private val getAnimeFavorites: GetAnimeFavorites,
+    private val animeRepository: AnimeRepository,
     private val preferenceBackupCreator: PreferenceBackupCreator,
     private val extensionStoresBackupCreator: ExtensionStoresBackupCreator,
     private val sourcesBackupCreator: SourcesBackupCreator,
@@ -90,7 +92,12 @@ class BackupCreator(
             val backupManga = backupMangas(getFavorites.await() + nonFavoriteManga, options)
 
             val backupAnime = if (options.libraryEntries) {
-                animeBackupCreator(getAnimeFavorites.await(), options)
+                val nonFavoriteAnime = if (options.readEntries) {
+                    animeRepository.getWatchedAnimeNotInLibrary()
+                } else {
+                    emptyList()
+                }
+                animeBackupCreator(getAnimeFavorites.await() + nonFavoriteAnime, options)
             } else {
                 emptyList()
             }

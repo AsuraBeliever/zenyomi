@@ -32,6 +32,7 @@ import eu.kanade.tachiyomi.crash.CrashActivity
 import eu.kanade.tachiyomi.crash.GlobalExceptionHandler
 import eu.kanade.tachiyomi.data.cache.CoverCache
 import eu.kanade.tachiyomi.data.coil.AnimeCoverFetcher
+import eu.kanade.tachiyomi.data.coil.AnimeCoverKeyer
 import eu.kanade.tachiyomi.data.coil.AnimeKeyer
 import eu.kanade.tachiyomi.data.coil.BufferedSourceFetcher
 import eu.kanade.tachiyomi.data.coil.ImageDecoder
@@ -228,10 +229,12 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
                 add(MangaCoverFetcher.MangaFactory(callFactoryLazy, coverCache, sourceManager))
                 // Anime covers need the source's headers too; plenty of sites answer a bare
                 // request with 403.
-                add(AnimeCoverFetcher.Factory(animeSourceManager, callFactoryLazy))
+                add(AnimeCoverFetcher.AnimeCoverFactory(animeSourceManager, callFactoryLazy))
+                add(AnimeCoverFetcher.AnimeFactory(animeSourceManager, callFactoryLazy))
                 // Keyer
                 add(MangaCoverKeyer(coverCache))
                 add(MangaKeyer())
+                add(AnimeCoverKeyer())
                 add(AnimeKeyer())
             }
 

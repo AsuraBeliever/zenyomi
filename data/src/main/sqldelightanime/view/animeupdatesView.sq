@@ -35,3 +35,25 @@ WHERE seen = :seen
 AND dateUpload > :after
 
 LIMIT :limit;
+
+-- Filters on datefetch, not dateUpload: this is "what my library gained", and plenty of
+-- anime sources report no upload date at all, which would silently drop those episodes.
+getAnimeUpdatesAfter:
+SELECT
+animeId,
+animeTitle,
+episodeId,
+episodeName,
+seen,
+bookmark,
+fillermark,
+last_second_seen,
+totalSeconds,
+source,
+favorite,
+thumbnailUrl,
+coverLastModified,
+datefetch
+FROM animeupdatesView
+WHERE datefetch > :after
+LIMIT :limit;
