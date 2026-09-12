@@ -30,6 +30,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
@@ -68,7 +69,7 @@ class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
             when (val refresh = animeList.loadState.refresh) {
                 is LoadState.Loading -> LoadingScreen(Modifier.padding(contentPadding))
                 is LoadState.Error -> CatalogError(
-                    message = refresh.error.message ?: refresh.error.toString(),
+                    message = animeSourceErrorText(refresh.error),
                     baseUrl = state.baseUrl,
                     onRetry = animeList::retry,
                     onOpenInWebView = { url ->

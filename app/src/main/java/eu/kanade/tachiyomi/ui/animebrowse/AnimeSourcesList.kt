@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.animebrowse
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.presentation.anime.AnimeSourceHealth
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import mihon.icons.materialsymbols.MaterialSymbols
@@ -83,13 +85,33 @@ fun AnimeSourcesList(
             }
 
             items(state.visibleSources, key = { it.id }) { source ->
+                val broken = state.broken[source.id]
                 ListItem(
                     headlineContent = { Text(source.name) },
                     supportingContent = {
-                        Text(
-                            text = LocaleHelper.getSourceDisplayName(source.lang, LocalContext.current),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        Column {
+                            Text(
+                                text = LocaleHelper.getSourceDisplayName(source.lang, LocalContext.current),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            // Said here rather than left for the user to discover by opening it:
+                            // the whole cost of a dead source is the trip you take to find out.
+                            if (broken != null) {
+                                Text(
+                                    text = stringResource(
+                                        when (broken) {
+                                            AnimeSourceHealth.Reason.Gone ->
+                                                ANMR.strings.anime_source_health_gone
+                                            AnimeSourceHealth.Reason.Outdated ->
+                                                ANMR.strings.anime_source_health_outdated
+                                        },
+                                        state.checkedOn,
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
                     },
                     trailingContent = {
                         if (source is ConfigurableAnimeSource) {

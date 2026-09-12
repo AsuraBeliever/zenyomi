@@ -1,0 +1,6 @@
+Fixed:
+- Java errors no longer reach the screen. A failing source now says whether the site is unreachable, refused the request, or changed in a way the extension can no longer read — three different problems that used to look identical.
+- Extensions that use an error to tell you something, like Jellyfin asking you to pick a library, still say it.
+
+Added:
+- Sources known to be broken are marked in the source list, with the date they were checked.

@@ -664,4 +664,15 @@
     <string name="anime_updates_empty">No new episodes yet</string>
     <string name="anime_action_mark_seen">Mark as watched</string>
     <string name="anime_action_mark_unseen">Mark as not watched</string>
+    <string name="anime_error_host_not_found">This source\'s site could not be found. It may be down, or it may have moved to a new address — in which case the extension needs an update.</string>
+    <string name="anime_error_cannot_connect">Could not reach this source. Check your connection, or try again in a moment.</string>
+    <string name="anime_error_timeout">This source took too long to answer.</string>
+    <string name="anime_error_blocked">The site refused the request. Opening it in the WebView usually clears the check.</string>
+    <string name="anime_error_site_down">The site is not responding right now. This is on their end, not yours.</string>
+    <string name="anime_error_site_refused">The site refused the request.</string>
+    <string name="anime_error_outdated">This extension could not read the site. The site has most likely changed and the extension has not caught up — try another source.</string>
+    <string name="anime_error_no_video">No video found for this episode.</string>
+    <string name="anime_error_unknown">This source failed. Try again, or use another one.</string>
+    <string name="anime_source_health_gone">Checked %1$s: the site this source uses no longer exists.</string>
+    <string name="anime_source_health_outdated">Checked %1$s: the site changed and this extension could not read it.</string>
 </resources>

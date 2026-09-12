@@ -77,32 +77,14 @@ auditoría completa de paridad está en [`MIHON_PARITY.md`](MIHON_PARITY.md).
 
 ## 5. Qué esperar de las extensiones de anime
 
-El ecosistema de Aniyomi está en mal estado: el índice oficial se ha quedado en 3 extensiones
-y las de la comunidad envejecen sin mantenimiento. **Que una fuente falle no significa que la
-app esté rota.**
+El ecosistema de Aniyomi está en mal estado y se degrada solo. **Que una fuente falle no
+significa que la app esté rota**, y desde la 0.5.6 la app lo dice con palabras en vez de
+enseñar la excepción de Java que lanzó la extensión.
 
-Comprobado en el emulador el 2026-09-10 con el repo `aniyomi-revived-anime-extensions`:
+El estado medido de cada fuente, cómo se mide y qué se marca dentro de la app está en
+[`EXTENSIONS_STATUS.md`](EXTENSIONS_STATUS.md). Resumen de la pasada del 2026-09-11: de 21
+fuentes instaladas, 4 llegan a reproducir vídeo, 4 cargan catálogo pero no vídeo, y el
+resto no responde.
 
-| Fuente | Resultado |
-|---|---|
-| AnimeOnsen, AllAnime, Jkanime, Latanime | **cargan catálogo** |
-| AnimeFLV | `HTTP 522` — el servidor del sitio no responde |
-| Animetsu | devuelve HTML donde la extensión espera JSON: el sitio cambió |
-| AnimeLatinoHD | pasa Cloudflare vía WebView, luego `HTTP 404`: endpoint desaparecido |
-
-Cuando una falle, el camino es: **Reintentar**, y si persiste **Abrir en WebView** para
-resolver un posible desafío.
-
-### Si aun así falla, ¿se puede arreglar?
-
-**Sí.** El código fuente de las extensiones está publicado y es Apache-2.0: el repo trae 61
-extensiones en español con su Kotlin completo. Arreglar una es editar su fuente, compilar el
-APK y firmarlo con nuestra propia clave, publicándolo en un repositorio nuestro.
-
-Ejemplo real, AnimeLatinoHD: pide `GET /animes/populares` y ese endpoint devuelve 404 hoy.
-Arreglarlo es averiguar la ruta actual del sitio y cambiar esa línea.
-
-Lo que **no** es viable es mantener las 260. Cada sitio cambia por su cuenta y eso es trabajo
-continuo de una comunidad entera. Lo razonable, si hace falta, es adoptar solo las que el
-cliente use de verdad. Es un frente de trabajo aparte, no parte de la app.
-
+Cuando una falle, el camino sigue siendo: **Reintentar**, y si persiste **Abrir en WebView**
+para resolver un posible desafío de Cloudflare.
