@@ -10,6 +10,15 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.7.0] - 2026-09-12
+### Added
+- **Pin and hide anime sources.** Pinned ones sit at the top; hidden ones leave the list and are skipped by global search — which is the half that pays for itself when most of the ecosystem is broken. Hiding is not uninstalling.
+- **Migrate an anime to another source**, from its overflow menu. Watched episodes, categories and tracking come with it. Replace takes the old entry out of the library and deletes its downloads; Keep both leaves it. This is the way out of a source that has died.
+- **Anime updates and history are in the bottom bar.** The Updates and History tabs now swap between the manga and anime halves from their own toolbar.
+
+### Improved
+- The startup profile now covers the anime screens, so they no longer run interpreted the first time you open them. Its generator had been silently failing since 0.5.4, when a tab it clicks by name was renamed.
+
 ## [0.6.0] - 2026-09-12
 ### Added
 - **Categories in the anime library.** Create, rename, reorder and delete them from the library's menu; tabs across the top with a count on each; file an entry from its own screen. An anime can be in several at once. Categories and what is filed in them travel in the backup.
