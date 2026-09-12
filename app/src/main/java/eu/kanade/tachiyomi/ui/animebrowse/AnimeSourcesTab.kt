@@ -28,6 +28,9 @@ fun animeSourcesTab(): TabContent {
                 state = state,
                 contentPadding = contentPadding,
                 onSelectLanguage = viewModel::setLanguage,
+                onToggleShowHidden = viewModel::toggleShowHidden,
+                onTogglePinned = viewModel::togglePinned,
+                onToggleHidden = viewModel::toggleHidden,
             )
         },
     )

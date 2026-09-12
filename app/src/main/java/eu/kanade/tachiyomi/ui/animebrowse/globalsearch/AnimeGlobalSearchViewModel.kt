@@ -9,6 +9,7 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
+import eu.kanade.tachiyomi.ui.animebrowse.setting.AnimeSourcePreferences
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,8 @@ import kotlin.time.Duration.Companion.seconds
  * Each source keeps its own state. That is the whole point — with an ecosystem where most
  * sources are broken at any given moment, one that fails must not take the results of the
  * others with it, and must say so in its own row rather than as a screenful of error.
+ *
+ * Sources hidden in the source list are not asked at all.
  */
 @Inject
 @ViewModelKey
@@ -44,6 +47,7 @@ import kotlin.time.Duration.Companion.seconds
 class AnimeGlobalSearchViewModel(
     private val sourceManager: AnimeSourceManager,
     private val networkToLocalAnime: NetworkToLocalAnime,
+    private val sourcePreferences: AnimeSourcePreferences,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -59,7 +63,12 @@ class AnimeGlobalSearchViewModel(
 
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            val sources = sourceManager.getAll().filterIsInstance<AnimeCatalogueSource>()
+            // Hidden sources are skipped. Hiding one is the user saying it is not worth
+            // asking, and asking it anyway is slower and adds a row of noise to every search.
+            val hidden = sourcePreferences.hiddenSources.get()
+            val sources = sourceManager.getAll()
+                .filterIsInstance<AnimeCatalogueSource>()
+                .filterNot { it.id.toString() in hidden }
             _state.update { state ->
                 state.copy(
                     results = sources.map { SourceResult(it.id, it.name, it.lang) },
