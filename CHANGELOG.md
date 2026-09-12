@@ -10,6 +10,18 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.5.6] - 2026-09-11
+### Fixed
+- **Java errors no longer reach the screen.** A source that failed used to show whatever the extension threw — `Unable to resolve host "cached.freeanimehentai.net"`, or an `Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference`. Now it says which of three things happened, because they call for different responses: the site is unreachable, the site refused the request (open it in the WebView), or the extension can no longer read the site and needs an update.
+- Extensions that use an error to tell you something — Jellyfin's "Select library in the extension settings" — still say it. Only runtime noise is replaced.
+
+### Added
+- **Sources known to be broken say so in the list**, with the date they were checked. Four are marked in this release: AniZone, AnimeFenix, Animetsu and AnimeLatinoHD. Only failures caused by the source itself are listed — a dead domain, an endpoint that is gone, a page the extension can no longer read. A site that timed out or answered with a Cloudflare challenge is not marked: those come back.
+
+### Other
+- Every installed anime source is now swept before each release by a probe that takes each one through the catalogue, an entry's episodes and an episode's video. Results and method are in `docs/EXTENSIONS_STATUS.md`. Of 21 sources installed for the 11 Sep sweep, 4 played a video, 4 loaded a catalogue but no video, and the rest did not answer.
+- Removed two methods in the anime source API, inherited from Aniyomi, whose bodies called themselves.
+
 ## [0.5.5] - 2026-09-11
 ### Added
 - **Anime updates**: a screen listing the episodes your library gained, grouped by the day they arrived. Reachable from the anime library. A row plays the episode, its cover opens the anime, the check marks it watched for one you saw elsewhere, and the arrow downloads it. Until now the only record of a new episode was the notification, and once dismissed you had to open each entry to find it.

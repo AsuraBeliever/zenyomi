@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-11
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.5.5, tag en `main`
+**Última release:** v0.5.6, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,7 +18,7 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x | ✅ | hasta `v0.5.5`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Releases 0.5.x | ✅ | hasta `v0.5.6`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
 | Trackers de anime (código) | ✅ | MyAnimeList y AniList |
 | PiP del player | ✅ | Activity propia |
@@ -36,6 +36,8 @@
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
 | Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
+| Errores de fuente legibles | ✅ | `AnimeSourceError`: nunca se enseña la excepción cruda; el mensaje propio de una extensión sí |
+| Estado medido de las extensiones | ✅ | arnés en debug + `anime-source-health.json`; ver `docs/EXTENSIONS_STATUS.md` |
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
