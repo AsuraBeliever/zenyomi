@@ -681,4 +681,12 @@
     <string name="anime_category_all">All</string>
     <string name="anime_category_empty">Nothing in this category yet.</string>
     <string name="anime_category_set">Categories</string>
+    <string name="sort_anime_total_episodes">Total episodes</string>
+    <string name="sort_anime_latest_episode">Latest episode</string>
+    <string name="sort_anime_date_added">Date added</string>
+    <string name="anime_filter_unseen">Unwatched</string>
+    <string name="anime_filter_started">Started</string>
+    <string name="anime_filter_bookmarked">Bookmarked</string>
+    <string name="anime_filter_completed">Completed</string>
+    <string name="anime_library_no_matches">No anime matches these filters.</string>
 </resources>
