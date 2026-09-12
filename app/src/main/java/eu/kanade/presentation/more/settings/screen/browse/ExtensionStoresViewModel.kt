@@ -8,6 +8,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import eu.kanade.tachiyomi.animeextension.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import mihon.domain.animeextension.repository.AnimeExtensionStoreRepository
 import mihon.domain.extension.interactor.AddExtensionStore
+import mihon.domain.extension.interactor.DetectExtensionStoreKind
+import mihon.domain.extension.interactor.ExtensionStoreKind
 import mihon.domain.extension.interactor.GetExtensionStores
 import mihon.domain.extension.interactor.RemoveExtensionStore
 import mihon.domain.extension.interactor.UpdateExtensionStores
@@ -36,15 +40,24 @@ class ExtensionStoresViewModel(
     private val removeExtensionStore: RemoveExtensionStore,
     private val updateExtensionStores: UpdateExtensionStores,
     private val extensionManager: ExtensionManager,
+    // Zenyomi: the same screen manages the anime repositories, which live in their own table.
+    private val animeStoreRepository: AnimeExtensionStoreRepository,
+    private val animeExtensionManager: AnimeExtensionManager,
+    private val detectKind: DetectExtensionStoreKind,
 ) : ViewModel() {
 
     private val dialog = MutableStateFlow<ExtensionStoreDialog?>(null)
 
     val state: StateFlow<ExtensionStoreScreenState> = combine(
         getExtensionStores.subscribe(),
+        animeStoreRepository.getAllAsFlow(),
         dialog,
-    ) { stores, dialog ->
-        ExtensionStoreScreenState.Success(stores = stores, dialog = dialog)
+    ) { stores, animeStores, dialog ->
+        ExtensionStoreScreenState.Success(
+            stores = stores,
+            animeStores = animeStores,
+            dialog = dialog,
+        )
     }
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), ExtensionStoreScreenState.Loading)
@@ -63,11 +76,17 @@ class ExtensionStoresViewModel(
                     else -> it
                 }
             }
-            addExtensionStore(baseUrl)
-                .onSuccess {
-                    extensionManager.findAvailableExtensions()
-                    dismissDialog()
-                }
+            // Which half the repository belongs to is read from the repository itself rather
+            // than asked of the user: an extension APK declares one of two required features
+            // and neither manager will touch the other's, so there is nothing to choose.
+            val result = when (detectKind.await(baseUrl)) {
+                ExtensionStoreKind.ANIME -> animeStoreRepository.insert(baseUrl)
+                    .onSuccess { animeExtensionManager.findAvailableExtensions() }
+                ExtensionStoreKind.MANGA -> addExtensionStore(baseUrl)
+                    .onSuccess { extensionManager.findAvailableExtensions() }
+            }
+            result
+                .onSuccess { dismissDialog() }
                 .onFailure { throwable ->
                     dialog.update {
                         when (it) {
@@ -100,8 +119,12 @@ class ExtensionStoresViewModel(
      */
     fun deleteRepo(baseUrl: String) {
         viewModelScope.launchIO {
+            // Removing from both is safe and saves carrying the kind around: a url only ever
+            // exists in one of the two tables.
             removeExtensionStore(baseUrl)
+            animeStoreRepository.remove(baseUrl)
             extensionManager.findAvailableExtensions()
+            animeExtensionManager.findAvailableExtensions()
         }
     }
 
@@ -140,10 +163,11 @@ sealed class ExtensionStoreScreenState {
     @Immutable
     data class Success(
         val stores: List<ExtensionStore>,
+        val animeStores: List<ExtensionStore> = emptyList(),
         val dialog: ExtensionStoreDialog? = null,
     ) : ExtensionStoreScreenState() {
 
         val isEmpty: Boolean
-            get() = stores.isEmpty()
+            get() = stores.isEmpty() && animeStores.isEmpty()
     }
 }

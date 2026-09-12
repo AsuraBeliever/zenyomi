@@ -1,0 +1,2 @@
+Changed:
+- Extension stores now takes either kind of repository and works out whether it publishes manga or anime extensions, so there is one place to add repositories instead of two. Both kinds are listed there, labelled.
