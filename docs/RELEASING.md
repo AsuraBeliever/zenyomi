@@ -51,6 +51,28 @@ alimenta del keystore real, no de la clave de depuración de Android.
 8. Tagear `v<version>` y empujar el tag: el workflow `Release` compila, firma y crea
    la release en GitHub.
 
+## Cuando el workflow `Release` falla y el código está bien
+
+Ha pasado dos veces, y las dos eran del entorno, no nuestras. Antes de tocar nada,
+**compilar en local**: si `./gradlew assembleRelease` y `assembleFoss` pasan, el problema
+está fuera.
+
+| Síntoma | Qué era | Qué hacer |
+|---|---|---|
+| `:app:packageFoss FAILED` sin causa en el log | El runner empaquetando 5 APK, uno de 277 MB | Relanzar el job |
+| `Could not find flexible-adapter-<rev>.jar` | JitPack sirviendo el POM a medias. El artefacto es un **`.aar`**, no un `.jar`: si Gradle pide un `.jar` es que recibió un POM sin `packaging` y asumió el valor por defecto | Comprobar que JitPack sirve las dos cosas y relanzar |
+
+```sh
+B=https://www.jitpack.io/com/github/arkon/FlexibleAdapter/flexible-adapter/<rev>/flexible-adapter-<rev>
+curl -s -o /dev/null -w "pom %{http_code}\n" $B.pom
+curl -s -o /dev/null -w "aar %{http_code}\n" $B.aar   # 200 en ambos = relanzar y listo
+gh run rerun <run-id> --failed
+```
+
+El build local pasa aunque JitPack esté caído porque la dependencia ya está en
+`~/.gradle/caches`; el CI corre con `cache-disabled: true` y resuelve de cero cada vez.
+Esa diferencia es la que hace que parezca un fallo nuestro sin serlo.
+
 ## Verificar una release antes de anunciarla
 
 ```sh
