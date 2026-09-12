@@ -1,10 +1,10 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-09-08
-**Fase actual:** 3 — Paridad de funciones (fases 1 y 2 funcionalmente cerradas)
-**Versión objetivo inmediata:** v0.1.0
-**¿Compila?** sí — línea base de Mihon verde en 5m 42s
-**¿Instalado en el dispositivo del cliente?** sí — v0.1.0 verificada en Galaxy S25 Ultra
+**Actualizado:** 2026-09-11
+**Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
+**Última release:** v0.5.4, tag en `main`
+**¿Compila?** sí
+**¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
 ## Semáforo por área
 
@@ -18,7 +18,7 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Release 0.5.1 | ✅ | tag `v0.5.1`, prueba de humo completa de release (arranque, extensiones, reproducción, PiP) |
+| Releases 0.5.x | ✅ | hasta `v0.5.4`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
 | Trackers de anime (código) | ✅ | MyAnimeList y AniList |
 | PiP del player | ✅ | Activity propia |
@@ -30,7 +30,8 @@
 | Motor de extensiones de anime | ✅ | derivado del de Mihon; carga APK con `tachiyomi.animeextension` |
 | `AndroidAnimeSourceManager` | ✅ | conecta extensiones cargadas con fuentes usables |
 | Biblioteca de anime (UI) | ✅ | pestaña propia; búsqueda, orden (título / visto / sin ver) e insignia de episodios pendientes |
-| Explorar anime (fuentes + extensiones) | ✅ | dos pestañas; verificado: las 3 fuentes de una extensión real llegan a la UI |
+| Explorar anime (fuentes + extensiones) | ✅ | Explorar aloja las 5 pestañas: Sources, Manga extensions, Anime sources, Anime extensions, Migrate |
+| Búsqueda y filtro de idioma en extensiones de anime | ✅ | agrupado por idioma como en el manga; marca las abandonadas |
 | Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
@@ -52,6 +53,7 @@
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
 | Estadísticas de anime | ✅ | contadores verificados uno a uno contra la BD |
 | Backup de anime | ✅ | mismo fichero .tachibk que el manga; verificado backup → borrado → restauración |
+| "All read entries" para anime | ✅ | un anime visto y fuera de la biblioteca entra en el backup y vuelve **sin** entrar en la biblioteca |
 
 Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
@@ -65,13 +67,6 @@ En ambas releases publicadas R8 eliminó los métodos que `libmpv` llama por JNI
 reproducir cualquier vídeo mata la app. **Verificado** desempaquetando los APK publicados:
 cero referencias a `eventProperty` en sus `classes*.dex`. Corregido en la v0.5.1; quien tenga
 una de esas dos versiones necesita actualizar.
-
-## Diferencia conocida con el manga
-
-La opción **"All read entries"** del backup solo aplica al manga. El backup de anime incluye
-lo que está en la biblioteca, no los animes vistos y luego quitados de ella. Es una carencia,
-no un accidente: el lado anime todavía no tiene el equivalente de
-`mangaRepository.getReadMangaNotInLibrary()`.
 
 ## Sin verificar en dispositivo
 
@@ -117,35 +112,19 @@ Técnicas:
 - ADR-0003 — portar desde `aniyomi/main`, con v0.18.1.2 como contraste
 - ADR-0004 — la BD de anime nace en la versión 1, sin las 26 migraciones de Aniyomi
 
-## Lo que falta para que se VEA el anime
-
-Todo lo construido está bajo el capó. La app se ve exactamente igual que la v0.1.2
-porque **no hay ni una pantalla de anime todavía**. Ese es el grueso restante de la
-fase 1:
-
-| Pieza | Tamaño aproximado |
-|---|---|
-| Navegación con pestañas Anime / Manga | media |
-| Biblioteca de anime (pantalla + modelo de vista) | grande |
-| Explorar / fuentes de anime | grande |
-| Ficha de anime + lista de episodios | grande |
-| Ajustes de anime | media |
-| Módulo `i18n-anime` con las cadenas | media |
-
-De los 553 ficheros de Aniyomi que tocan anime, unos 200 son de interfaz. Es la mitad
-más laboriosa de la fase 1 y no está empezada.
-
 ## Siguiente paso
 
-Capa de dominio de anime: `domain/anime` y `domain/episode`, portados desde
-`entries/anime` e `items/episode` de Aniyomi, y los repositorios de `data` que los
-conectan con la base.
+Fase 4. Lo que queda, por orden:
 
-Nota: el fichero `anime.db` sigue sin existir en el dispositivo, y es correcto.
-sqldelight lo crea de forma perezosa, en la primera consulta. Como aún no hay ningún
-repositorio que la use, el proveedor nunca se invoca. Aparecerá con el primer consumidor
-real. Lo que sí está verificado es que el grafo de Metro compila, cosa que fallaría en
-tiempo de compilación si el binding estuviera mal.
+| Pieza | Estado |
+|---|---|
+| Baseline profile y afinado de R8 | no empezado |
+| Alineación de librerías nativas a 16 KB | vigilando; hoy solo es un aviso |
+| Streaming por torrent (torrserver) | opcional, decisión del cliente |
+
+La interfaz de anime está completa y en uso: pestañas Anime/Manga, biblioteca,
+Explorar con fuentes y extensiones, ficha con episodios, ajustes, player, historial,
+estadísticas y backup. El módulo `i18n-anime` existe y está poblado.
 
 ## Incidencias resueltas
 
