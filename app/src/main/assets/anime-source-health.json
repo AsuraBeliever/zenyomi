@@ -1,0 +1,26 @@
+{
+  "checkedOn": "2026-09-11",
+  "note": "Produced by AnimeSourceProbeActivity (debug builds) and confirmed from a second network. Only failures that are about the source itself are listed: a dead domain, an endpoint the site no longer serves, or a page the extension can no longer parse. Timeouts, refused connections, 5xx and Cloudflare challenges are deliberately left out — they come back, and labelling them would be wrong more often than right.",
+  "broken": [
+    {
+      "id": 954848840440936266,
+      "name": "AniZone",
+      "reason": "outdated"
+    },
+    {
+      "id": 1901838936011764172,
+      "name": "AnimeFenix",
+      "reason": "gone"
+    },
+    {
+      "id": 3135577129954186978,
+      "name": "Animetsu",
+      "reason": "outdated"
+    },
+    {
+      "id": 5412136569974245348,
+      "name": "AnimeLatinoHD",
+      "reason": "outdated"
+    }
+  ]
+}

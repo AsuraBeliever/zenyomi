@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Debug-only diagnostic. Exported so it can be started over adb; it is not in
+             the release manifest at all, so nothing of this reaches a published build. -->
+        <activity
+            android:name="eu.kanade.tachiyomi.debug.AnimeSourceProbeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:label="Anime source probe" />
+    </application>
+
+</manifest>

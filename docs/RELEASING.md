@@ -43,9 +43,12 @@ alimenta del keystore real, no de la clave de depuración de Android.
 2. Subir `versionCode` y `versionName` en `app/build.gradle.kts`.
 3. Añadir la entrada en `CHANGELOG.md` y en `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 4. **Auditar el cumplimiento como fork** — ver `docs/FORK_COMPLIANCE.md`.
-5. Probar en dispositivo con la checklist de humo de `docs/TESTING.md`.
-6. Mergear `develop` en `main`.
-7. Tagear `v<version>` y empujar el tag: el workflow `Release` compila, firma y crea
+5. **Pasar el arnés de extensiones** y regenerar `anime-source-health.json` — ver
+   `docs/EXTENSIONS_STATUS.md`. Lo que la app marca como roto lleva fecha, y una fecha
+   vieja engaña más que no poner nada.
+6. Probar en dispositivo con la checklist de humo de `docs/TESTING.md`.
+7. Mergear `develop` en `main`.
+8. Tagear `v<version>` y empujar el tag: el workflow `Release` compila, firma y crea
    la release en GitHub.
 
 ## Verificar una release antes de anunciarla

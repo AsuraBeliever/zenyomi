@@ -30,6 +30,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.util.Screen
@@ -65,10 +66,11 @@ class AnimeUpdatesScreen : Screen() {
         val downloadQueue by viewModel.downloadQueue.collectAsStateWithLifecycle()
         val snackbarHostState = remember { SnackbarHostState() }
 
-        // A tap that resolves to nothing is indistinguishable from a tap that missed, so
-        // whatever the source said is shown instead of silence.
-        LaunchedEffect(state.playbackError) {
-            state.playbackError?.let {
+        // A tap that resolves to nothing is indistinguishable from a tap that missed, so the
+        // failure is said out loud — in words, not as the exception the extension threw.
+        val playbackErrorText = state.playbackError?.let { animeSourceErrorText(it) }
+        LaunchedEffect(playbackErrorText) {
+            playbackErrorText?.let {
                 snackbarHostState.showSnackbar(it)
                 viewModel.clearPlaybackError()
             }
