@@ -458,3 +458,26 @@ Tres cosas, en este orden:
 De paso: `AnimeCatalogueSource` traía de Aniyomi dos `override` que se llaman a sí mismos
 (`getHosterList`, `getVideoList`). No se dispara, porque `AnimeHttpSource` los tapa, pero una
 recursión infinita no es algo que merezca conservarse por fidelidad al upstream.
+
+
+---
+
+## 2026-09-12 — Un solo sitio para añadir repositorios
+
+El cliente preguntó si la pantalla de repositorios era lo bastante lista como para saber sola
+si una URL es de manga o de anime. **No lo era**: la de Mihon guardaba todo como manga, así que
+pegar ahí un repo de anime lo dejaba en la tabla equivocada y sin una sola extensión.
+
+Ahora lo deduce del propio repositorio, y no es una heurística: un APK de extensión declara
+una *feature* obligatoria —`tachiyomi.extension` o `tachiyomi.animeextension`— y cada cargador
+rechaza la del otro, así que los dos tipos no son intercambiables ni por accidente. Los nombres
+de paquete del índice siguen esa misma división. Comprobado contra tres repositorios vivos: 263
+entradas en dos repos de anime, todas `animeextension`; las del repo de manga, todas
+`extension`.
+
+Si el índice no se puede leer se asume manga, a propósito: un repositorio ilegible es un error
+que el usuario tiene que ver, y dejarlo caer por el camino de Mihon lo pone delante de los
+mensajes de error que Mihon ya tiene, en vez de inventar un segundo camino para lo mismo.
+
+De paso desaparece la entrada "Anime extension repositories" del menú de Extensions. Eran dos
+sitios para lo mismo, y uno de ellos le preguntaba al usuario algo que la app puede averiguar.
