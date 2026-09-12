@@ -1,0 +1,4 @@
+Changed:
+- Browse is three tabs instead of five, so their titles fit. Sources and Extensions each hold manga and anime together, with a Both / Manga / Anime filter and a foldable header for each half.
+- The anime extension list starts folded: it runs to a few hundred entries.
+- Searching in Extensions narrows both halves at once.

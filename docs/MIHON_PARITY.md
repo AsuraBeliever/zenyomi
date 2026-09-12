@@ -11,6 +11,17 @@ de manga. Esto es la comprobación de esa regla. Se repite antes de cada release
 > también la mitad de anime. El cambio es aditivo: un parámetro opcional que por defecto
 > es `null` y deja la barra exactamente como la dibuja Mihon. Las únicas líneas eliminadas
 > son dos `listOf(` que pasan a `listOfNotNull(` para admitir una acción nullable.
+>
+> En la v0.8.0 se tocaron además `SourcesScreen` y `ExtensionsScreen`: el cuerpo de sus
+> listas se extrae a `LazyListScope.sourceItems` y `LazyListScope.extensionItems`, que las
+> propias pantallas siguen llamando. Es un **movimiento** de código, no una pérdida: las
+> filas se dibujan y se comportan igual. `ExtensionTrustDialog` deja de ser privada porque
+> el diálogo no puede vivir dentro de un `LazyListScope` y sube a quien llama.
+>
+> **Una divergencia menos:** `label_extensions` vuelve a ser "Extensions". Se había
+> renombrado a "Manga extensions" en la v0.5.4 cuando eran pestañas separadas; ahora esa
+> pestaña contiene las dos. El único cambio que queda en el `strings.xml` de Mihon es
+> `app_name`, que el checklist de forks **exige**.
 
 ---
 
