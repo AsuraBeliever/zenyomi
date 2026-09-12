@@ -27,6 +27,7 @@ import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.DeleteSweep
+import mihon.icons.materialsymbols.rounded.SwapCalls
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -36,8 +37,12 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 
 /**
  * Recently watched anime.
+ *
+ * Like [eu.kanade.tachiyomi.ui.animeupdates.AnimeUpdatesScreen], reachable both as a pushed
+ * screen and as the anime half of the bottom bar's History tab; [onSwitchToManga] is what
+ * tells the two apart.
  */
-class AnimeHistoryScreen : Screen() {
+class AnimeHistoryScreen(private val onSwitchToManga: (() -> Unit)? = null) : Screen() {
 
     @Composable
     override fun Content() {
@@ -49,8 +54,16 @@ class AnimeHistoryScreen : Screen() {
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(ANMR.strings.label_anime_history),
-                    navigateUp = navigator::pop,
+                    navigateUp = if (onSwitchToManga == null) ({ navigator.pop() }) else null,
                     actions = {
+                        onSwitchToManga?.let { switch ->
+                            IconButton(onClick = switch) {
+                                Icon(
+                                    imageVector = MaterialSymbols.Rounded.SwapCalls,
+                                    contentDescription = stringResource(MR.strings.history),
+                                )
+                            }
+                        }
                         IconButton(onClick = viewModel::removeAll) {
                             Icon(
                                 imageVector = MaterialSymbols.Rounded.DeleteSweep,

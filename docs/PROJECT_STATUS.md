@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-12
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.6.0, tag en `main`
+**Última release:** v0.7.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,7 +18,7 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x / 0.6.x | ✅ | hasta `v0.6.0`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Releases 0.5.x – 0.7.x | ✅ | hasta `v0.7.0`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
 | Trackers de anime (código) | ✅ | MyAnimeList y AniList |
 | PiP del player | ✅ | Activity propia |
@@ -36,6 +36,10 @@
 | Búsqueda y filtro de idioma en extensiones de anime | ✅ | agrupado por idioma como en el manga; marca las abandonadas |
 | Catálogo de una fuente | ✅ | rejilla paginada, con búsqueda dentro de la fuente |
 | Búsqueda global de anime | ✅ | una consulta a todas las fuentes a la vez, agrupada por fuente, con el estado de cada una |
+| Fijar y ocultar fuentes de anime | ✅ | fijadas arriba, ocultas fuera de la lista y de la búsqueda global |
+| Migrar un anime entre fuentes | ✅ | reutiliza la búsqueda global; traslada visto, categorías y tracking |
+| Novedades e Historial de anime en la barra inferior | ✅ | las pestañas de Mihon intercambian entre manga y anime |
+| Baseline profile | ✅ | el generador cubre ahora las pantallas de anime; 13 → 1418 reglas de anime |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
 | Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
@@ -124,7 +128,7 @@ Fase 4. Lo que queda, por orden:
 
 | Pieza | Estado |
 |---|---|
-| Baseline profile y afinado de R8 | no empezado |
+| Afinado de R8 | pendiente; el baseline profile ya cubre el anime |
 | Alineación de librerías nativas a 16 KB | vigilando; hoy solo es un aviso |
 | Streaming por torrent (torrserver) | opcional, decisión del cliente |
 

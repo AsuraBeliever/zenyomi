@@ -9,6 +9,7 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
+import eu.kanade.tachiyomi.ui.animebrowse.setting.AnimeSourcePreferences
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,8 +21,10 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeout
 import logcat.LogPriority
 import mihon.domain.anime.model.toDomainAnime
+import mihon.domain.migration.anime.MigrateAnimeUseCase
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.anime.interactor.NetworkToLocalAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
@@ -37,6 +40,8 @@ import kotlin.time.Duration.Companion.seconds
  * Each source keeps its own state. That is the whole point — with an ecosystem where most
  * sources are broken at any given moment, one that fails must not take the results of the
  * others with it, and must say so in its own row rather than as a screenful of error.
+ *
+ * Sources hidden in the source list are not asked at all.
  */
 @Inject
 @ViewModelKey
@@ -44,6 +49,9 @@ import kotlin.time.Duration.Companion.seconds
 class AnimeGlobalSearchViewModel(
     private val sourceManager: AnimeSourceManager,
     private val networkToLocalAnime: NetworkToLocalAnime,
+    private val sourcePreferences: AnimeSourcePreferences,
+    private val getAnime: GetAnime,
+    private val migrateAnime: MigrateAnimeUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -59,7 +67,12 @@ class AnimeGlobalSearchViewModel(
 
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            val sources = sourceManager.getAll().filterIsInstance<AnimeCatalogueSource>()
+            // Hidden sources are skipped. Hiding one is the user saying it is not worth
+            // asking, and asking it anyway is slower and adds a row of noise to every search.
+            val hidden = sourcePreferences.hiddenSources.get()
+            val sources = sourceManager.getAll()
+                .filterIsInstance<AnimeCatalogueSource>()
+                .filterNot { it.id.toString() in hidden }
             _state.update { state ->
                 state.copy(
                     results = sources.map { SourceResult(it.id, it.name, it.lang) },
@@ -104,6 +117,32 @@ class AnimeGlobalSearchViewModel(
         }
     }
 
+    /**
+     * Offers the chosen result as a migration target. The confirmation is not optional: this
+     * can take an entry out of the library and delete its downloads.
+     */
+    fun askToMigrate(from: Long, to: Anime) {
+        viewModelScope.launch {
+            val current = getAnime.await(from) ?: return@launch
+            _state.update { it.copy(migration = Migration(current, to)) }
+        }
+    }
+
+    fun dismissMigration() = _state.update { it.copy(migration = null) }
+
+    fun migrate(replace: Boolean) {
+        val migration = state.value.migration ?: return
+        _state.update { it.copy(migration = null, migrating = true) }
+        viewModelScope.launch {
+            val result = migrateAnime(migration.current, migration.target, replace)
+            _state.update { it.copy(migrating = false, migrated = result.isSuccess) }
+        }
+    }
+
+    fun clearMigrated() = _state.update { it.copy(migrated = false) }
+
+    data class Migration(val current: Anime, val target: Anime)
+
     data class SourceResult(
         val sourceId: Long,
         val sourceName: String,
@@ -117,6 +156,9 @@ class AnimeGlobalSearchViewModel(
         val query: String? = null,
         val results: List<SourceResult> = emptyList(),
         val searched: Boolean = false,
+        val migration: Migration? = null,
+        val migrating: Boolean = false,
+        val migrated: Boolean = false,
     ) {
         /**
          * Sources that found nothing are dropped once they are done, so the screen is results

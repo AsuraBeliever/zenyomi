@@ -33,7 +33,9 @@ import mihon.icons.materialsymbols.rounded.FilterList
 import mihon.icons.materialsymbols.rounded.FlipToBack
 import mihon.icons.materialsymbols.rounded.Refresh
 import mihon.icons.materialsymbols.rounded.SelectAll
+import mihon.icons.materialsymbols.rounded.SwapCalls
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.FastScrollLazyColumn
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -61,6 +63,9 @@ fun UpdateScreen(
     onOpenChapter: (UpdatesItem) -> Unit,
     onFilterClicked: () -> Unit,
     hasActiveFilters: Boolean,
+    // Zenyomi: switches this tab to the anime updates. Null leaves the bar exactly as
+    // Mihon draws it, so nothing here changes for a build without an anime half.
+    onSwitchToAnime: (() -> Unit)? = null,
 ) {
     BackHandler(enabled = state.selectionMode) {
         onSelectAll(false)
@@ -74,6 +79,7 @@ fun UpdateScreen(
                 onFilterClicked = { onFilterClicked() },
                 hasFilters = hasActiveFilters,
                 actionModeCounter = state.selected.size,
+                onSwitchToAnime = onSwitchToAnime,
                 onSelectAll = { onSelectAll(true) },
                 onInvertSelection = { onInvertSelection() },
                 onCancelActionMode = { onSelectAll(false) },
@@ -142,6 +148,7 @@ private fun UpdatesAppBar(
     onUpdateLibrary: () -> Unit,
     onFilterClicked: () -> Unit,
     hasFilters: Boolean,
+    onSwitchToAnime: (() -> Unit)?,
     // For action mode
     actionModeCounter: Int,
     onSelectAll: () -> Unit,
@@ -155,7 +162,14 @@ private fun UpdatesAppBar(
         title = stringResource(MR.strings.label_recent_updates),
         actions = {
             AppBarActions(
-                listOf(
+                listOfNotNull(
+                    onSwitchToAnime?.let {
+                        AppBar.Action(
+                            title = stringResource(ANMR.strings.label_anime_updates),
+                            icon = MaterialSymbols.Rounded.SwapCalls,
+                            onClick = it,
+                        )
+                    },
                     AppBar.Action(
                         title = stringResource(MR.strings.action_filter),
                         icon = MaterialSymbols.Rounded.FilterList,

@@ -1,0 +1,7 @@
+Added:
+- Pin and hide anime sources. Hidden ones are skipped by global search too.
+- Migrate an anime to another source, carrying watched episodes, categories and tracking. The way out of a source that has died.
+- Anime updates and history are reachable from the bottom bar; the Updates and History tabs swap between manga and anime.
+
+Improved:
+- Anime screens are compiled ahead of time now, so they no longer stutter the first time you open them.

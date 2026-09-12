@@ -3,7 +3,7 @@
 El ecosistema de Aniyomi se degrada solo: los sitios cambian y las extensiones no lo hacen.
 Esto **se mide**, no se opina. La medición la produce un arnés que vive en los builds de debug.
 
-**Última pasada: 2026-09-11**, emulador Pixel 10 Pro XL, 21 fuentes instaladas.
+**Última pasada: 2026-09-12**, emulador Pixel 10 Pro XL, 21 fuentes instaladas.
 
 ---
 
@@ -13,7 +13,7 @@ Esto **se mide**, no se opina. La medición la produce un arnés que vive en los
 export PATH=$PATH:$HOME/Android/Sdk/platform-tools
 ./gradlew :app:installDebug
 adb shell am start -n app.zenyomi.dev/eu.kanade.tachiyomi.debug.AnimeSourceProbeActivity
-# ...espera a que la pantalla diga "Done"; unos 8 minutos para 21 fuentes
+# ...espera a que la pantalla diga "Done"; unos 6 minutos para 21 fuentes
 adb exec-out run-as app.zenyomi.dev cat files/source-probe.tsv
 ```
 
@@ -21,9 +21,9 @@ Cada fuente pasa por los tres pasos que hace una persona: pedir el catálogo, ab
 primera entrada y pedir sus episodios, y resolver el vídeo del primer episodio. Una fuente
 cuyo catálogo carga puede seguir siendo inservible, y ese es justo el caso que interesa.
 
-Opciones: `-e only <texto>` prueba solo las fuentes cuyo nombre coincida (para mirar un
-fallo concreto sin esperar la pasada entera); `-e list true` lista fuentes e ids sin tocar
-la red. Las trazas completas van a logcat con el tag `AnimeSourceProbe`.
+Opciones: `-e only <texto>` prueba solo las fuentes cuyo nombre coincida; `-e list true`
+lista fuentes e ids sin tocar la red. Las trazas completas van a logcat con el tag
+`AnimeSourceProbe`.
 
 **La actividad se queda en pantalla a propósito.** La primera versión terminaba al instante
 y medía desde segundo plano, donde Android le corta la red al proceso: las 21 fuentes
@@ -32,32 +32,34 @@ capaz de dar una respuesta equivocada con seguridad es peor que no tener arnés.
 
 ---
 
-## Resultado de la pasada del 2026-09-11
+## Resultado de la pasada del 2026-09-12
 
 | Fuente | Idioma | Hasta dónde llega | Detalle |
 |---|---|---|---|
 | AnimeOnsen | Multi | ✅ vídeo | 30 entradas, 1 vídeo |
-| KickAssAnime | English | ✅ vídeo | 24 entradas, 3 vídeos |
-| TioAnime | Español | ✅ vídeo | 20 entradas, 1 vídeo |
+| Jkanime | Español | ✅ vídeo | 30 entradas, 16 vídeos |
+| Latanime | Español | ✅ vídeo | 30 entradas, 4 vídeos |
+| TioAnime | Español | ✅ vídeo | 20 entradas, 3 vídeos |
 | TioHentai | Español | ✅ vídeo | 20 entradas, 3 vídeos |
-| Jkanime | Español | ⚠️ catálogo | 30 entradas; el vídeo tardó más de 45 s |
-| Latanime | Español | ⚠️ catálogo | 30 entradas; el vídeo tardó más de 45 s |
+| AllAnime | English | ⚠️ catálogo | 26 entradas; el episodio no resuelve a ningún vídeo |
+| AnimeKhor | English | ⚠️ catálogo | 20 entradas; ídem |
+| KickAssAnime | English | ⚠️ catálogo | 24 entradas; ídem |
 | MonosChinos | Español | ⚠️ catálogo | 30 entradas; el vídeo tardó más de 45 s |
-| AnimeKhor | English | ⚠️ catálogo | 20 entradas; el episodio no resuelve a ningún vídeo |
-| AniZone | Multi | 🔴 nada | NPE dentro de `AniZone.popularAnimeParse`: el sitio cambió el HTML |
 | AnimeFenix | Español | 🔴 nada | `animefenix2.tv` ya no existe (el sitio vive en `animefenix.tv`) |
 | Animetsu | Multi | 🔴 nada | su API devuelve HTML donde la extensión espera JSON |
-| AnimeLatinoHD | Español | 🔴 nada | HTTP 404: el endpoint que pide ya no se sirve |
+| AniZone | Multi | 🔴 nada | hoy agota el tiempo; el 11-sep dio un NPE dentro de su propio parser |
+| AnimeLatinoHD | Español | 🔴 nada | no consigue pasar Cloudflare |
+| AnimePahe | English | 🔴 nada | no consigue pasar Cloudflare |
 | 9AnimeTV | English | 🔴 nada | HTTP 522 |
 | AniWatchtv | English | 🔴 nada | HTTP 522 |
 | AnimeFLV | Español | 🔴 nada | HTTP 522 |
 | Kaido | English | 🔴 nada | HTTP 522 |
-| AnimePahe | English | 🔴 nada | HTTP 403 |
-| AllAnime | English | 🔴 nada | no conecta con `api.allanime.day` |
 | Jellyfin (×3) | Multi | ⚙️ configurar | "Select library in the extension settings" |
 
-Los tres tiempos de espera en español son del emulador, cuya red va por NAT y es lenta;
-la app concede 60 s donde el arnés concede 45. No cuentan como rotas.
+**Lo que cambió en un día.** Jkanime y Latanime pasaron de agotar el tiempo a reproducir;
+KickAssAnime pasó de reproducir a no resolver vídeo; AnimeLatinoHD pasó de un 404 a un
+bloqueo de Cloudflare. Es exactamente el motivo por el que esto se mide antes de cada
+release en vez de mantenerse a mano.
 
 ---
 
@@ -77,8 +79,17 @@ quien mire:
 403 de Cloudflare: vuelven, y marcarlos acertaría menos veces de las que fallaría. Una lista
 en la que no se puede confiar es peor que ninguna lista.
 
-Con ese criterio, la pasada del 2026-09-11 marca cuatro: AniZone, AnimeFenix, Animetsu y
-AnimeLatinoHD. Cada una se confirmó además desde una segunda red antes de escribirla.
+Con ese criterio, la pasada del 2026-09-12 marca tres: AnimeFenix, Animetsu y AniZone.
+Cada una se confirmó además desde una segunda red antes de escribirla.
+
+**AnimeLatinoHD sale de la lista.** El 11-sep daba un 404 y se marcó como endpoint muerto;
+hoy da un bloqueo de Cloudflare, que el criterio excluye a propósito porque vuelve. El
+criterio se corrigió solo, que es para lo que está.
+
+**AniZone se queda con matiz.** Hoy agota el tiempo antes de llegar a parsear, así que esta
+pasada no reproduce el fallo; pero el sitio responde 200 en medio segundo desde otra red y
+el 11-sep el NPE se capturó dentro de su propio `popularAnimeParse`. Un sitio vivo que la
+extensión no sabe leer sigue siendo "desactualizada".
 
 **Se regenera antes de cada release.** Los ids salen de `-e list true`.
 
