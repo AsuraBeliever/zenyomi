@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.DropdownMenu
@@ -29,14 +30,19 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.anime.AnimeSourceHealth
+import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Check
 import mihon.icons.materialsymbols.rounded.FilterList
+import mihon.icons.materialsymbols.rounded.MoreVert
+import mihon.icons.materialsymbols.rounded.PushPin
 import mihon.icons.materialsymbols.rounded.Settings
 import mihon.icons.materialsymbols.rounded.TravelExplore
+import mihon.icons.materialsymbols.rounded.Visibility
+import mihon.icons.materialsymbols.rounded.VisibilityOff
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -51,6 +57,9 @@ fun AnimeSourcesList(
     state: AnimeSourcesViewModel.State,
     contentPadding: PaddingValues,
     onSelectLanguage: (String?) -> Unit,
+    onToggleShowHidden: () -> Unit,
+    onTogglePinned: (AnimeSource) -> Unit,
+    onToggleHidden: (AnimeSource) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val navigator = LocalNavigator.currentOrThrow
@@ -76,10 +85,39 @@ fun AnimeSourcesList(
                             contentDescription = stringResource(ANMR.strings.anime_global_search),
                         )
                     }
+                    if (state.hiddenCount > 0) {
+                        IconButton(onClick = onToggleShowHidden) {
+                            Icon(
+                                imageVector = if (state.showHidden) {
+                                    MaterialSymbols.Rounded.VisibilityOff
+                                } else {
+                                    MaterialSymbols.Rounded.Visibility
+                                },
+                                contentDescription = stringResource(
+                                    if (state.showHidden) {
+                                        ANMR.strings.anime_sources_hide_hidden
+                                    } else {
+                                        ANMR.strings.anime_sources_show_hidden
+                                    },
+                                    state.hiddenCount,
+                                ),
+                            )
+                        }
+                    }
                     SourceLanguageFilter(
                         languages = state.languages,
                         selected = state.selectedLanguage,
                         onSelect = onSelectLanguage,
+                    )
+                }
+            }
+
+            if (state.isAllHidden) {
+                item(key = "all-hidden") {
+                    Text(
+                        text = stringResource(ANMR.strings.anime_sources_all_hidden),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp),
                     )
                 }
             }
@@ -124,15 +162,32 @@ fun AnimeSourcesList(
                         }
                     },
                     trailingContent = {
-                        if (source is ConfigurableAnimeSource) {
-                            IconButton(
-                                onClick = { navigator.push(AnimeSourcePreferencesScreen(source.id)) },
-                            ) {
+                        Row {
+                            if (state.isPinned(source)) {
                                 Icon(
-                                    imageVector = MaterialSymbols.Rounded.Settings,
-                                    contentDescription = stringResource(MR.strings.label_settings),
+                                    imageVector = MaterialSymbols.Rounded.PushPin,
+                                    contentDescription = stringResource(ANMR.strings.anime_source_unpin),
+                                    modifier = Modifier
+                                        .align(Alignment.CenterVertically)
+                                        .size(18.dp),
                                 )
                             }
+                            if (source is ConfigurableAnimeSource) {
+                                IconButton(
+                                    onClick = { navigator.push(AnimeSourcePreferencesScreen(source.id)) },
+                                ) {
+                                    Icon(
+                                        imageVector = MaterialSymbols.Rounded.Settings,
+                                        contentDescription = stringResource(MR.strings.label_settings),
+                                    )
+                                }
+                            }
+                            SourceMenu(
+                                pinned = state.isPinned(source),
+                                hidden = state.isHidden(source),
+                                onTogglePinned = { onTogglePinned(source) },
+                                onToggleHidden = { onToggleHidden(source) },
+                            )
                         }
                     },
                     modifier = Modifier.clickable {
@@ -183,5 +238,56 @@ private fun SourceLanguageFilter(
                 },
             )
         }
+    }
+}
+
+/**
+ * Pin and hide, per source.
+ *
+ * A menu rather than a swipe or a long press: with a list this long the action has to be
+ * discoverable from looking at it, and the row itself already opens the source.
+ */
+@Composable
+private fun SourceMenu(
+    pinned: Boolean,
+    hidden: Boolean,
+    onTogglePinned: () -> Unit,
+    onToggleHidden: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    IconButton(onClick = { expanded = true }) {
+        Icon(
+            imageVector = MaterialSymbols.Rounded.MoreVert,
+            contentDescription = stringResource(MR.strings.action_menu_overflow_description),
+        )
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenuItem(
+            text = {
+                Text(
+                    stringResource(
+                        if (pinned) ANMR.strings.anime_source_unpin else ANMR.strings.anime_source_pin,
+                    ),
+                )
+            },
+            onClick = {
+                onTogglePinned()
+                expanded = false
+            },
+        )
+        DropdownMenuItem(
+            text = {
+                Text(
+                    stringResource(
+                        if (hidden) ANMR.strings.anime_source_unhide else ANMR.strings.anime_source_hide,
+                    ),
+                )
+            },
+            onClick = {
+                onToggleHidden()
+                expanded = false
+            },
+        )
     }
 }
