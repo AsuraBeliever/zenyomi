@@ -2,11 +2,14 @@ package eu.kanade.tachiyomi.data.backup.restore.restorers
 
 import dev.zacsweers.metro.Inject
 import eu.kanade.tachiyomi.data.backup.models.BackupAnime
+import eu.kanade.tachiyomi.data.backup.models.BackupCategory
 import eu.kanade.tachiyomi.data.backup.models.BackupEpisode
 import tachiyomi.domain.anime.interactor.NetworkToLocalAnime
 import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.anime.model.AnimeUpdate
+import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
+import tachiyomi.domain.category.anime.interactor.SetAnimeCategories
 import tachiyomi.domain.episode.model.Episode
 import tachiyomi.domain.episode.model.EpisodeUpdate
 import tachiyomi.domain.episode.repository.EpisodeRepository
@@ -28,9 +31,11 @@ class AnimeRestorer(
     private val updateAnime: UpdateAnime,
     private val episodeRepository: EpisodeRepository,
     private val upsertAnimeHistory: UpsertAnimeHistory,
+    private val getAnimeCategories: GetAnimeCategories,
+    private val setAnimeCategories: SetAnimeCategories,
 ) {
 
-    suspend fun restore(backupAnime: BackupAnime) {
+    suspend fun restore(backupAnime: BackupAnime, backupCategories: List<BackupCategory>) {
         val anime = networkToLocalAnime.await(backupAnime.toAnimeImpl())
 
         // networkToLocalAnime returns the existing row untouched when the anime is already
@@ -45,8 +50,32 @@ class AnimeRestorer(
             ),
         )
 
+        restoreCategories(anime, backupAnime.categories, backupCategories)
         val restoredEpisodes = restoreEpisodes(anime, backupAnime.episodes)
         restoreHistory(backupAnime, restoredEpisodes)
+    }
+
+    /**
+     * Files the anime under the categories it was in.
+     *
+     * The backup stores category orders, not ids, so each one is looked up in the backup's own
+     * category list and then matched by name against what this device has. Categories the
+     * restore did not create are simply skipped rather than invented.
+     */
+    private suspend fun restoreCategories(
+        anime: Anime,
+        categoryOrders: List<Long>,
+        backupCategories: List<BackupCategory>,
+    ) {
+        if (categoryOrders.isEmpty() || backupCategories.isEmpty()) return
+
+        val backupByOrder = backupCategories.associateBy { it.order }
+        val localByName = getAnimeCategories.await().associateBy { it.name }
+
+        val ids = categoryOrders.mapNotNull { order ->
+            backupByOrder[order]?.let { localByName[it.name]?.id }
+        }
+        if (ids.isNotEmpty()) setAnimeCategories.await(anime.id, ids)
     }
 
     private suspend fun restoreEpisodes(anime: Anime, backupEpisodes: List<BackupEpisode>): List<Episode> {

@@ -539,7 +539,7 @@
     <string name="channel_new_chapters_episodes">Chapter/Episode updates</string>
     <string name="label_storage">Storage</string>
     <string name="label_history">Manga</string>
-    <string name="label_anime_history">Anime</string>
+    <string name="label_anime_history">Anime history</string>
     <string name="label_updates">Manga</string>
     <string name="label_anime_updates">Anime</string>
     <string name="action_change_intro_length">Change intro length</string>
@@ -675,4 +675,10 @@
     <string name="anime_error_unknown">This source failed. Try again, or use another one.</string>
     <string name="anime_source_health_gone">Checked %1$s: the site this source uses no longer exists.</string>
     <string name="anime_source_health_outdated">Checked %1$s: the site changed and this extension could not read it.</string>
+    <string name="anime_category_move_up">Move up</string>
+    <string name="anime_category_move_down">Move down</string>
+    <string name="anime_category_delete_confirm">Delete "%1$s"? The anime in it stay in your library and move to the default category.</string>
+    <string name="anime_category_all">All</string>
+    <string name="anime_category_empty">Nothing in this category yet.</string>
+    <string name="anime_category_set">Categories</string>
 </resources>

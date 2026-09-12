@@ -30,6 +30,7 @@
 | Motor de extensiones de anime | ✅ | derivado del de Mihon; carga APK con `tachiyomi.animeextension` |
 | `AndroidAnimeSourceManager` | ✅ | conecta extensiones cargadas con fuentes usables |
 | Biblioteca de anime (UI) | ✅ | pestaña propia; búsqueda, orden (título / visto / sin ver) e insignia de episodios pendientes |
+| Categorías de anime | ✅ | crear, renombrar, reordenar y borrar; pestañas en la biblioteca; asignar desde la ficha; viajan en el backup |
 | Explorar anime (fuentes + extensiones) | ✅ | Explorar aloja las 5 pestañas: Sources, Manga extensions, Anime sources, Anime extensions, Migrate |
 | Búsqueda y filtro de idioma en extensiones de anime | ✅ | agrupado por idioma como en el manga; marca las abandonadas |
 | Catálogo de una fuente | ✅ | rejilla paginada; verificado ejecutando el código de una extensión real |
