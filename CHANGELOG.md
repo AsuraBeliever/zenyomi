@@ -10,6 +10,12 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.8.0] - 2026-09-12
+### Changed
+- **Browse is three tabs instead of five.** Five made the row truncate every title — "Manga …", "Anime …", "Anime …" — which was no help in telling the last two apart. Sources and Extensions each now hold manga and anime together, with a Both / Manga / Anime filter at the top and a header for each half that folds it away. The anime extension list is folded by default; it runs to a few hundred entries and expanded it buries everything under it.
+- The search box in Extensions narrows both halves at once, so one query covers the whole list.
+- The Extensions tab is called "Extensions" again, now that it is not just the manga one.
+
 ## [0.7.0] - 2026-09-12
 ### Added
 - **Pin and hide anime sources.** Pinned ones sit at the top; hidden ones leave the list and are skipped by global search — which is the half that pays for itself when most of the ecosystem is broken. Hiding is not uninstalling.

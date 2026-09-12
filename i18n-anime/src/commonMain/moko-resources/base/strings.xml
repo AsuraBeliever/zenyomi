@@ -705,4 +705,11 @@
     <string name="anime_migrate_confirm">Move "%1$s" to "%2$s"? Watched episodes, categories and tracking come with it.</string>
     <string name="anime_migrate_replace">Replace</string>
     <string name="anime_migrate_keep">Keep both</string>
+    <string name="browse_filter_both">Both</string>
+    <string name="browse_filter_manga">Manga</string>
+    <string name="browse_filter_anime">Anime</string>
+    <string name="browse_section_manga_sources">Manga sources</string>
+    <string name="browse_section_anime_sources">Anime sources</string>
+    <string name="browse_section_manga_extensions">Manga extensions</string>
+    <string name="browse_section_anime_extensions">Anime extensions</string>
 </resources>

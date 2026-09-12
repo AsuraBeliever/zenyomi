@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -132,70 +133,91 @@ fun AnimeSourcesList(
                 }
             }
 
-            items(state.visibleSources, key = { it.id }) { source ->
-                val broken = state.broken[source.id]
-                ListItem(
-                    headlineContent = { Text(source.name) },
-                    supportingContent = {
-                        Column {
-                            Text(
-                                text = LocaleHelper.getSourceDisplayName(source.lang, LocalContext.current),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            // Said here rather than left for the user to discover by opening it:
-                            // the whole cost of a dead source is the trip you take to find out.
-                            if (broken != null) {
-                                Text(
-                                    text = stringResource(
-                                        when (broken) {
-                                            AnimeSourceHealth.Reason.Gone ->
-                                                ANMR.strings.anime_source_health_gone
-                                            AnimeSourceHealth.Reason.Outdated ->
-                                                ANMR.strings.anime_source_health_outdated
-                                        },
-                                        state.checkedOn,
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                        }
-                    },
-                    trailingContent = {
-                        Row {
-                            if (state.isPinned(source)) {
-                                Icon(
-                                    imageVector = MaterialSymbols.Rounded.PushPin,
-                                    contentDescription = stringResource(ANMR.strings.anime_source_unpin),
-                                    modifier = Modifier
-                                        .align(Alignment.CenterVertically)
-                                        .size(18.dp),
-                                )
-                            }
-                            if (source is ConfigurableAnimeSource) {
-                                IconButton(
-                                    onClick = { navigator.push(AnimeSourcePreferencesScreen(source.id)) },
-                                ) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Rounded.Settings,
-                                        contentDescription = stringResource(MR.strings.label_settings),
-                                    )
-                                }
-                            }
-                            SourceMenu(
-                                pinned = state.isPinned(source),
-                                hidden = state.isHidden(source),
-                                onTogglePinned = { onTogglePinned(source) },
-                                onToggleHidden = { onToggleHidden(source) },
-                            )
-                        }
-                    },
-                    modifier = Modifier.clickable {
-                        navigator.push(AnimeCatalogScreen(source.id))
-                    },
-                )
-            }
+            animeSourceItems(
+                state = state,
+                onOpenSource = { navigator.push(AnimeCatalogScreen(it.id)) },
+                onOpenSettings = { navigator.push(AnimeSourcePreferencesScreen(it.id)) },
+                onTogglePinned = onTogglePinned,
+                onToggleHidden = onToggleHidden,
+            )
         }
+    }
+}
+
+/**
+ * The rows of the anime source list, as list items.
+ *
+ * Extracted so the anime sources can share one scrolling list with Mihon's manga ones under
+ * collapsible headers, the same way [eu.kanade.presentation.browse.sourceItems] was. Taking
+ * callbacks rather than the navigator is what lets it be called from either screen.
+ */
+fun LazyListScope.animeSourceItems(
+    state: AnimeSourcesViewModel.State,
+    onOpenSource: (AnimeSource) -> Unit,
+    onOpenSettings: (AnimeSource) -> Unit,
+    onTogglePinned: (AnimeSource) -> Unit,
+    onToggleHidden: (AnimeSource) -> Unit,
+) {
+    items(state.visibleSources, key = { it.id }) { source ->
+        val broken = state.broken[source.id]
+        ListItem(
+            headlineContent = { Text(source.name) },
+            supportingContent = {
+                Column {
+                    Text(
+                        text = LocaleHelper.getSourceDisplayName(source.lang, LocalContext.current),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    // Said here rather than left for the user to discover by opening it:
+                    // the whole cost of a dead source is the trip you take to find out.
+                    if (broken != null) {
+                        Text(
+                            text = stringResource(
+                                when (broken) {
+                                    AnimeSourceHealth.Reason.Gone ->
+                                        ANMR.strings.anime_source_health_gone
+                                    AnimeSourceHealth.Reason.Outdated ->
+                                        ANMR.strings.anime_source_health_outdated
+                                },
+                                state.checkedOn,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            },
+            trailingContent = {
+                Row {
+                    if (state.isPinned(source)) {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.PushPin,
+                            contentDescription = stringResource(ANMR.strings.anime_source_unpin),
+                            modifier = Modifier
+                                .align(Alignment.CenterVertically)
+                                .size(18.dp),
+                        )
+                    }
+                    if (source is ConfigurableAnimeSource) {
+                        IconButton(
+                            onClick = { onOpenSettings(source) },
+                        ) {
+                            Icon(
+                                imageVector = MaterialSymbols.Rounded.Settings,
+                                contentDescription = stringResource(MR.strings.label_settings),
+                            )
+                        }
+                    }
+                    SourceMenu(
+                        pinned = state.isPinned(source),
+                        hidden = state.isHidden(source),
+                        onTogglePinned = { onTogglePinned(source) },
+                        onToggleHidden = { onToggleHidden(source) },
+                    )
+                }
+            },
+            modifier = Modifier.clickable { onOpenSource(source) },
+        )
     }
 }
 

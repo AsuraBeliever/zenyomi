@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,6 +47,7 @@ import eu.kanade.tachiyomi.extension.model.Extension
 import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionUiModel
 import eu.kanade.tachiyomi.ui.browse.extension.ExtensionsViewModel
+import eu.kanade.tachiyomi.ui.browse.extension.ItemGroups
 import eu.kanade.tachiyomi.util.system.LocaleHelper
 import eu.kanade.tachiyomi.util.system.launchRequestPackageInstallsPermission
 import mihon.icons.materialsymbols.MaterialSymbols
@@ -162,93 +164,17 @@ private fun ExtensionContent(
             }
         }
 
-        state.items.forEach { (header, items) ->
-            item(
-                contentType = "header",
-                key = "extensionHeader-${header.hashCode()}",
-            ) {
-                when (header) {
-                    is ExtensionUiModel.Header.Resource -> {
-                        val action: @Composable RowScope.() -> Unit =
-                            if (header.textRes == MR.strings.ext_updates_pending) {
-                                {
-                                    Button(onClick = { onClickUpdateAll() }) {
-                                        Text(
-                                            text = stringResource(MR.strings.ext_update_all),
-                                            style = LocalTextStyle.current.copy(
-                                                color = MaterialTheme.colorScheme.onPrimary,
-                                            ),
-                                        )
-                                    }
-                                }
-                            } else {
-                                {}
-                            }
-                        ExtensionHeader(
-                            textRes = header.textRes,
-                            modifier = Modifier.animateItem(),
-                            action = action,
-                        )
-                    }
-                    is ExtensionUiModel.Header.Text -> {
-                        ExtensionHeader(
-                            text = header.text,
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-                }
-            }
-
-            items(
-                items = items,
-                contentType = { "item" },
-                key = { item ->
-                    when (item.extension) {
-                        is Extension.Untrusted -> "extension-untrusted-${item.hashCode()}"
-                        is Extension.Installed -> "extension-installed-${item.hashCode()}"
-                        is Extension.Available -> "extension-available-${item.hashCode()}"
-                    }
-                },
-            ) { item ->
-                ExtensionItem(
-                    modifier = Modifier.animateItem(),
-                    item = item,
-                    onClickItem = {
-                        when (it) {
-                            is Extension.Available -> onInstallExtension(it)
-                            is Extension.Installed -> onOpenExtension(it)
-                            is Extension.Untrusted -> {
-                                trustState = it
-                            }
-                        }
-                    },
-                    onLongClickItem = onLongClickItem,
-                    onClickItemSecondaryAction = {
-                        when (it) {
-                            is Extension.Available -> onOpenWebView(it)
-                            is Extension.Installed -> onOpenExtension(it)
-                            else -> {}
-                        }
-                    },
-                    onClickItemCancel = onClickItemCancel,
-                    onClickItemAction = {
-                        when (it) {
-                            is Extension.Available -> onInstallExtension(it)
-                            is Extension.Installed -> {
-                                if (it.hasUpdate) {
-                                    onUpdateExtension(it)
-                                } else {
-                                    onOpenExtension(it)
-                                }
-                            }
-                            is Extension.Untrusted -> {
-                                trustState = it
-                            }
-                        }
-                    },
-                )
-            }
-        }
+        extensionItems(
+            items = state.items,
+            onLongClickItem = onLongClickItem,
+            onClickItemCancel = onClickItemCancel,
+            onOpenWebView = onOpenWebView,
+            onInstallExtension = onInstallExtension,
+            onUpdateExtension = onUpdateExtension,
+            onOpenExtension = onOpenExtension,
+            onRequestTrust = { trustState = it },
+            onClickUpdateAll = onClickUpdateAll,
+        )
     }
     if (trustState != null) {
         ExtensionTrustDialog(
@@ -264,6 +190,110 @@ private fun ExtensionContent(
                 trustState = null
             },
         )
+    }
+}
+
+/**
+ * The rows of the extension list, as list items rather than a whole screen.
+ *
+ * Zenyomi: extracted verbatim from [ExtensionContent] so the manga extensions can share one
+ * scrolling list with the anime ones under collapsible headers. The one change is that the
+ * trust prompt is raised to the caller — a dialog cannot live inside a LazyListScope.
+ */
+@Suppress("LongParameterList")
+fun LazyListScope.extensionItems(
+    items: ItemGroups,
+    onLongClickItem: (Extension) -> Unit,
+    onClickItemCancel: (Extension) -> Unit,
+    onOpenWebView: (Extension.Available) -> Unit,
+    onInstallExtension: (Extension.Available) -> Unit,
+    onUpdateExtension: (Extension.Installed) -> Unit,
+    onOpenExtension: (Extension.Installed) -> Unit,
+    onRequestTrust: (Extension.Untrusted) -> Unit,
+    onClickUpdateAll: () -> Unit,
+) {
+    items.forEach { (header, items) ->
+        item(
+            contentType = "header",
+            key = "extensionHeader-${header.hashCode()}",
+        ) {
+            when (header) {
+                is ExtensionUiModel.Header.Resource -> {
+                    val action: @Composable RowScope.() -> Unit =
+                        if (header.textRes == MR.strings.ext_updates_pending) {
+                            {
+                                Button(onClick = { onClickUpdateAll() }) {
+                                    Text(
+                                        text = stringResource(MR.strings.ext_update_all),
+                                        style = LocalTextStyle.current.copy(
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                        ),
+                                    )
+                                }
+                            }
+                        } else {
+                            {}
+                        }
+                    ExtensionHeader(
+                        textRes = header.textRes,
+                        modifier = Modifier.animateItem(),
+                        action = action,
+                    )
+                }
+                is ExtensionUiModel.Header.Text -> {
+                    ExtensionHeader(
+                        text = header.text,
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+            }
+        }
+
+        items(
+            items = items,
+            contentType = { "item" },
+            key = { item ->
+                when (item.extension) {
+                    is Extension.Untrusted -> "extension-untrusted-${item.hashCode()}"
+                    is Extension.Installed -> "extension-installed-${item.hashCode()}"
+                    is Extension.Available -> "extension-available-${item.hashCode()}"
+                }
+            },
+        ) { item ->
+            ExtensionItem(
+                modifier = Modifier.animateItem(),
+                item = item,
+                onClickItem = {
+                    when (it) {
+                        is Extension.Available -> onInstallExtension(it)
+                        is Extension.Installed -> onOpenExtension(it)
+                        is Extension.Untrusted -> onRequestTrust(it)
+                    }
+                },
+                onLongClickItem = onLongClickItem,
+                onClickItemSecondaryAction = {
+                    when (it) {
+                        is Extension.Available -> onOpenWebView(it)
+                        is Extension.Installed -> onOpenExtension(it)
+                        else -> {}
+                    }
+                },
+                onClickItemCancel = onClickItemCancel,
+                onClickItemAction = {
+                    when (it) {
+                        is Extension.Available -> onInstallExtension(it)
+                        is Extension.Installed -> {
+                            if (it.hasUpdate) {
+                                onUpdateExtension(it)
+                            } else {
+                                onOpenExtension(it)
+                            }
+                        }
+                        is Extension.Untrusted -> onRequestTrust(it)
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -524,8 +554,10 @@ private fun ExtensionHeader(
     }
 }
 
+// Zenyomi: no longer private so the combined Browse list, which builds its own LazyColumn,
+// can host the prompt that `extensionItems` raises to its caller.
 @Composable
-private fun ExtensionTrustDialog(
+fun ExtensionTrustDialog(
     onClickConfirm: () -> Unit,
     onClickDismiss: () -> Unit,
     onDismissRequest: () -> Unit,
