@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-11
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.5.4, tag en `main`
+**Última release:** v0.5.5, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,7 +18,7 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x | ✅ | hasta `v0.5.4`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Releases 0.5.x | ✅ | hasta `v0.5.5`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
 | Trackers de anime (código) | ✅ | MyAnimeList y AniList |
 | PiP del player | ✅ | Activity propia |
@@ -46,6 +46,7 @@
 | Fuente local de anime | ✅ | reproduce vídeos de la carpeta `localanime` |
 | Sincronización de episodios | ✅ | la ficha pide los episodios a la fuente y los guarda |
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
+| Novedades de anime | ✅ | pantalla propia desde la biblioteca: episodios nuevos por día, reproducir, marcar visto y descargar |
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
 | Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |

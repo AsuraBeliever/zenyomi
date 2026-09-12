@@ -1,0 +1,6 @@
+Added:
+- Anime updates: a screen listing the episodes your library gained, grouped by the day they arrived, reachable from the anime library. Play, mark watched or download from the row.
+
+Fixed:
+- "All read entries" in a backup only covered manga, so a watched anime outside the library was left out and a restore lost its progress.
+- Covers on the anime history screen were requested without the source's headers, so sites that check answered 403 and showed blanks.

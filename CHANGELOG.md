@@ -10,6 +10,14 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.5.5] - 2026-09-11
+### Added
+- **Anime updates**: a screen listing the episodes your library gained, grouped by the day they arrived. Reachable from the anime library. A row plays the episode, its cover opens the anime, the check marks it watched for one you saw elsewhere, and the arrow downloads it. Until now the only record of a new episode was the notification, and once dismissed you had to open each entry to find it.
+
+### Fixed
+- **"All read entries" in a backup only covered manga.** An anime you had watched and then removed from the library — exactly what the option is for — was left out, so a restore lost its watch progress silently. Restoring one back does not put it in your library.
+- Covers on the anime history screen were requested without the source's headers, which is the same reason the library showed blanks before 0.5.4. Sites that check answer those with 403.
+
 ## [0.5.4] - 2026-09-11
 ### Added
 - **Browse now holds anime beside manga**: Sources, Manga extensions, Anime sources, Anime extensions, Migrate. Mihon's tab is renamed to "Manga extensions".
