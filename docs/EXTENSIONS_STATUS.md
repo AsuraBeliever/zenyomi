@@ -3,7 +3,7 @@
 El ecosistema de Aniyomi se degrada solo: los sitios cambian y las extensiones no lo hacen.
 Esto **se mide**, no se opina. La medición la produce un arnés que vive en los builds de debug.
 
-**Última pasada: 2026-09-12**, emulador Pixel 10 Pro XL, 21 fuentes instaladas.
+**Última pasada: 2026-09-12** (antes de la v0.8.2), emulador Pixel 10 Pro XL, 24 fuentes instaladas.
 
 ---
 
@@ -36,30 +36,38 @@ capaz de dar una respuesta equivocada con seguridad es peor que no tener arnés.
 
 | Fuente | Idioma | Hasta dónde llega | Detalle |
 |---|---|---|---|
-| AnimeOnsen | Multi | ✅ vídeo | 30 entradas, 1 vídeo |
+| KickAssAnime | English | ✅ vídeo | 24 entradas, 3 vídeos; audio JA/EN y 8 subtítulos |
+| AnimeOnsen | Multi | ✅ vídeo | 30 entradas, 1 vídeo; 18 subtítulos |
 | Jkanime | Español | ✅ vídeo | 30 entradas, 16 vídeos |
-| Latanime | Español | ✅ vídeo | 30 entradas, 4 vídeos |
+| Latanime | Español | ✅ vídeo | 30 entradas, 5 vídeos |
 | TioAnime | Español | ✅ vídeo | 20 entradas, 3 vídeos |
 | TioHentai | Español | ✅ vídeo | 20 entradas, 3 vídeos |
+| Anichi | English | ⚠️ catálogo | 30 entradas; su host devuelve las fuentes cifradas |
+| AniWave (Unoriginal) | English | ⚠️ catálogo | 30 entradas; ídem |
+| AnimeKai (Unoriginal) | English | ⚠️ catálogo | 30 entradas; ídem |
 | AllAnime | English | ⚠️ catálogo | 26 entradas; el episodio no resuelve a ningún vídeo |
 | AnimeKhor | English | ⚠️ catálogo | 20 entradas; ídem |
-| KickAssAnime | English | ⚠️ catálogo | 24 entradas; ídem |
-| MonosChinos | Español | ⚠️ catálogo | 30 entradas; el vídeo tardó más de 45 s |
 | AnimeFenix | Español | 🔴 nada | `animefenix2.tv` ya no existe (el sitio vive en `animefenix.tv`) |
 | Animetsu | Multi | 🔴 nada | su API devuelve HTML donde la extensión espera JSON |
-| AniZone | Multi | 🔴 nada | hoy agota el tiempo; el 11-sep dio un NPE dentro de su propio parser |
-| AnimeLatinoHD | Español | 🔴 nada | no consigue pasar Cloudflare |
-| AnimePahe | English | 🔴 nada | no consigue pasar Cloudflare |
+| AniZone | Multi | 🔴 nada | NPE dentro de su propio parser |
+| AnimeLatinoHD | Español | 🔴 nada | HTTP 404: pide una ruta que el sitio ya no sirve |
+| AnimePahe | English | 🔴 nada | no consigue pasar Cloudflare (llega a los episodios) |
+| Miruro.tv | English | 🔴 nada | catálogo vacío, sin error |
 | 9AnimeTV | English | 🔴 nada | HTTP 522 |
 | AniWatchtv | English | 🔴 nada | HTTP 522 |
 | AnimeFLV | Español | 🔴 nada | HTTP 522 |
 | Kaido | English | 🔴 nada | HTTP 522 |
 | Jellyfin (×3) | Multi | ⚙️ configurar | "Select library in the extension settings" |
 
-**Lo que cambió en un día.** Jkanime y Latanime pasaron de agotar el tiempo a reproducir;
-KickAssAnime pasó de reproducir a no resolver vídeo; AnimeLatinoHD pasó de un 404 a un
-bloqueo de Cloudflare. Es exactamente el motivo por el que esto se mide antes de cada
-release en vez de mantenerse a mano.
+**Lo que cambió desde la pasada anterior.** KickAssAnime volvió a resolver vídeo, y su
+catálogo pasó de "0/5, caída al medir" a 5/5 — las dos cosas eran el mismo fallo nuestro de
+la lista de filtros vacía, no suyo. AnimeLatinoHD cambió un bloqueo de Cloudflare por un 404,
+que sí es cosa de la extensión y pasa a marcarse. Anichi, AniWave y AnimeKai llegan al
+catálogo pero su host devuelve las fuentes cifradas.
+
+Que una fuente cambie de estado de un día para otro es exactamente el motivo por el que esto
+se mide antes de cada release en vez de mantenerse a mano — y la moraleja de esta pasada es
+que la medición también hay que dudarla cuando el arnés y la app no hacen lo mismo.
 
 ---
 
