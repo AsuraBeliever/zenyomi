@@ -8,7 +8,6 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
-import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.ui.animebrowse.setting.AnimeSourcePreferences
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,7 +86,9 @@ class AnimeGlobalSearchViewModel(
                         val result = runCatching {
                             withIOContext {
                                 withTimeout(TIMEOUT) {
-                                    source.getSearchAnime(1, query, AnimeFilterList()).animes
+                                    // The source's own filters, not an empty list: an
+                                    // extension may read them, and some do it with first().
+                                    source.getSearchAnime(1, query, source.getFilterList()).animes
                                         .take(PER_SOURCE)
                                         .map { networkToLocalAnime.await(it.toDomainAnime(source.id)) }
                                 }

@@ -18,7 +18,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -44,21 +46,36 @@ class AnimeCatalogViewModel(
     val state: StateFlow<State> = _state.asStateFlow()
 
     /**
+     * The source's own filters, in their default state, once they have been read.
+     *
+     * Null until then, and the listing waits for them rather than starting without: an
+     * extension is handed its filters back and is entitled to read them. KickAssAnime's search
+     * picks its language filter out of the list with `first()`, so an empty list threw
+     * NoSuchElementException before a single request was made, and searching that source
+     * failed with what read like a broken site. Mihon's browse passes them on the manga side
+     * for the same reason.
+     */
+    private val filters = MutableStateFlow<AnimeFilterList?>(null)
+
+    /**
      * Re-pages on every change of query. [flatMapLatest] rather than a Pager built once:
      * the query is part of what is being paged, so a new one is a new pager, and the old
      * one's in-flight page must not land in the new list.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val animeList = _state
-        .map { it.searchQuery }
+    val animeList = combine(
         // Without this the source name arriving would rebuild the pager and refetch page one.
+        _state.map { it.searchQuery }.distinctUntilChanged(),
+        filters.filterNotNull(),
+        ::Pair,
+    )
         .distinctUntilChanged()
-        .flatMapLatest { query ->
+        .flatMapLatest { (query, sourceFilters) ->
             Pager(PagingConfig(pageSize = 25)) {
                 getRemoteAnime.subscribe(
                     sourceId,
                     query?.takeIf { it.isNotBlank() } ?: GetRemoteAnime.QUERY_POPULAR,
-                    AnimeFilterList(),
+                    sourceFilters,
                 )
             }.flow
         }
@@ -69,6 +86,10 @@ class AnimeCatalogViewModel(
     init {
         viewModelScope.launch {
             val source = sourceManager.getOrStub(sourceId)
+            // Building them is the extension's code, so it can throw; an empty list is a
+            // worse listing than none, but it is better than no listing at all.
+            filters.value = runCatching { source.getFilterList() }
+                .getOrDefault(AnimeFilterList())
             _state.update {
                 it.copy(
                     sourceName = source.name,

@@ -7,7 +7,6 @@ import android.view.WindowManager
 import android.widget.TextView
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
-import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Video
@@ -157,7 +156,7 @@ class AnimeSourceProbeActivity : Activity() {
                     val hits = titles.map { title ->
                         step {
                             withTimeout(STEP_TIMEOUT) {
-                                source.getSearchAnime(1, title, AnimeFilterList()).animes.size
+                                source.getSearchAnime(1, title, source.getFilterList()).animes.size
                             }
                         }.value ?: -1
                     }
@@ -307,7 +306,9 @@ class AnimeSourceProbeActivity : Activity() {
         if (title.isNullOrBlank()) {
             getPopularAnime(1).animes.firstOrNull()
         } else {
-            val hits = getSearchAnime(1, title, AnimeFilterList()).animes
+            // The source's own filters, exactly as the app passes them. An empty list is not
+            // the same input, and measuring with it measured something the app never does.
+            val hits = getSearchAnime(1, title, getFilterList()).animes
             Log.i(TAG, "search '$title': " + hits.take(10).joinToString(" | ") { it.title })
             // Exact first: searching "One Piece" matches a dozen spin-offs before the show
             // itself, and probing the wrong entry answers the wrong question.
