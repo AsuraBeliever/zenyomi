@@ -207,3 +207,32 @@ tiene que ponerse al día es la extensión. Su repositorio de origen (`yuzono/an
 está retirado por DMCA desde el 2026-02-05, así que tampoco se puede recompilar con un
 parche. Las tres quedan marcadas como `outdated` en `anime-source-health.json`, que es lo que
 hace que la app lo diga en vez de no hacer nada al tocar el episodio.
+
+---
+
+## Idiomas que entrega cada fuente (medido el 2026-09-12)
+
+Cuántos títulos tiene una fuente no dice nada sobre en qué idioma los sirve. Esto es lo
+segundo, que es lo que decide si se puede ver. El arnés lo saca del propio `Video`:
+
+```sh
+adb shell "am start -n app.zenyomi.dev/eu.kanade.tachiyomi.debug.AnimeSourceProbeActivity \
+  -e videos 1 -e title 'Dandadan'"
+```
+
+| Fuente | Audio | Subtítulos |
+|---|---|---|
+| KickAssAnime | **Japonés + Inglés** | EN, FR, DE, IT, **ES**, PT, RU, AR |
+| AnimeOnsen | Japonés | 18: EN, **Español**, **Español (Spain)**, PT-BR, FR, DE, IT, PL, RU… |
+| TioAnime, Jkanime, Latanime | uno solo | ninguno aparte; el subtítulo va quemado en el vídeo |
+
+**El doblaje en español no existe como pista en ninguna.** Los sitios hispanos lo modelan como
+una *entrada distinta*: en Latanime, "Dandadan" y "Dandadan CR Castellano" son dos animes
+separados. Reunir JA/EN/ES de audio en un mismo reproductor exigiría una fuente propia que
+combine varias, o una biblioteca propia con ficheros `.mkv` multipista. Decidido el 2026-09-12
+no construir ninguna de las dos por ahora.
+
+**Qué hace falta para aprovechar lo que sí hay:** poner los idiomas en *Ajustes → Player →
+Preferred audio / subtitle languages*. Acepta nombres o códigos de dos o tres letras
+(`es,en` y `ja,es,en` valen), y el player los cruza con las etiquetas de la fuente, que
+raramente son códigos.

@@ -54,6 +54,8 @@
 | Reproducción de una extensión online | ✅ | KickAssAnime, AnimeOnsen y TioAnime se ven en el emulador; ver `EXTENSIONS_STATUS.md` |
 | Cabeceras HTTP hasta mpv | ✅ | se resolvían bien y se perdían camino del player; corregido y comprobado contra un servidor que las imprime |
 | Subtítulos y audio externos | ✅ | las pistas que la fuente entrega aparte se añaden a mpv y se seleccionan |
+| Idiomas preferidos | ✅ | la preferencia no casaba con las etiquetas de la fuente y no elegía nada; verificado: audio inglés + sub español solos |
+| Controles del player sin bloquear | ✅ | arrastrar la barra congelaba la app; ninguna llamada a libmpv queda ya en el hilo principal |
 | Fallo de reproducción visible | ✅ | un mirror muerto dice por qué en vez de dejar la pantalla en negro |
 | Progreso de reproducción | ✅ | verificado en la BD: `seen=1`, `last_second_seen=9`, `total_seconds=10` |
 | Fuente local de anime | ✅ | reproduce vídeos de la carpeta `localanime` |
