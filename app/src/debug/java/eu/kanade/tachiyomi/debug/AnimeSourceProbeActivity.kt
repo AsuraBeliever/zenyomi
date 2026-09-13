@@ -248,6 +248,14 @@ class AnimeSourceProbeActivity : Activity() {
                     "initialized=${video.initialized} subs=${video.subtitleTracks.size} " +
                     "audio=${video.audioTracks.size} mpvArgs=${video.mpvArgs}",
             )
+            // The languages, not just how many: "eight subtitles" and "eight subtitles, one
+            // of them Spanish" are different answers to the only question worth asking here.
+            if (video.subtitleTracks.isNotEmpty()) {
+                Log.i(TAG, "  [$index] sub langs: " + video.subtitleTracks.joinToString { it.lang })
+            }
+            if (video.audioTracks.isNotEmpty()) {
+                Log.i(TAG, "  [$index] audio langs: " + video.audioTracks.joinToString { it.lang })
+            }
             Log.i(TAG, "  [$index] url=${video.videoUrl}")
             video.headers?.forEach { (name, value) -> Log.i(TAG, "  [$index] header $name: $value") }
 

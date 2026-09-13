@@ -47,6 +47,10 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     private var externalSubtitles: List<SourceTrack> = emptyList()
     private var externalAudio: List<SourceTrack> = emptyList()
 
+    /** The viewer's language preferences, as codes, in order. */
+    private var preferredAudio: List<String> = emptyList()
+    private var preferredSubtitles: List<String> = emptyList()
+
     /**
      * Called when mpv gives up on a file, with whatever it said about why.
      *
@@ -81,6 +85,8 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     ) {
         if (initialised) return
         initialised = true
+        preferredAudio = TrackLanguage.ofList(audioLanguages).split(',').filter { it.isNotBlank() }
+        preferredSubtitles = TrackLanguage.ofList(subtitleLanguages).split(',').filter { it.isNotBlank() }
         configDir.mkdirs()
         copyAssets(configDir)
         holder.addCallback(this)
@@ -126,8 +132,13 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             MPVLib.setOptionString("demuxer-max-back-bytes", DEMUXER_CACHE_BYTES.toString())
             // These have to be options rather than properties: mpv applies them while opening
             // a file, so setting them after init does nothing until the *next* file.
-            if (audioLanguages.isNotBlank()) MPVLib.setOptionString("alang", audioLanguages)
-            if (subtitleLanguages.isNotBlank()) MPVLib.setOptionString("slang", subtitleLanguages)
+            // Through the same normaliser as the tracks, so "es" in the setting and
+            // "Español (Spain)" on the track meet in the middle at "spa". mpv applies these
+            // to what the file itself carries; tracks added afterwards are ours to choose.
+            preferredAudio.takeIf { it.isNotEmpty() }
+                ?.let { MPVLib.setOptionString("alang", it.joinToString(",")) }
+            preferredSubtitles.takeIf { it.isNotEmpty() }
+                ?.let { MPVLib.setOptionString("slang", it.joinToString(",")) }
             MPVLib.setOptionString("speed", (speedPercent.coerceIn(25, 400) / 100.0).toString())
             // Video hosts that check the Referer answer mpv's bare request with 403, so the
             // headers the source resolved the video with have to travel with it.
@@ -219,11 +230,11 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     /**
      * Adds the side-car tracks, once mpv has a file open to attach them to.
      *
-     * Added with `auto` rather than `select` so mpv's own `slang`/`alang` preference still
-     * decides. When that leaves nothing selected — which is the common case, because a source
-     * labels a track "English" where mpv expects "eng" — the first external subtitle is
-     * selected by hand, since a stream with Japanese audio and no subtitle on screen is not
-     * something anyone asked for.
+     * Added with `auto`, which in mpv means "do not select this one" — the flag reads like it
+     * defers to `slang`, and it does not; it simply leaves every track off. So the choice is
+     * made here: the viewer's preferred language when a track speaks it, and otherwise
+     * whatever mpv already settled on, except for subtitles, where nothing selected means a
+     * stream of Japanese audio with no text on screen.
      */
     private fun addExternalTracks() {
         val subtitles = externalSubtitles
@@ -233,19 +244,33 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         externalAudio = emptyList()
 
         postToMpv {
+            // The source's label stays as the track title, because that is what the picker
+            // shows and "Español (Spain)" tells a person more than "spa" does. The language
+            // field gets the code, because that is what mpv matches the preference against.
             subtitles.forEach { track ->
-                MPVLib.command(arrayOf("sub-add", track.url, "auto", track.lang, track.lang))
+                MPVLib.command(
+                    arrayOf("sub-add", track.url, "auto", track.lang, TrackLanguage.of(track.lang)),
+                )
             }
             audio.forEach { track ->
-                MPVLib.command(arrayOf("audio-add", track.url, "auto", track.lang, track.lang))
+                MPVLib.command(
+                    arrayOf("audio-add", track.url, "auto", track.lang, TrackLanguage.of(track.lang)),
+                )
             }
             // Asked of the track list rather than of `sid`: that property is a choice — it
             // holds "no" and "auto" as well as a number — so reading it as an integer always
             // fails, and the failure is indistinguishable from "nothing is selected".
-            val subtitleTracks = tracks().filter { it.isSubtitle }
-            if (subtitles.isNotEmpty() && subtitleTracks.none { it.selected }) {
-                subtitleTracks.firstOrNull()?.let { selectSubtitle(it.id) }
+            val all = tracks()
+            val subtitleTracks = all.filter { it.isSubtitle }
+            val audioTracks = all.filter { it.isAudio }
+
+            val wantedSubtitle = subtitleTracks.preferring(preferredSubtitles)
+            when {
+                wantedSubtitle != null -> selectSubtitle(wantedSubtitle.id)
+                subtitles.isNotEmpty() && subtitleTracks.none { it.selected } ->
+                    subtitleTracks.firstOrNull()?.let { selectSubtitle(it.id) }
             }
+            audioTracks.preferring(preferredAudio)?.let { selectAudio(it.id) }
         }
     }
 
@@ -348,6 +373,20 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
                 selected = MPVLib.getPropertyBoolean("track-list/$index/selected") ?: false,
             )
         }
+    }
+
+    /**
+     * The first track speaking the earliest language on [preferred], or null.
+     *
+     * Null also when that track is already selected: re-selecting an audio track mid-file
+     * makes mpv reopen and resync it, which is a visible hiccup for no gain.
+     */
+    private fun List<Track>.preferring(preferred: List<String>): Track? {
+        preferred.forEach { language ->
+            val match = firstOrNull { TrackLanguage.of(it.lang.orEmpty()) == language }
+            if (match != null) return match.takeUnless { it.selected }
+        }
+        return null
     }
 
     fun selectAudio(trackId: Int?) = postToMpv {
