@@ -4,6 +4,8 @@ import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.network.HttpException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.SerializationException
+import tachiyomi.data.source.anime.NoAnimeResultsException
+import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import java.io.IOException
 import java.net.ConnectException
@@ -12,6 +14,16 @@ import java.net.UnknownHostException
 
 /** An episode the source accepted but could produce no video for. */
 class NoVideoFoundException : Exception("No video found for this episode")
+
+/**
+ * An episode that produced no video from a source our last sweep already found broken.
+ *
+ * The difference from [NoVideoFoundException] is the whole point: "no video found for this
+ * episode" reads as though this one episode is missing, and sends the user off to try another
+ * one, and another. When the extension is the thing that stopped working, every episode will
+ * do the same and the only move that helps is a different source. See [AnimeSourceHealth].
+ */
+class SourceOutdatedException : Exception("This extension can no longer read its site")
 
 /**
  * Turns whatever an extension threw into a sentence a person can act on.
@@ -50,6 +62,13 @@ object AnimeSourceError {
     )
 
     fun describe(error: Throwable): Message = when {
+        // Not a failure at all. The paging source signals an empty page by throwing, the way
+        // Mihon's does, and without a case here it fell through to "this source failed" — so
+        // a search that simply found nothing accused the source of being broken.
+        error is NoAnimeResultsException -> Message(MR.strings.no_results_found)
+
+        error is SourceOutdatedException -> Message(ANMR.strings.anime_error_outdated)
+
         error is NoVideoFoundException -> Message(ANMR.strings.anime_error_no_video)
 
         error is TimeoutCancellationException -> Message(ANMR.strings.anime_error_timeout)

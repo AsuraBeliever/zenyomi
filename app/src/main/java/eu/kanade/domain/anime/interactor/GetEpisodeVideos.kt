@@ -4,6 +4,7 @@ import dev.zacsweers.metro.Inject
 import eu.kanade.domain.episode.model.toSEpisode
 import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.Video
+import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import kotlinx.coroutines.withTimeout
 import logcat.LogPriority
 import tachiyomi.core.common.util.lang.withIOContext
@@ -86,14 +87,68 @@ class GetEpisodeVideos(
         }
     }
 
+    /**
+     * The first of [videos] that actually plays, in the order a viewer would want them.
+     *
+     * A video on the list is not necessarily playable. Sources written against
+     * extensions-lib 16 and up may return a promise rather than a url — the real one costs a
+     * request, and making it for every quality on the list is wasted work — so it is deferred
+     * to whichever one is played. Others hand back a url that is literally the string "null",
+     * which mpv dutifully opens and fails on.
+     *
+     * Candidates are tried in order because a source listing five mirrors usually has some of
+     * them dead, and giving up on the first is how a working episode came to look broken.
+     */
+    suspend fun playable(sourceId: Long, videos: List<Video>): Video? = withIOContext {
+        val source = sourceManager.get(sourceId)
+        videos.inPreferredOrder().take(MAX_CANDIDATES).firstNotNullOfOrNull { video ->
+            val resolved = when {
+                video.isPlayable() -> video
+                source !is AnimeHttpSource -> null
+                else -> runCatching { withTimeout(TIMEOUT) { source.resolveVideo(video) } }
+                    .onFailure { logcat(LogPriority.WARN, it) { "Could not resolve ${video.videoTitle}" } }
+                    .getOrNull()
+            }
+            resolved?.takeIf { it.isPlayable() }
+        }
+    }
+
+    /** The source's own preference first, then by resolution. */
+    private fun List<Video>.inPreferredOrder(): List<Video> =
+        sortedWith(compareByDescending<Video> { it.preferred }.thenByDescending { it.resolution ?: 0 })
+
     /** The video a player should open first: the source's own preference, else the best resolution. */
-    fun List<Video>.best(): Video? =
-        firstOrNull { it.preferred } ?: maxByOrNull { it.resolution ?: 0 }
+    fun List<Video>.best(): Video? = inPreferredOrder().firstOrNull()
+
+    /**
+     * Whether mpv could even attempt this url.
+     *
+     * Beyond the empty and the literal "null" a source may hand back, extensions produce
+     * protocol-relative urls — Jkanime's first mirror is `//www.mediafire.com/...` — which mpv
+     * cannot open at all. Treating one as playable stopped the search at a url that was never
+     * going to work while four usable mirrors sat behind it.
+     */
+    private fun Video.isPlayable(): Boolean =
+        videoUrl.isNotBlank() && videoUrl != "null" &&
+            (videoUrl.startsWith("/") || SCHEME.containsMatchIn(videoUrl))
 
     companion object {
         val NO_HOSTER_LIST = Hoster.NO_HOSTER_LIST
 
         /** Long enough for a slow site, short enough that a hung one is not forever. */
         private val TIMEOUT = 60.seconds
+
+        /**
+         * How many mirrors are tried before giving up. Each one that needs resolving is a
+         * request, and a source that lists thirty dead hosts should not hold the screen for
+         * half an hour to prove it.
+         */
+        private const val MAX_CANDIDATES = 5
+
+        /**
+         * A url mpv can open names its protocol; `content://` and `file://` count, and so does
+         * a plain absolute path, which is what a downloaded episode is.
+         */
+        private val SCHEME = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://")
     }
 }

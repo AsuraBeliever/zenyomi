@@ -1,0 +1,15 @@
+Zenyomi 0.8.2
+
+Video from an online source plays. Until now only a local file did: the headers a
+source resolves a video with were dropped on the way to the player, so hosts that
+check where a request came from refused it and the screen stayed black.
+
+Subtitles appear, including the ones a source ships as a separate file, and the
+preferred audio and subtitle language setting now picks the track it promised.
+
+Dragging the seek bar no longer freezes the app.
+
+Searching works on sources that were failing before a single request left the
+device, KickAssAnime among them. A search that finds nothing says so instead of
+claiming the source failed, and an episode from a source that has stopped working
+says which.

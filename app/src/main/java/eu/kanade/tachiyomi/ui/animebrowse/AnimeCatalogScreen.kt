@@ -36,9 +36,11 @@ import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
+import tachiyomi.data.source.anime.NoAnimeResultsException
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
 
 /**
@@ -71,15 +73,25 @@ class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
         ) { contentPadding ->
             when (val refresh = animeList.loadState.refresh) {
                 is LoadState.Loading -> LoadingScreen(Modifier.padding(contentPadding))
-                is LoadState.Error -> CatalogError(
-                    message = animeSourceErrorText(refresh.error),
-                    baseUrl = state.baseUrl,
-                    onRetry = animeList::retry,
-                    onOpenInWebView = { url ->
-                        navigator.push(WebViewScreen(url, state.sourceName, sourceId))
-                    },
-                    modifier = Modifier.padding(contentPadding).padding(16.dp),
-                )
+                // A search that found nothing is not an error: no red text, no retry, no
+                // suggestion to try another source. Mihon's browse draws the same empty
+                // screen for it, and this is the only LoadState.Error that is not a failure.
+                is LoadState.Error -> if (refresh.error is NoAnimeResultsException) {
+                    EmptyScreen(
+                        stringRes = MR.strings.no_results_found,
+                        modifier = Modifier.padding(contentPadding),
+                    )
+                } else {
+                    CatalogError(
+                        message = animeSourceErrorText(refresh.error),
+                        baseUrl = state.baseUrl,
+                        onRetry = animeList::retry,
+                        onOpenInWebView = { url ->
+                            navigator.push(WebViewScreen(url, state.sourceName, sourceId))
+                        },
+                        modifier = Modifier.padding(contentPadding).padding(16.dp),
+                    )
+                }
                 else -> LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 108.dp),
                     contentPadding = contentPadding,

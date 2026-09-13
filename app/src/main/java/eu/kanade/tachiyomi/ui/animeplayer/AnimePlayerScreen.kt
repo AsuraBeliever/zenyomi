@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,10 +65,9 @@ import java.util.Locale
  */
 @Composable
 fun AnimePlayerContent(
-    videoUrl: String,
+    request: PlaybackRequest,
     title: String,
     episodeId: Long,
-    headers: List<String>,
     inPictureInPicture: Boolean,
     onEnterPictureInPicture: (videoAspect: Float) -> Unit,
     onBack: () -> Unit,
@@ -79,6 +79,13 @@ fun AnimePlayerContent(
     var paused by remember { mutableStateOf(false) }
     var tracks by remember { mutableStateOf(emptyList<ZenyomiMPVView.Track>()) }
     var seekFeedback by remember { mutableStateOf<String?>(null) }
+    var playbackFailure by remember { mutableStateOf<String?>(null) }
+    // Read from the polling loop rather than from the button that needs it: asking mpv costs
+    // two blocking property reads, and the button is on the main thread.
+    var videoAspect by remember { mutableFloatStateOf(DEFAULT_ASPECT) }
+    // Set while a finger is on the seek bar. The polling loop keeps writing `position`, and
+    // without this the thumb jumps back under the finger between drag events.
+    var scrubbing by remember { mutableStateOf<Float?>(null) }
 
     // The jump indicator is a flash, not a state: clear it shortly after it appears.
     LaunchedEffect(seekFeedback) {
@@ -95,15 +102,28 @@ fun AnimePlayerContent(
 
     DisposableEffect(playerState.loaded) {
         if (playerState.loaded) {
+            // mpv keeps the window open on a file it could not read, so without this a dead
+            // mirror looks exactly like one that is still loading — forever.
+            view.onPlaybackError = { reason -> playbackFailure = reason.orEmpty() }
             view.initialise(
                 configDir = File(context.filesDir, "mpv"),
                 audioLanguages = viewModel.preferences.preferredAudioLanguages.get(),
                 subtitleLanguages = viewModel.preferences.preferredSubtitleLanguages.get(),
                 speedPercent = viewModel.preferences.defaultSpeed.get(),
+                // Dropping these is what made a resolved video open to a black screen: the
+                // host answers mpv's bare request with 403 and mpv has nothing to play.
+                httpHeaders = request.headers.map { (name, value) -> "$name: $value" },
             )
-            view.playFile(videoUrl, resumeAt = playerState.resumeAt)
+            view.playFile(
+                request.url,
+                resumeAt = playerState.resumeAt,
+                subtitleTracks = request.subtitleTracks,
+                audioTracks = request.audioTracks,
+                mpvArgs = request.mpvArgs,
+            )
         }
         onDispose {
+            view.onPlaybackError = null
             if (playerState.loaded) {
                 // Uses what the polling loop already read instead of asking mpv again:
                 // mpv_get_property waits on mpv's own event loop, and onDispose runs on the
@@ -128,11 +148,12 @@ fun AnimePlayerContent(
                 continue
             }
             val snapshot = withContext(Dispatchers.IO) {
-                Triple(view.timePos, view.duration, view.paused)
+                Snapshot(view.timePos, view.duration, view.paused, view.videoAspect)
             }
-            position = snapshot.first ?: position
-            duration = snapshot.second ?: duration
-            paused = snapshot.third ?: paused
+            position = snapshot.position ?: position
+            duration = snapshot.duration ?: duration
+            paused = snapshot.paused ?: paused
+            videoAspect = snapshot.aspect ?: videoAspect
             // Written as it plays, so a process death mid-episode still leaves a
             // usable resume point rather than losing the whole session.
             if (!paused) viewModel.saveProgress(position, duration)
@@ -172,14 +193,38 @@ fun AnimePlayerContent(
                             onDoubleTap = { offset ->
                                 val forward = offset.x > size.width / 2
                                 val step = viewModel.preferences.seekStep.get()
-                                val target = (view.timePos ?: 0) + if (forward) step else -step
-                                view.seekTo(target.coerceAtLeast(0))
+                                view.seekBy(if (forward) step else -step)
                                 seekFeedback = if (forward) "+$step s" else "-$step s"
                             },
                             onTap = { view.togglePause() },
                         )
                     },
             )
+        }
+
+        if (playbackFailure != null && !inPictureInPicture) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(32.dp),
+            ) {
+                Text(
+                    text = stringResource(ANMR.strings.anime_error_playback),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                // mpv's own words underneath: "HTTP error 404 Not Found" tells whoever is
+                // reading a bug report which half of the problem to look at.
+                playbackFailure?.takeIf { it.isNotBlank() }?.let { detail ->
+                    Text(
+                        text = detail,
+                        color = Color.White.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
         }
 
         seekFeedback?.let { text ->
@@ -235,7 +280,7 @@ fun AnimePlayerContent(
                     tracks = tracks.filter { it.isSubtitle },
                     onSelect = view::selectSubtitle,
                 )
-                IconButton(onClick = { onEnterPictureInPicture(view.videoAspect ?: DEFAULT_ASPECT) }) {
+                IconButton(onClick = { onEnterPictureInPicture(videoAspect) }) {
                     Icon(
                         imageVector = MaterialSymbols.Rounded.FlipToBack,
                         contentDescription = stringResource(ANMR.strings.player_picture_in_picture),
@@ -263,11 +308,21 @@ fun AnimePlayerContent(
                         tint = Color.White,
                     )
                 }
-                Text(formatTime(position), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                Text(
+                    formatTime(scrubbing?.toInt() ?: position),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                )
                 Slider(
-                    value = position.toFloat(),
+                    value = scrubbing ?: position.toFloat(),
                     valueRange = 0f..(duration.takeIf { it > 0 }?.toFloat() ?: 1f),
-                    onValueChange = { view.seekTo(it.toInt()) },
+                    // One seek when the finger lifts, not one per pixel of the drag: mpv
+                    // answers each of them by actually moving the stream.
+                    onValueChange = { scrubbing = it },
+                    onValueChangeFinished = {
+                        scrubbing?.let { view.seekTo(it.toInt()) }
+                        scrubbing = null
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp),
@@ -280,6 +335,14 @@ fun AnimePlayerContent(
 
 /** Used only until mpv reports the real one, which takes a moment after the file opens. */
 private const val DEFAULT_ASPECT = 16f / 9f
+
+/** What one pass of the polling loop read out of mpv. */
+private data class Snapshot(
+    val position: Int?,
+    val duration: Int?,
+    val paused: Boolean?,
+    val aspect: Float?,
+)
 
 private fun formatTime(seconds: Int): String {
     val h = seconds / 3600

@@ -13,6 +13,7 @@ import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import eu.kanade.tachiyomi.animesource.model.Track as SourceTrack
 
 /**
  * Surface that hosts an mpv instance.
@@ -37,11 +38,36 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     private var surfaceReady = false
     private var pendingResumeAt = 0
 
+    /**
+     * Subtitles and audio that live in their own files rather than in the container.
+     *
+     * They cannot be handed over with the file: mpv rejects `sub-add` until something is
+     * loaded, so they are kept here and added when mpv reports the file open.
+     */
+    private var externalSubtitles: List<SourceTrack> = emptyList()
+    private var externalAudio: List<SourceTrack> = emptyList()
+
+    /** The viewer's language preferences, as codes, in order. */
+    private var preferredAudio: List<String> = emptyList()
+    private var preferredSubtitles: List<String> = emptyList()
+
+    /**
+     * Called when mpv gives up on a file, with whatever it said about why.
+     *
+     * A dead mirror is the single most common way an episode fails, and `keep-open` means mpv
+     * simply sits on a black frame when it happens. Without this the screen is identical to a
+     * player that is still loading, forever.
+     */
+    var onPlaybackError: ((String?) -> Unit)? = null
+
+    /** The last "HTTP error" mpv logged, which is the useful half of a failure. */
+    private var lastHttpError: String? = null
+
     /** Held open for as long as mpv reads from them. */
     private val openFds = mutableListOf<ParcelFileDescriptor>()
 
-    /** Observers are registered against MPVLib globally, so keep ours to remove it later. */
-    private var observer: MPVLib.EventObserver? = null
+    /** Observers are registered against MPVLib globally, so keep ours to remove them later. */
+    private val observers = mutableListOf<MPVLib.EventObserver>()
 
     /**
      * @param audioLanguages / [subtitleLanguages] mpv's `alang` and `slang`: comma separated
@@ -59,7 +85,10 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     ) {
         if (initialised) return
         initialised = true
+        preferredAudio = TrackLanguage.ofList(audioLanguages).split(',').filter { it.isNotBlank() }
+        preferredSubtitles = TrackLanguage.ofList(subtitleLanguages).split(',').filter { it.isNotBlank() }
         configDir.mkdirs()
+        copyAssets(configDir)
         holder.addCallback(this)
 
         // All of libmpv is driven from one thread; see runOnMpvThread.
@@ -69,6 +98,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             // loadfile is silent, and mpv only ever complains on its own log.
             MPVLib.setOptionString("msg-level", "all=v")
             MPVLib.addLogObserver { prefix, _, text ->
+                if (text.contains("HTTP error")) lastHttpError = text.trim()
                 logcat(LogPriority.DEBUG) { "mpv [$prefix] $text".trim() }
             }
             MPVLib.setOptionString("config", "yes")
@@ -80,10 +110,35 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             MPVLib.setOptionString("force-window", "no")
             MPVLib.setOptionString("keep-open", "always")
             MPVLib.setOptionString("ao", "audiotrack")
+            // mpv picks its subtitle font up from the config dir by name. Without it libass
+            // reports "failed to find any fallback with glyph" and draws nothing at all, so a
+            // correctly selected subtitle track was still an episode with no subtitles.
+            MPVLib.setOptionString("sub-font-provider", "none")
+            // mpv sizes and places subtitles against the *window* by default, which is right
+            // on a desktop where the window is the video. Here the window is a whole portrait
+            // phone screen and the video a band across the middle of it, so the defaults drew
+            // text tall enough to run off the bottom edge and across the seek bar. Both are
+            // tied to the video rectangle instead.
+            MPVLib.setOptionString("sub-scale-by-window", "no")
+            MPVLib.setOptionString("sub-use-margins", "no")
+            MPVLib.setOptionString("sub-ass-force-margins", "no")
+            // Android ships no CA bundle mpv can read, so without this its TLS is unverified.
+            MPVLib.setOptionString("tls-verify", "yes")
+            MPVLib.setOptionString("tls-ca-file", File(configDir, CA_BUNDLE).path)
+            // There is no youtube-dl here for its hook to call, and it runs on every file.
+            MPVLib.setOptionString("ytdl", "no")
+            // mpv's desktop defaults buffer far more than a phone should hold.
+            MPVLib.setOptionString("demuxer-max-bytes", DEMUXER_CACHE_BYTES.toString())
+            MPVLib.setOptionString("demuxer-max-back-bytes", DEMUXER_CACHE_BYTES.toString())
             // These have to be options rather than properties: mpv applies them while opening
             // a file, so setting them after init does nothing until the *next* file.
-            if (audioLanguages.isNotBlank()) MPVLib.setOptionString("alang", audioLanguages)
-            if (subtitleLanguages.isNotBlank()) MPVLib.setOptionString("slang", subtitleLanguages)
+            // Through the same normaliser as the tracks, so "es" in the setting and
+            // "Español (Spain)" on the track meet in the middle at "spa". mpv applies these
+            // to what the file itself carries; tracks added afterwards are ours to choose.
+            preferredAudio.takeIf { it.isNotEmpty() }
+                ?.let { MPVLib.setOptionString("alang", it.joinToString(",")) }
+            preferredSubtitles.takeIf { it.isNotEmpty() }
+                ?.let { MPVLib.setOptionString("slang", it.joinToString(",")) }
             MPVLib.setOptionString("speed", (speedPercent.coerceIn(25, 400) / 100.0).toString())
             // Video hosts that check the Referer answer mpv's bare request with 403, so the
             // headers the source resolved the video with have to travel with it.
@@ -97,6 +152,18 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             MPVLib.observeProperty("pause", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
         }
 
+        addObserver(
+            PlaybackObserver(
+                onFileLoaded = {
+                    lastHttpError = null
+                    addExternalTracks()
+                },
+                onFailure = { reason ->
+                    onPlaybackError?.invoke(lastHttpError ?: reason)
+                },
+            ),
+        )
+
         // AndroidView hands over a SurfaceView whose surface may already exist, and
         // surfaceCreated only fires for surfaces created after the callback is added.
         // Without this the pending file waits forever and the screen stays black.
@@ -105,17 +172,105 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
+    /**
+     * Puts mpv's own data files where it looks for them.
+     *
+     * Both ship inside the mpv library's aar and end up in the app's assets, but mpv reads
+     * them from its config directory as plain files: it has no idea Android assets exist.
+     */
+    private fun copyAssets(configDir: File) {
+        listOf(SUBTITLE_FONT, CA_BUNDLE).forEach { name ->
+            val target = File(configDir, name)
+            if (target.exists() && target.length() > 0) return@forEach
+            runCatching {
+                context.assets.open(name).use { source ->
+                    target.outputStream().use { source.copyTo(it) }
+                }
+            }.onFailure {
+                logcat(LogPriority.WARN, it) { "Could not unpack $name for mpv" }
+            }
+        }
+    }
+
     fun addObserver(observer: MPVLib.EventObserver) {
-        this.observer = observer
+        observers += observer
         MPVLib.addObserver(observer)
     }
 
-    fun playFile(uri: String, resumeAt: Int = 0) {
+    /**
+     * @param mpvArgs options the source asked for, applied to this file only. They are set
+     * rather than passed to loadfile because a source is free to name any mpv option, and a
+     * single rejected one in the loadfile argument makes mpv refuse the whole command.
+     */
+    fun playFile(
+        uri: String,
+        resumeAt: Int = 0,
+        subtitleTracks: List<SourceTrack> = emptyList(),
+        audioTracks: List<SourceTrack> = emptyList(),
+        mpvArgs: List<Pair<String, String>> = emptyList(),
+    ) {
         pendingResumeAt = resumeAt
+        externalSubtitles = subtitleTracks
+        externalAudio = audioTracks
+        if (mpvArgs.isNotEmpty()) {
+            postToMpv {
+                mpvArgs.forEach { (name, value) ->
+                    val code = MPVLib.setOptionString(name, value)
+                    if (code < 0) logcat(LogPriority.WARN) { "mpv refused source option $name=$value" }
+                }
+            }
+        }
         if (surfaceReady) {
             load(uri, resumeAt)
         } else {
             pendingFile = uri
+        }
+    }
+
+    /**
+     * Adds the side-car tracks, once mpv has a file open to attach them to.
+     *
+     * Added with `auto`, which in mpv means "do not select this one" — the flag reads like it
+     * defers to `slang`, and it does not; it simply leaves every track off. So the choice is
+     * made here: the viewer's preferred language when a track speaks it, and otherwise
+     * whatever mpv already settled on, except for subtitles, where nothing selected means a
+     * stream of Japanese audio with no text on screen.
+     */
+    private fun addExternalTracks() {
+        val subtitles = externalSubtitles
+        val audio = externalAudio
+        if (subtitles.isEmpty() && audio.isEmpty()) return
+        externalSubtitles = emptyList()
+        externalAudio = emptyList()
+
+        postToMpv {
+            // The source's label stays as the track title, because that is what the picker
+            // shows and "Español (Spain)" tells a person more than "spa" does. The language
+            // field gets the code, because that is what mpv matches the preference against.
+            subtitles.forEach { track ->
+                MPVLib.command(
+                    arrayOf("sub-add", track.url, "auto", track.lang, TrackLanguage.of(track.lang)),
+                )
+            }
+            audio.forEach { track ->
+                MPVLib.command(
+                    arrayOf("audio-add", track.url, "auto", track.lang, TrackLanguage.of(track.lang)),
+                )
+            }
+            // Asked of the track list rather than of `sid`: that property is a choice — it
+            // holds "no" and "auto" as well as a number — so reading it as an integer always
+            // fails, and the failure is indistinguishable from "nothing is selected".
+            val all = tracks()
+            val subtitleTracks = all.filter { it.isSubtitle }
+            val audioTracks = all.filter { it.isAudio }
+
+            val wantedSubtitle = subtitleTracks.preferring(preferredSubtitles)
+            when {
+                wantedSubtitle != null -> selectSubtitle(wantedSubtitle.id)
+                subtitles.isNotEmpty() && subtitleTracks.none { it.selected } ->
+                    subtitleTracks.firstOrNull()?.let { selectSubtitle(it.id) }
+            }
+            audioTracks.preferring(preferredAudio)?.let { selectAudio(it.id) }
         }
     }
 
@@ -153,12 +308,29 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         }.getOrNull()
     }
 
-    fun togglePause() {
-        val paused = MPVLib.getPropertyBoolean("pause") ?: return
+    /**
+     * Everything a tap can reach queues onto the mpv thread instead of calling libmpv here.
+     *
+     * libmpv's property reads, property writes and commands are all synchronous against mpv's
+     * core, so one made while the core is busy blocks the caller — and the core is busy for as
+     * long as a network stream takes to answer, which can be forever when a host stalls. These
+     * are invoked from gesture and button handlers, which run on the main thread, and a main
+     * thread blocked past five seconds is an ANR: a tap on pause became "Zenyomi isn't
+     * responding". Nothing here needs an answer, so nothing here waits for one.
+     */
+    fun togglePause() = postToMpv {
+        val paused = MPVLib.getPropertyBoolean("pause") ?: return@postToMpv
         MPVLib.setPropertyBoolean("pause", !paused)
     }
 
-    fun seekTo(seconds: Int) = MPVLib.command(arrayOf("seek", seconds.toString(), "absolute"))
+    fun seekTo(seconds: Int) = postToMpv {
+        MPVLib.command(arrayOf("seek", seconds.toString(), "absolute"))
+    }
+
+    /** Relative, so a double tap never has to read time-pos to know where it started. */
+    fun seekBy(seconds: Int) = postToMpv {
+        MPVLib.command(arrayOf("seek", seconds.toString(), "relative"))
+    }
 
     val isReady: Boolean get() = initialised
 
@@ -170,6 +342,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      * Width over height of the video actually being decoded, or null before it is known.
      * Picture-in-picture needs this to size its window; guessing 16:9 would letterbox
      * anything that is not.
+     *
+     * A blocking read, like [timePos] and the rest: call it from the polling loop, never from
+     * a button.
      */
     val videoAspect: Float?
         get() {
@@ -200,9 +375,27 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
-    fun selectAudio(trackId: Int?) = MPVLib.setPropertyString("aid", trackId?.toString() ?: "no")
+    /**
+     * The first track speaking the earliest language on [preferred], or null.
+     *
+     * Null also when that track is already selected: re-selecting an audio track mid-file
+     * makes mpv reopen and resync it, which is a visible hiccup for no gain.
+     */
+    private fun List<Track>.preferring(preferred: List<String>): Track? {
+        preferred.forEach { language ->
+            val match = firstOrNull { TrackLanguage.of(it.lang.orEmpty()) == language }
+            if (match != null) return match.takeUnless { it.selected }
+        }
+        return null
+    }
 
-    fun selectSubtitle(trackId: Int?) = MPVLib.setPropertyString("sid", trackId?.toString() ?: "no")
+    fun selectAudio(trackId: Int?) = postToMpv {
+        MPVLib.setPropertyString("aid", trackId?.toString() ?: "no")
+    }
+
+    fun selectSubtitle(trackId: Int?) = postToMpv {
+        MPVLib.setPropertyString("sid", trackId?.toString() ?: "no")
+    }
 
     data class Track(
         val id: Int,
@@ -236,11 +429,11 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         holder.removeCallback(this)
         val fds = openFds.toList()
         openFds.clear()
-        val toRemove = observer
-        observer = null
+        val toRemove = observers.toList()
+        observers.clear()
 
         runOnMpvThread {
-            toRemove?.let { MPVLib.removeObserver(it) }
+            toRemove.forEach { MPVLib.removeObserver(it) }
             MPVLib.destroy()
             fds.forEach { runCatching { it.close() } }
         }
@@ -248,6 +441,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
 
     /** Queues [block] on the mpv thread without waiting. Ordering is what matters here. */
     private fun postToMpv(block: () -> Unit) {
+        if (!initialised) return
         mpvThread.execute(block)
     }
 
@@ -297,15 +491,49 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     }
 
     /**
-     * mpv's escaped list syntax: each item prefixed with `%<byte length>%`.
+     * mpv's list syntax for `http-header-fields`: comma separated, commas inside an item
+     * escaped with a backslash.
      *
-     * A plain comma-separated list breaks the moment a header value contains a comma — which
-     * cookies and Accept headers routinely do — and mpv then drops or mangles the lot.
+     * Not the `%<length>%` prefix form mpv documents for its path lists. That form is *not*
+     * parsed for this option: mpv took the prefix as part of the field name and sent a header
+     * literally called `%8%Origin`, so every host that checks one answered 403 and the player
+     * opened to a black screen. Verified against a local server that echoes what arrives.
      */
     private fun List<String>.toMpvList(): String =
-        joinToString(",") { "%${it.toByteArray().size}%$it" }
+        joinToString(",") { it.replace(",", "\\,") }
+
+    /**
+     * Watches for the two moments that matter: a file opening, and mpv giving up on one.
+     *
+     * MPVLib's observer is one wide interface rather than a set of callbacks, so listening for
+     * two of them means implementing all seven members. `efEvent` is the library's own "this
+     * file ended badly" signal; the plain end-of-file event does not say whether it failed.
+     */
+    private class PlaybackObserver(
+        private val onFileLoaded: () -> Unit,
+        private val onFailure: (String?) -> Unit,
+    ) : MPVLib.EventObserver {
+        override fun event(eventId: Int) {
+            if (eventId == MPVLib.mpvEventId.MPV_EVENT_FILE_LOADED) onFileLoaded()
+        }
+
+        override fun efEvent(error: String?) = onFailure(error)
+
+        override fun eventProperty(property: String) = Unit
+        override fun eventProperty(property: String, value: Long) = Unit
+        override fun eventProperty(property: String, value: Boolean) = Unit
+        override fun eventProperty(property: String, value: String) = Unit
+        override fun eventProperty(property: String, value: Double) = Unit
+    }
 
     companion object {
+        /** The name mpv looks for in its config dir; it has no other font on Android. */
+        private const val SUBTITLE_FONT = "subfont.ttf"
+        private const val CA_BUNDLE = "cacert.pem"
+
+        /** 64 MB, matching what Aniyomi settled on for phones. */
+        private const val DEMUXER_CACHE_BYTES = 64L * 1024 * 1024
+
         /** mpv's default playlist index for loadfile, meaning "append". */
         private const val INSERT_AT_END = "-1"
 

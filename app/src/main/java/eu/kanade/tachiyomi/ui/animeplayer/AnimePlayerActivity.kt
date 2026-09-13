@@ -43,12 +43,11 @@ class AnimePlayerActivity : BaseActivity() {
             }
         }
 
-        val videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL)
+        val request = intent.getStringExtra(EXTRA_REQUEST)?.let(PlaybackRequest::decode)
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         val episodeId = intent.getLongExtra(EXTRA_EPISODE_ID, -1L)
-        val headers = intent.getStringArrayListExtra(EXTRA_HEADERS).orEmpty()
 
-        if (videoUrl.isNullOrBlank() || episodeId == -1L) {
+        if (request == null || request.url.isBlank() || episodeId == -1L) {
             // Nothing to play; leaving a blank black activity on the stack would be worse.
             finish()
             return
@@ -58,10 +57,9 @@ class AnimePlayerActivity : BaseActivity() {
         // player's ViewModel is resolved through, which MainActivity also relies on.
         setComposeContent {
             AnimePlayerContent(
-                videoUrl = videoUrl,
+                request = request,
                 title = title,
                 episodeId = episodeId,
-                headers = headers,
                 inPictureInPicture = inPictureInPicture,
                 onEnterPictureInPicture = ::enterPictureInPicture,
                 onBack = ::finish,
@@ -91,35 +89,29 @@ class AnimePlayerActivity : BaseActivity() {
     }
 
     companion object {
-        private const val EXTRA_VIDEO_URL = "video_url"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_EPISODE_ID = "episode_id"
 
         /**
-         * One "Name: value" per entry, handed to mpv as `http-header-fields`. Hosts that check
-         * the Referer answer a bare request with 403, which reaches the user as a player that
-         * opens and then plays nothing.
+         * The whole [PlaybackRequest] as json rather than a url plus loose extras. Headers and
+         * side-car subtitle tracks are as much a part of "what to play" as the url is, and
+         * spelling each of them out as its own extra is how they came to be dropped.
          */
-        private const val EXTRA_HEADERS = "headers"
+        private const val EXTRA_REQUEST = "request"
 
         private const val MIN_ASPECT = 0.5f
         private const val MAX_ASPECT = 2.35f
 
         fun newIntent(
             context: Context,
-            videoUrl: String,
+            request: PlaybackRequest,
             title: String,
             episodeId: Long,
-            headers: Map<String, String> = emptyMap(),
         ): Intent {
             return Intent(context, AnimePlayerActivity::class.java).apply {
-                putExtra(EXTRA_VIDEO_URL, videoUrl)
+                putExtra(EXTRA_REQUEST, request.encode())
                 putExtra(EXTRA_TITLE, title)
                 putExtra(EXTRA_EPISODE_ID, episodeId)
-                putStringArrayListExtra(
-                    EXTRA_HEADERS,
-                    ArrayList(headers.map { "${it.key}: ${it.value}" }),
-                )
             }
         }
     }

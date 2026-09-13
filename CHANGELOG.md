@@ -10,6 +10,20 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.8.2] - 2026-09-12
+### Fixed
+- **Video from an online source plays.** Until now only a local file did: the headers a source resolves a video with were dropped on the way to the player, so every host that checks where a request came from answered with a refusal and the screen stayed black. Verified with KickAssAnime, AnimeOnsen and TioAnime.
+- **Subtitles appear.** Anime streams carry the subtitles in a separate file beside Japanese audio, and those files were being thrown away — and even when one was kept, the player had no font to draw it with. Both fixed; a source that offers eight subtitle languages now gives you eight.
+- **Preferred audio and subtitle languages pick the track.** The setting existed and did nothing, because sources label a track "Spanish (spa)" or "Español (Spain)" where the player expected a code. Set it to `es,en` for subtitles and `ja,es,en` for audio and an episode opens the way you asked for it, without touching the pickers.
+- **Dragging the seek bar no longer freezes the app.** Each pixel of the drag asked the player to move the stream, and it asked from the thread drawing the screen, so a host that answered slowly hung the whole app until Android offered to close it.
+- **Searching some sources works again.** They were being handed an empty filter list instead of their own, and the ones that read their filters failed before making a single request — KickAssAnime among them, which turns out to have the widest catalogue of any source that also plays.
+- **A search that finds nothing says so.** It used to report "This source failed. Try again, or use another one", which was untrue on both counts.
+- **An episode from a source that has stopped working says which.** Tapping one used to answer "No video found for this episode", which reads as though that one episode is missing and sends you to try the next. Now it says the extension has not kept up with its site, because that is what happened.
+
+### Other
+- Anichi, AniWave and AnimeKai are marked as out of date: they reach their video host and it hands back an encrypted answer they cannot read. Nothing about that is fixable from here.
+- The debug probe can be pointed at a specific title and episode and taken all the way to the player, which is how most of the above was found.
+
 ## [0.8.1] - 2026-09-12
 ### Changed
 - **Extension stores takes either kind of repository and works out which it is.** Paste an anime repository url and it is stored as an anime one; paste a manga one and it is stored as a manga one. The screen lists both, labelled, once you have both. The separate "Anime extension repositories" entry in the Extensions menu is gone — it was asking you a question the app can answer.

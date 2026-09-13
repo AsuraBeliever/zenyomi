@@ -9,9 +9,12 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
+import eu.kanade.presentation.anime.AnimeSourceHealth
 import eu.kanade.presentation.anime.NoVideoFoundException
+import eu.kanade.presentation.anime.SourceOutdatedException
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
+import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,6 +56,7 @@ class AnimeUpdatesViewModel(
     private val updateEpisode: UpdateEpisode,
     private val trackEpisode: TrackEpisode,
     private val getEpisodeVideos: GetEpisodeVideos,
+    private val sourceHealth: AnimeSourceHealth,
     private val sourceManager: AnimeSourceManager,
     private val downloadManager: AnimeDownloadManager,
 ) : ViewModel() {
@@ -179,27 +183,27 @@ class AnimeUpdatesViewModel(
      */
     fun resolveVideo(
         update: AnimeUpdatesWithRelations,
-        onResolved: (url: String?, headers: Map<String, String>) -> Unit,
+        onResolved: (PlaybackRequest?) -> Unit,
     ) {
         _state.update { it.copy(resolvingEpisodeId = update.episodeId) }
         viewModelScope.launch {
             val resolved = resolve(update)
             if (resolved == null) {
                 _state.update { it.copy(resolvingEpisodeId = null, playbackError = NoVideoFoundException()) }
-                return@launch onResolved(null, emptyMap())
+                return@launch onResolved(null)
             }
             val (anime, source, episode) = resolved
 
             val local = downloadManager.downloadedUri(anime, source, episode)
             if (local != null) {
                 _state.update { it.copy(resolvingEpisodeId = null) }
-                return@launch onResolved(local, emptyMap())
+                return@launch onResolved(PlaybackRequest.local(local))
             }
 
             val result = runCatching { getEpisodeVideos.await(anime.source, episode) }
                 .onFailure { logcat(LogPriority.WARN, it) { "Could not resolve ${episode.name}" } }
             val video = result.getOrDefault(emptyList())
-                .let { with(getEpisodeVideos) { it.best() } }
+                .let { getEpisodeVideos.playable(anime.source, it) }
 
             _state.update {
                 it.copy(
@@ -209,18 +213,28 @@ class AnimeUpdatesViewModel(
                     playbackError = when {
                         video != null -> null
                         result.isFailure -> result.exceptionOrNull()
-                        else -> NoVideoFoundException()
+                        else -> noVideoReason(anime.source)
                     },
                 )
             }
-            onResolved(
-                video?.videoUrl,
-                video?.headers?.let { headers ->
-                    headers.names().associateWith { headers[it].orEmpty() }
-                }.orEmpty(),
-            )
+            onResolved(video?.let(PlaybackRequest::from))
         }
     }
+
+    /**
+     * Why an episode produced no video: the episode, or the extension.
+     *
+     * Worth separating because the two ask opposite things of the user. Our last sweep of the
+     * installed sources already knows which ones stopped working; saying "no video found for
+     * this episode" about one of those sends people to try episode after episode of a source
+     * that will never answer.
+     */
+    private fun noVideoReason(sourceId: Long): Throwable =
+        if (sourceHealth.statusOf(sourceId) != null) {
+            SourceOutdatedException()
+        } else {
+            NoVideoFoundException()
+        }
 
     fun clearPlaybackError() = _state.update { it.copy(playbackError = null) }
 

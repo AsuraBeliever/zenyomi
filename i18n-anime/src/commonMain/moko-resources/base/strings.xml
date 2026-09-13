@@ -673,6 +673,7 @@
     <string name="anime_error_outdated">This extension could not read the site. The site has most likely changed and the extension has not caught up — try another source.</string>
     <string name="anime_error_no_video">No video found for this episode.</string>
     <string name="anime_error_unknown">This source failed. Try again, or use another one.</string>
+    <string name="anime_error_playback">This video would not open. The host is probably down or the link has expired — try another source.</string>
     <string name="anime_source_health_gone">Checked %1$s: the site this source uses no longer exists.</string>
     <string name="anime_source_health_outdated">Checked %1$s: the site changed and this extension could not read it.</string>
     <string name="anime_category_move_up">Move up</string>

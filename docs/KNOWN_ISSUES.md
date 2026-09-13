@@ -58,9 +58,12 @@ a una marca que sirve de botón de borrado.
 **Qué está verificado:** encolar, que la cola sobreviva a que Android mate el proceso, el
 worker en primer plano, la notificación de error, el desencolado y el borrado del fichero.
 
-**Qué no:** una transferencia que termine. El emulador no tiene ninguna fuente de anime
-accesible por red — la única extensión instalada (Jellyfin) apunta a un servidor que no
-existe—, así que el camino solo se ejercita hasta que la fuente falla al resolver el vídeo.
+**Qué no:** una transferencia que termine.
+
+El motivo que había aquí — "el emulador no tiene ninguna fuente de anime accesible por red" —
+ya no vale: desde el 2026-09-12 hay tres extensiones que resuelven y reproducen en el
+emulador (KickAssAnime, AnimeOnsen, TioAnime). Queda pendiente por tiempo, no por falta de
+material: es cuestión de encolar un episodio de una de ellas y ver terminar la barra.
 
 ---
 
