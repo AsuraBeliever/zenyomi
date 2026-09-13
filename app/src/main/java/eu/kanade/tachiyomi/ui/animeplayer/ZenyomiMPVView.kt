@@ -283,12 +283,29 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         }.getOrNull()
     }
 
-    fun togglePause() {
-        val paused = MPVLib.getPropertyBoolean("pause") ?: return
+    /**
+     * Everything a tap can reach queues onto the mpv thread instead of calling libmpv here.
+     *
+     * libmpv's property reads, property writes and commands are all synchronous against mpv's
+     * core, so one made while the core is busy blocks the caller — and the core is busy for as
+     * long as a network stream takes to answer, which can be forever when a host stalls. These
+     * are invoked from gesture and button handlers, which run on the main thread, and a main
+     * thread blocked past five seconds is an ANR: a tap on pause became "Zenyomi isn't
+     * responding". Nothing here needs an answer, so nothing here waits for one.
+     */
+    fun togglePause() = postToMpv {
+        val paused = MPVLib.getPropertyBoolean("pause") ?: return@postToMpv
         MPVLib.setPropertyBoolean("pause", !paused)
     }
 
-    fun seekTo(seconds: Int) = MPVLib.command(arrayOf("seek", seconds.toString(), "absolute"))
+    fun seekTo(seconds: Int) = postToMpv {
+        MPVLib.command(arrayOf("seek", seconds.toString(), "absolute"))
+    }
+
+    /** Relative, so a double tap never has to read time-pos to know where it started. */
+    fun seekBy(seconds: Int) = postToMpv {
+        MPVLib.command(arrayOf("seek", seconds.toString(), "relative"))
+    }
 
     val isReady: Boolean get() = initialised
 
@@ -300,6 +317,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      * Width over height of the video actually being decoded, or null before it is known.
      * Picture-in-picture needs this to size its window; guessing 16:9 would letterbox
      * anything that is not.
+     *
+     * A blocking read, like [timePos] and the rest: call it from the polling loop, never from
+     * a button.
      */
     val videoAspect: Float?
         get() {
@@ -330,9 +350,13 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         }
     }
 
-    fun selectAudio(trackId: Int?) = MPVLib.setPropertyString("aid", trackId?.toString() ?: "no")
+    fun selectAudio(trackId: Int?) = postToMpv {
+        MPVLib.setPropertyString("aid", trackId?.toString() ?: "no")
+    }
 
-    fun selectSubtitle(trackId: Int?) = MPVLib.setPropertyString("sid", trackId?.toString() ?: "no")
+    fun selectSubtitle(trackId: Int?) = postToMpv {
+        MPVLib.setPropertyString("sid", trackId?.toString() ?: "no")
+    }
 
     data class Track(
         val id: Int,
@@ -378,6 +402,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
 
     /** Queues [block] on the mpv thread without waiting. Ordering is what matters here. */
     private fun postToMpv(block: () -> Unit) {
+        if (!initialised) return
         mpvThread.execute(block)
     }
 
