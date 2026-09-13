@@ -126,30 +126,44 @@ dispositivo parte la cadena por el `|` e intenta ejecutar cada trozo.
 
 | Fuente | Títulos hallados | Resultados por título | ¿Reproduce hoy? |
 |---|---|---|---|
-| AniWave (Unoriginal) | **5/5** | 4, 4, 5, 3, 30 | no resuelve vídeo |
+| KickAssAnime | **5/5** | 3, 4, 7, 2, 36 | **sí**, con audio JA/EN y 8 subtítulos |
+| AllAnime | 5/5 | 5, 3, 5, 2, 26 | no resuelve vídeo |
+| AniWave (Unoriginal) | 5/5 | 4, 4, 5, 3, 30 | no resuelve vídeo |
 | Anichi | 5/5 | 3, 4, 5, 2, 30 | no resuelve vídeo |
 | AnimeKai (Unoriginal) | 5/5 | 3, 4, 5, 2, 30 | no resuelve vídeo |
-| AnimePahe | 4/5 | —, 3, 6, 2, 8 | catálogo da 403 |
-| AnimeOnsen | 4/5 | 2, 1, 0, 2, 7 | **sí**, 1 vídeo |
-| KickAssAnime | 0/5 (caída al medir) | — | **sí**, 3 vídeos |
+| AnimePahe | 5/5 | 3, 3, 6, 2, 8 | catálogo da 403 |
+| Jkanime | 5/5 | 2, 2, 5, 2, 30 | abre, pero el mirror corta |
+| Latanime | 5/5 | 2, 2, 2, 4, 17 | mirror 404 |
+| TioAnime | 5/5 | 2, 2, 4, 2, 16 | **sí** |
+| AnimeOnsen | 4/5 | 2, 1, 0, 2, 7 | **sí**, con 18 subtítulos |
 | AnimeKhor | 1/5 | 0, 0, 0, 0, 10 | no resuelve vídeo |
+| TioHentai | 1/5 | 0, 0, 0, 0, 1 | **sí** |
 | Miruro.tv | 0/5 | 0 en todo | catálogo vacío |
-| AllAnime, 9AnimeTV, AniWatchtv, Kaido, AniZone, Animetsu | 0/5 | sitio caído al medir | no |
+| 9AnimeTV, AniWatchtv, Kaido, AniZone, Animetsu, AnimeFLV, AnimeFenix, AnimeLatinoHD | 0/5 | error en todo | no |
+
+**La primera medición de esta tabla estaba mal, y el fallo era nuestro.** La app pasaba una
+lista de filtros **vacía** a `getSearchAnime` en vez de la de la propia fuente. Una extensión
+tiene derecho a leer sus filtros — la de KickAssAnime saca el suyo con `first()` — así que
+lanzaba antes de hacer una sola petición, y eso se contó como "sitio caído". Corregido el
+2026-09-12; KickAssAnime pasó de `0/5 (caída al medir)` a **5/5**, AllAnime de `0/5 sitio
+caído` a **5/5**, y AnimePahe de 4/5 a 5/5. Moraleja para la próxima: un `err` en todas las
+columnas de una fuente que por lo demás funciona es sospechoso de ser cosa nuestra.
 
 **Dos avisos sobre estos números.**
 
-"Monster" es una palabra corriente y casa con decenas de títulos: ese 30 mide el buscador, no
+"Monster" es una palabra corriente y casa con decenas de títulos: ese 36 mide el buscador, no
 el catálogo. Un muestreo mejor usaría títulos sin palabras genéricas.
 
 Anichi y AnimeKai devolvieron **exactamente** los mismos conteos en los cinco títulos pese a
 vivir en dominios distintos (`anichi.to` y `animekaitv.to`). Instalar las dos probablemente no
 da dos catálogos independientes.
 
-**La tensión que sale del dato:** las tres de mayor cobertura llegan al catálogo y a la lista
-de episodios pero no resuelven vídeo, y las dos que sí reproducen tienen catálogos más
-pequeños. El arnés resuelve el primer episodio de la primera entrada de populares, así que un
-"no resuelve vídeo" no demuestra que la fuente nunca reproduzca — puede ser esa entrada, o un
-desafío de Cloudflare que la app sí pasa por WebView y el arnés no.
+**La tensión que sale del dato:** las de mayor cobertura entre las inglesas llegan al catálogo
+y a la lista de episodios pero no resuelven vídeo, y KickAssAnime es hoy la única que junta
+catálogo grande, reproducción y varios idiomas. El arnés resuelve el primer episodio de la
+primera entrada de populares, así que un "no resuelve vídeo" no demuestra que la fuente nunca
+reproduzca — puede ser esa entrada, o un desafío de Cloudflare que la app sí pasa por WebView
+y el arnés no.
 
 
 ---
