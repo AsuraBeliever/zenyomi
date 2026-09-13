@@ -14,6 +14,16 @@ import java.net.UnknownHostException
 class NoVideoFoundException : Exception("No video found for this episode")
 
 /**
+ * An episode that produced no video from a source our last sweep already found broken.
+ *
+ * The difference from [NoVideoFoundException] is the whole point: "no video found for this
+ * episode" reads as though this one episode is missing, and sends the user off to try another
+ * one, and another. When the extension is the thing that stopped working, every episode will
+ * do the same and the only move that helps is a different source. See [AnimeSourceHealth].
+ */
+class SourceOutdatedException : Exception("This extension can no longer read its site")
+
+/**
  * Turns whatever an extension threw into a sentence a person can act on.
  *
  * Extensions are third-party code scraping sites that change without notice, so they fail
@@ -50,6 +60,8 @@ object AnimeSourceError {
     )
 
     fun describe(error: Throwable): Message = when {
+        error is SourceOutdatedException -> Message(ANMR.strings.anime_error_outdated)
+
         error is NoVideoFoundException -> Message(ANMR.strings.anime_error_no_video)
 
         error is TimeoutCancellationException -> Message(ANMR.strings.anime_error_timeout)

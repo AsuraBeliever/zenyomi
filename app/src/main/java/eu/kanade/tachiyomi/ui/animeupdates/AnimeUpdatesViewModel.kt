@@ -9,7 +9,9 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
+import eu.kanade.presentation.anime.AnimeSourceHealth
 import eu.kanade.presentation.anime.NoVideoFoundException
+import eu.kanade.presentation.anime.SourceOutdatedException
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
@@ -54,6 +56,7 @@ class AnimeUpdatesViewModel(
     private val updateEpisode: UpdateEpisode,
     private val trackEpisode: TrackEpisode,
     private val getEpisodeVideos: GetEpisodeVideos,
+    private val sourceHealth: AnimeSourceHealth,
     private val sourceManager: AnimeSourceManager,
     private val downloadManager: AnimeDownloadManager,
 ) : ViewModel() {
@@ -210,13 +213,28 @@ class AnimeUpdatesViewModel(
                     playbackError = when {
                         video != null -> null
                         result.isFailure -> result.exceptionOrNull()
-                        else -> NoVideoFoundException()
+                        else -> noVideoReason(anime.source)
                     },
                 )
             }
             onResolved(video?.let(PlaybackRequest::from))
         }
     }
+
+    /**
+     * Why an episode produced no video: the episode, or the extension.
+     *
+     * Worth separating because the two ask opposite things of the user. Our last sweep of the
+     * installed sources already knows which ones stopped working; saying "no video found for
+     * this episode" about one of those sends people to try episode after episode of a source
+     * that will never answer.
+     */
+    private fun noVideoReason(sourceId: Long): Throwable =
+        if (sourceHealth.statusOf(sourceId) != null) {
+            SourceOutdatedException()
+        } else {
+            NoVideoFoundException()
+        }
 
     fun clearPlaybackError() = _state.update { it.copy(playbackError = null) }
 
