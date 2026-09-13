@@ -90,8 +90,14 @@ class AnimeSourceProbeActivity : Activity() {
                     return@launch
                 }
                 val videos = GetEpisodeVideos(graph.animeSourceManager)
-                val anime = source.getPopularAnime(1).animes.first()
-                val episode = source.episodesOf(anime).first()
+                val anime = source.pickAnime(intent.getStringExtra("title")) ?: run {
+                    Log.i(TAG, "play: nothing found on ${source.name}")
+                    return@launch
+                }
+                val episode = source.episodesOf(anime).pick(intent.getStringExtra("ep")) ?: run {
+                    Log.i(TAG, "play: no matching episode")
+                    return@launch
+                }
                 val found = videos.await(source.id, episode.toEpisode())
                 val video = videos.playable(source.id, found)
                 Log.i(TAG, "play: ${source.name} / ${anime.title} / ${episode.name}")
@@ -119,7 +125,14 @@ class AnimeSourceProbeActivity : Activity() {
             // from the outside and need opposite fixes.
             val videosOf = intent.getStringExtra("videos")
             if (videosOf != null) {
-                sources.forEach { source -> describeVideos(source, status) }
+                sources.forEach { source ->
+                    describeVideos(
+                        source,
+                        status,
+                        intent.getStringExtra("title"),
+                        intent.getStringExtra("ep"),
+                    )
+                }
                 runOnUiThread { status.text = "Done: videos" }
                 return@launch
             }
@@ -190,18 +203,23 @@ class AnimeSourceProbeActivity : Activity() {
     private fun SEpisode.toEpisode() = Episode.create().copy(url = url, name = name)
 
     /** Walks one source to its first video and logs every field the player depends on. */
-    private suspend fun describeVideos(source: AnimeCatalogueSource, status: TextView) {
+    private suspend fun describeVideos(
+        source: AnimeCatalogueSource,
+        status: TextView,
+        title: String?,
+        episodeName: String?,
+    ) {
         runOnUiThread { status.text = "Videos: ${source.name}" }
         Log.i(TAG, "== ${source.name} (${source.id}) ==")
 
-        val anime = step { withTimeout(STEP_TIMEOUT) { source.getPopularAnime(1) } }
-            .also { it.failure?.let { why -> Log.i(TAG, "popular failed: $why") } }
-            .value?.animes?.firstOrNull() ?: return
+        val anime = step { withTimeout(STEP_TIMEOUT) { source.pickAnime(title) } }
+            .also { it.failure?.let { why -> Log.i(TAG, "entry failed: $why") } }
+            .value ?: return
         Log.i(TAG, "anime: ${anime.title} url=${anime.url}")
 
-        val episode = step { withTimeout(STEP_TIMEOUT) { source.episodesOf(anime) } }
+        val episode = step { withTimeout(STEP_TIMEOUT) { source.episodesOf(anime).pick(episodeName) } }
             .also { it.failure?.let { why -> Log.i(TAG, "episodes failed: $why") } }
-            .value?.firstOrNull() ?: return
+            .value ?: return
         Log.i(TAG, "episode: ${episode.name} url=${episode.url}")
 
         val hosters = step { withTimeout(STEP_TIMEOUT) { source.getHosterList(episode) } }
@@ -262,6 +280,33 @@ class AnimeSourceProbeActivity : Activity() {
 
         return row(id, name, lang, "OK", popular.value.animes.size.toString(), "$count video(s)")
     }
+
+    /**
+     * The entry to probe: whatever [title] finds, or the first of the popular list.
+     *
+     * Probing the first popular entry answers "does this source work at all"; it does not
+     * answer "does it work for the show I want", and the two come apart often enough that
+     * assuming one from the other has already been wrong once.
+     */
+    private suspend fun AnimeCatalogueSource.pickAnime(title: String?): SAnime? =
+        if (title.isNullOrBlank()) {
+            getPopularAnime(1).animes.firstOrNull()
+        } else {
+            val hits = getSearchAnime(1, title, AnimeFilterList()).animes
+            Log.i(TAG, "search '$title': " + hits.take(10).joinToString(" | ") { it.title })
+            // Exact first: searching "One Piece" matches a dozen spin-offs before the show
+            // itself, and probing the wrong entry answers the wrong question.
+            hits.firstOrNull { it.title.equals(title, ignoreCase = true) }
+                ?: hits.firstOrNull { it.title.contains(title, ignoreCase = true) }
+        }
+
+    /** The episode whose name contains [name], or the first one the source lists. */
+    private fun List<SEpisode>.pick(name: String?): SEpisode? =
+        if (name.isNullOrBlank()) {
+            firstOrNull()
+        } else {
+            firstOrNull { it.name.contains(name, ignoreCase = true) }
+        }
 
     /** Episodes go through the same two routes the app uses, newest API first. */
     private suspend fun AnimeCatalogueSource.episodesOf(anime: SAnime): List<SEpisode> =
