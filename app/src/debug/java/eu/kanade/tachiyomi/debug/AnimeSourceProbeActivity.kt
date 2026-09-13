@@ -90,16 +90,23 @@ class AnimeSourceProbeActivity : Activity() {
                     return@launch
                 }
                 val videos = GetEpisodeVideos(graph.animeSourceManager)
-                val anime = source.pickAnime(intent.getStringExtra("title")) ?: run {
+                // Every hop is wrapped: an extension is free to throw, and KickAssAnime does
+                // exactly that from getSearchAnime when a search comes back empty. Letting it
+                // through killed the process and left no measurement at all.
+                val anime = step { source.pickAnime(intent.getStringExtra("title")) }
+                    .also { it.failure?.let { why -> Log.i(TAG, "play: entry failed: $why") } }
+                    .value ?: run {
                     Log.i(TAG, "play: nothing found on ${source.name}")
                     return@launch
                 }
-                val episode = source.episodesOf(anime).pick(intent.getStringExtra("ep")) ?: run {
+                val episode = step { source.episodesOf(anime).pick(intent.getStringExtra("ep")) }
+                    .also { it.failure?.let { why -> Log.i(TAG, "play: episodes failed: $why") } }
+                    .value ?: run {
                     Log.i(TAG, "play: no matching episode")
                     return@launch
                 }
-                val found = videos.await(source.id, episode.toEpisode())
-                val video = videos.playable(source.id, found)
+                val found = step { videos.await(source.id, episode.toEpisode()) }.value.orEmpty()
+                val video = step { videos.playable(source.id, found) }.value
                 Log.i(TAG, "play: ${source.name} / ${anime.title} / ${episode.name}")
                 Log.i(TAG, "play: ${found.size} video(s), chose ${video?.videoUrl ?: "none"}")
                 if (video == null) return@launch
