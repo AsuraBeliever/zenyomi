@@ -52,6 +52,30 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     private var externalSubtitles: List<SourceTrack> = emptyList()
     private var externalAudio: List<SourceTrack> = emptyList()
 
+    /**
+     * Offered by the source, listed in the picker, and not handed to mpv until someone picks
+     * them.
+     *
+     * `sub-add` and `audio-add` block mpv's core for as long as the download takes, and every
+     * other command — pause, seek, choosing a track — waits behind them. A source offering
+     * sixteen subtitle languages therefore cost about a minute during which the player's own
+     * buttons did nothing, and then did everything that had been pressed at once.
+     *
+     * Only the language the viewer actually wants is loaded when the episode opens. The rest
+     * exist as [Track]s with a negative id, which the picker draws like any other and
+     * [selectSubtitle] resolves back to a download.
+     */
+    private var pendingSubtitles: List<SourceTrack> = emptyList()
+    private var pendingAudio: List<SourceTrack> = emptyList()
+
+    /**
+     * Whether the viewer has overridden the language preference for this file.
+     *
+     * The preference says what to start with, not what to keep going back to.
+     */
+    private var viewerChoseSubtitle = false
+    private var viewerChoseAudio = false
+
     /** Whether the source offered subtitles, for the "pick one rather than none" rule. */
     private var addedSubtitles = false
 
@@ -270,6 +294,8 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
                 onFileLoaded = {
                     lastHttpError = null
                     shownFirstFrame = false
+                    viewerChoseSubtitle = false
+                    viewerChoseAudio = false
                     addExternalTracks()
                     // The file's own tracks are here now even if the external ones are not.
                     applyTrackPreferences()
@@ -378,57 +404,39 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         // long after these lists have been cleared.
         addedSubtitles = subtitles.isNotEmpty()
 
+        val wantedSubtitles = subtitles.preferredFirst(preferredSubtitles)
+        val wantedAudio = audio.preferredFirst(preferredAudio)
+        pendingSubtitles = wantedSubtitles.drop(1)
+        pendingAudio = wantedAudio.drop(1)
+
         postToMpv {
-            // Audio before subtitles, and the wanted subtitle before the rest.
+            // Audio before subtitles, and one of each: both are downloaded synchronously
+            // against mpv's core, so anything queued here is time the viewer spends with a
+            // player that will not answer its own buttons.
             //
-            // `sub-add` and `audio-add` are synchronous against mpv's core: each one opens the
-            // url, downloads it and parses it before the next runs. A source that offers
-            // sixteen subtitle languages — KickAssAnime does — therefore spent about four
-            // seconds on each, one after another, and the `audio-add` queued behind all of
-            // them did not land for thirty-seven seconds. That is the episode that starts
-            // playing and only finds its voice most of a minute later.
-            //
-            // Nothing here makes a single download faster. What changes is who waits for whom:
-            // the sound and the subtitle the viewer actually reads are first in the queue, and
-            // the fifteen languages nobody asked for load behind the episode rather than in
-            // front of it.
-            // `select` on the wanted one, `auto` on the rest.
-            //
-            // Every track used to be added with `auto`, which in mpv means "register it and
-            // choose nothing", so the choosing had to happen afterwards from the track-list
-            // observer. That reply goes through [postToMpv] — the back of this very queue —
-            // and each `sub-add` below holds the queue for as long as its download takes. The
-            // audio track existed two seconds in and was not selected for another twenty.
-            //
-            // `select` closes that: mpv selects the track the moment it registers it, with no
-            // round trip to make and nothing to race against.
-            audio.preferredFirst(preferredAudio).forEachIndexed { index, track ->
+            // `select` rather than `auto`: mpv chooses the track the moment it registers it.
+            // Choosing afterwards meant a round trip through the track-list observer, which
+            // joins the back of this same queue — and racing `audio-add`, which returns
+            // before the track exists.
+            wantedAudio.firstOrNull()?.let { track ->
                 MPVLib.command(
-                    arrayOf(
-                        "audio-add",
-                        track.url,
-                        if (index == 0) "select" else "auto",
-                        track.lang,
-                        TrackLanguage.of(track.lang),
-                    ),
+                    arrayOf("audio-add", track.url, "select", track.lang, TrackLanguage.of(track.lang)),
                 )
             }
-            subtitles.preferredFirst(preferredSubtitles).forEachIndexed { index, track ->
+            // The source's label stays as the track title, because that is what the picker
+            // shows and "Español (Spain)" tells a person more than "spa" does. The language
+            // field gets the code, because that is what mpv matches the preference against.
+            wantedSubtitles.firstOrNull()?.let { track ->
                 MPVLib.command(
-                    // The source's label stays as the track title, because that is what the
-                    // picker shows and "Español (Spain)" tells a person more than "spa" does.
-                    // The language field gets the code, because that is what mpv matches the
-                    // preference against.
-                    arrayOf(
-                        "sub-add",
-                        track.url,
-                        if (index == 0) "select" else "auto",
-                        track.lang,
-                        TrackLanguage.of(track.lang),
-                    ),
+                    arrayOf("sub-add", track.url, "select", track.lang, TrackLanguage.of(track.lang)),
                 )
             }
         }
+    }
+
+    /** Hands one deferred track to mpv and selects it. */
+    private fun loadPending(track: SourceTrack, command: String) = postToMpv {
+        MPVLib.command(arrayOf(command, track.url, "select", track.lang, TrackLanguage.of(track.lang)))
     }
 
     /**
@@ -475,25 +483,27 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      * which sounds exactly like audio that loads after the video.
      */
     private fun selectPreferredAudio() {
+        if (viewerChoseAudio) return
         // Asked of the track list rather than of `aid`: that property is a choice — it
         // holds "no" and "auto" as well as a number — so reading it as an integer always
         // fails, and the failure is indistinguishable from "nothing is selected".
-        val audioTracks = tracks().filter { it.isAudio }
+        val audioTracks = loadedTracks().filter { it.isAudio }
         // Nothing selected at all is the case this exists for: an external audio track that
         // arrived after the file opened leaves mpv with no audio chosen.
         val wantedAudio = audioTracks.preferring(preferredAudio)
             ?: audioTracks.firstOrNull()?.takeIf { audioTracks.none { track -> track.selected } }
-        wantedAudio?.let { selectAudio(it.id) }
+        wantedAudio?.let { applyAudio(it.id) }
     }
 
     /** Chooses the subtitle track. Must run on the mpv thread. */
     private fun selectPreferredSubtitle() {
-        val subtitleTracks = tracks().filter { it.isSubtitle }
+        if (viewerChoseSubtitle) return
+        val subtitleTracks = loadedTracks().filter { it.isSubtitle }
         val wantedSubtitle = subtitleTracks.preferring(preferredSubtitles)
         when {
-            wantedSubtitle != null -> selectSubtitle(wantedSubtitle.id)
+            wantedSubtitle != null -> applySubtitle(wantedSubtitle.id)
             addedSubtitles && subtitleTracks.isNotEmpty() && subtitleTracks.none { it.selected } ->
-                subtitleTracks.firstOrNull()?.let { selectSubtitle(it.id) }
+                subtitleTracks.firstOrNull()?.let { applySubtitle(it.id) }
         }
     }
 
@@ -652,12 +662,31 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         }
 
     /**
-     * The tracks mpv found in the current file.
+     * What the picker shows: the tracks mpv has, plus the ones the source offered and nobody
+     * has asked for yet.
+     *
+     * The deferred ones carry a negative id, which is not an id mpv can ever issue, so
+     * [selectSubtitle] and [selectAudio] can tell them apart and download them on the spot.
+     */
+    fun tracks(): List<Track> = loadedTracks() +
+        pendingAudio.mapIndexed { index, track -> track.placeholder(-(index + 1), "audio") } +
+        pendingSubtitles.mapIndexed { index, track -> track.placeholder(-(index + 1), "sub") }
+
+    private fun SourceTrack.placeholder(id: Int, type: String) = Track(
+        id = id,
+        type = type,
+        lang = TrackLanguage.of(lang),
+        title = lang,
+        selected = false,
+    )
+
+    /**
+     * Only what mpv actually holds. Every decision this class makes is about these.
      *
      * mpv exposes track-list as a node, which MPVLib cannot hand over directly, so the
      * entries are read one property at a time through the track-list/N/... paths.
      */
-    fun tracks(): List<Track> {
+    private fun loadedTracks(): List<Track> {
         val count = MPVLib.getPropertyInt("track-list/count") ?: return emptyList()
         return (0 until count).mapNotNull { index ->
             val type = MPVLib.getPropertyString("track-list/$index/type") ?: return@mapNotNull null
@@ -686,13 +715,44 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         return null
     }
 
-    fun selectAudio(trackId: Int?) = postToMpv {
+    /**
+     * The viewer picking a track from the player's own picker.
+     *
+     * Records that the choice was theirs, which stops [applyTrackPreferences] from putting the
+     * preferred language back. It runs on every change to the track list, and loading the
+     * track they just asked for is itself such a change — so choosing English on a source that
+     * offers it alongside the preferred Spanish used to flip back to Spanish a second later.
+     */
+    fun selectAudio(trackId: Int?) {
+        viewerChoseAudio = true
+        val deferred = pendingAudio.getOrNull(trackId.pendingIndex())
+        if (deferred != null) {
+            pendingAudio = pendingAudio - deferred
+            return loadPending(deferred, "audio-add")
+        }
+        applyAudio(trackId)
+    }
+
+    fun selectSubtitle(trackId: Int?) {
+        viewerChoseSubtitle = true
+        val deferred = pendingSubtitles.getOrNull(trackId.pendingIndex())
+        if (deferred != null) {
+            pendingSubtitles = pendingSubtitles - deferred
+            return loadPending(deferred, "sub-add")
+        }
+        applySubtitle(trackId)
+    }
+
+    private fun applyAudio(trackId: Int?) = postToMpv {
         MPVLib.setPropertyString("aid", trackId?.toString() ?: "no")
     }
 
-    fun selectSubtitle(trackId: Int?) = postToMpv {
+    private fun applySubtitle(trackId: Int?) = postToMpv {
         MPVLib.setPropertyString("sid", trackId?.toString() ?: "no")
     }
+
+    /** Where a negative track id points in the deferred list, or -1 for a real one. */
+    private fun Int?.pendingIndex(): Int = if (this != null && this < 0) -this - 1 else -1
 
     data class Track(
         val id: Int,
