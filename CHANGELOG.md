@@ -10,7 +10,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
-## [Unreleased]
+## [0.10.0] - 2026-09-14
 ### Fixed
 - **The audio of a KickAssAnime episode plays on a real phone.** It played on the emulator and not on the client's Galaxy, from the same build and the same episode. The audio of those episodes is a separate stream that mpv has to open over the network, and the app asked for the track list the instant it requested that stream — before mpv had opened it. The track arrived a moment later, unselected, and the episode ran with video, subtitles and silence. Whether the race was won depended on how fast the stream opened, which is why one machine played it and the other did not. Choosing the track is now driven by mpv reporting its track list changed, so it no longer depends on timing.
 
