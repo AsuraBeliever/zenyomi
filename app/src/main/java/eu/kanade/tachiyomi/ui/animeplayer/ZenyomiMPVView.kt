@@ -1,11 +1,16 @@
 package eu.kanade.tachiyomi.ui.animeplayer
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.ParcelFileDescriptor
 import android.util.AttributeSet
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import androidx.core.content.getSystemService
 import androidx.core.net.toUri
+import eu.kanade.tachiyomi.BuildConfig
 import `is`.xyz.mpv.MPVLib
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
@@ -66,6 +71,19 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     /** Held open for as long as mpv reads from them. */
     private val openFds = mutableListOf<ParcelFileDescriptor>()
 
+    private val audioManager = context.getSystemService<AudioManager>()
+
+    /** Held for as long as mpv exists; see [requestAudioFocus]. */
+    private var audioFocus: AudioFocusRequest? = null
+
+    /**
+     * Whether the pause in effect is ours rather than the viewer's.
+     *
+     * Only then does regaining focus resume: a call that interrupts an episode should hand it
+     * back where it was, and an episode the viewer paused themselves should stay paused.
+     */
+    private var pausedForFocusLoss = false
+
     /** Observers are registered against MPVLib globally, so keep ours to remove them later. */
     private val observers = mutableListOf<MPVLib.EventObserver>()
 
@@ -90,13 +108,19 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         configDir.mkdirs()
         copyAssets(configDir)
         holder.addCallback(this)
+        requestAudioFocus()
 
         // All of libmpv is driven from one thread; see runOnMpvThread.
         postToMpv {
-            MPVLib.create(context, "v")
+            MPVLib.create(context, LOG_LEVEL)
             // Registered before anything else: without it a rejected option or a failed
             // loadfile is silent, and mpv only ever complains on its own log.
-            MPVLib.setOptionString("msg-level", "all=v")
+            //
+            // Verbose in a debug build only. At `v` mpv narrates every hls segment it opens,
+            // which on a stream that rotates its host is four lines per segment, each one
+            // crossing jni to be formatted and written to logcat while the episode plays.
+            // Diagnosing is worth that; a release build on someone's phone is not.
+            MPVLib.setOptionString("msg-level", "all=$LOG_LEVEL")
             MPVLib.addLogObserver { prefix, _, text ->
                 if (text.contains("HTTP error")) lastHttpError = text.trim()
                 logcat(LogPriority.DEBUG) { "mpv [$prefix] $text".trim() }
@@ -130,6 +154,33 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             // mpv's desktop defaults buffer far more than a phone should hold.
             MPVLib.setOptionString("demuxer-max-bytes", DEMUXER_CACHE_BYTES.toString())
             MPVLib.setOptionString("demuxer-max-back-bytes", DEMUXER_CACHE_BYTES.toString())
+            // Every one of these is about one thing: an episode that plays without sound.
+            //
+            // A source like KickAssAnime serves a video-only hls manifest and hands the audio
+            // over as a separate stream, and it spreads the segments of both across a rotating
+            // set of hosts. mpv's defaults do not survive that. It reads one second ahead, so
+            // it starts playing the moment the first packet lands and runs dry immediately
+            // after ("Audio device underrun detected", then "restarting audio after underrun",
+            // then "Audio/Video desynchronisation detected" — over and over). Video hides it,
+            // because a dropped frame is invisible and a gap in the audio is silence.
+            //
+            // So: hold a real read-ahead, and wait for it before starting rather than starting
+            // into an empty buffer.
+            MPVLib.setOptionString("cache", "yes")
+            MPVLib.setOptionString("cache-secs", READAHEAD_SECONDS.toString())
+            MPVLib.setOptionString("demuxer-readahead-secs", READAHEAD_SECONDS.toString())
+            MPVLib.setOptionString("cache-pause-initial", "yes")
+            MPVLib.setOptionString("cache-pause-wait", CACHE_WAIT_SECONDS.toString())
+            // The AudioTrack's own buffer. mpv's default 0.2s is a fifth of a second of
+            // scheduling headroom, which a phone juggling a decode and two http streams does
+            // not always have.
+            MPVLib.setOptionString("audio-buffer", AUDIO_BUFFER_SECONDS.toString())
+            // ffmpeg's hls demuxer keeps the connection alive between segments, which cannot
+            // work when consecutive segments come from different hosts: it spent a failed
+            // request on every single segment ("keepalive request failed ... retrying with new
+            // connection") before opening the one that worked. Told not to try, it opens each
+            // segment once.
+            MPVLib.setOptionString("demuxer-lavf-o", "http_persistent=0")
             // These have to be options rather than properties: mpv applies them while opening
             // a file, so setting them after init does nothing until the *next* file.
             // Through the same normaliser as the tracks, so "es" in the setting and
@@ -309,6 +360,72 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     }
 
     /**
+     * Asks Android for the audio output, which is not a formality: it is why episodes played
+     * silently.
+     *
+     * Android 16 mutes media from an app it does not consider to be the one playing, and
+     * holding audio focus is how an app says that it is. Without it the platform muted us
+     * outright — `AudioHardening background playback muted for app.zenyomi.dev, level:
+     * partial, usage: USAGE_MEDIA` in `dumpsys audio`, with this app absent from the focus
+     * stack entirely. mpv opened its AudioTrack, wrote to it and reported healthy playback the
+     * whole time, which is why the player looked right and sounded like nothing.
+     *
+     * Asking also buys the behaviour a video player should have anyway: an episode pauses for
+     * a phone call and resumes after it, instead of playing on underneath it.
+     */
+    private fun requestAudioFocus() {
+        val manager = audioManager ?: return
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                    .build(),
+            )
+            .setOnAudioFocusChangeListener(::onAudioFocusChange)
+            .build()
+        audioFocus = request
+        if (manager.requestAudioFocus(request) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            logcat(LogPriority.WARN) { "Audio focus refused; playback may be muted" }
+        }
+    }
+
+    private fun abandonAudioFocus() {
+        val manager = audioManager ?: return
+        audioFocus?.let { manager.abandonAudioFocusRequest(it) }
+        audioFocus = null
+    }
+
+    /**
+     * Pauses while something else owns the output, and resumes when it is handed back.
+     *
+     * Ducking is treated as a loss rather than turned into a quieter episode: half-hearing
+     * dialogue under a notification is worse than the episode waiting a moment.
+     */
+    private fun onAudioFocusChange(change: Int) {
+        when (change) {
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                if (pausedForFocusLoss) {
+                    pausedForFocusLoss = false
+                    setPaused(false)
+                }
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK,
+            -> {
+                pausedForFocusLoss = true
+                setPaused(true)
+            }
+            // A permanent loss is someone else taking over for good, so nothing is remembered
+            // to resume: the viewer comes back and presses play.
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                pausedForFocusLoss = false
+                setPaused(true)
+            }
+        }
+    }
+
+    /**
      * Everything a tap can reach queues onto the mpv thread instead of calling libmpv here.
      *
      * libmpv's property reads, property writes and commands are all synchronous against mpv's
@@ -318,9 +435,17 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      * thread blocked past five seconds is an ANR: a tap on pause became "Zenyomi isn't
      * responding". Nothing here needs an answer, so nothing here waits for one.
      */
-    fun togglePause() = postToMpv {
-        val paused = MPVLib.getPropertyBoolean("pause") ?: return@postToMpv
-        MPVLib.setPropertyBoolean("pause", !paused)
+    fun togglePause() {
+        // The viewer has taken over the decision, so a later focus gain must not undo it.
+        pausedForFocusLoss = false
+        postToMpv {
+            val paused = MPVLib.getPropertyBoolean("pause") ?: return@postToMpv
+            MPVLib.setPropertyBoolean("pause", !paused)
+        }
+    }
+
+    private fun setPaused(paused: Boolean) = postToMpv {
+        MPVLib.setPropertyBoolean("pause", paused)
     }
 
     fun seekTo(seconds: Int) = postToMpv {
@@ -427,6 +552,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         if (!initialised) return
         initialised = false
         holder.removeCallback(this)
+        abandonAudioFocus()
         val fds = openFds.toList()
         openFds.clear()
         val toRemove = observers.toList()
@@ -533,6 +659,27 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
 
         /** 64 MB, matching what Aniyomi settled on for phones. */
         private const val DEMUXER_CACHE_BYTES = 64L * 1024 * 1024
+
+        /**
+         * Seconds of stream to keep ahead of the playhead, against mpv's default of one.
+         *
+         * Sized for the bad case rather than the good one: a host that needs a fresh
+         * connection per segment, and an audio stream fetched separately from the video.
+         * It is a ceiling, not a reservation — [DEMUXER_CACHE_BYTES] still caps what is held.
+         */
+        private const val READAHEAD_SECONDS = 30
+
+        /** How much of that has to be there before playback starts. */
+        private const val CACHE_WAIT_SECONDS = 3
+
+        /** The audio output's own buffer; mpv's default is 0.2. */
+        private const val AUDIO_BUFFER_SECONDS = 0.5
+
+        /**
+         * mpv's log level, and ours. `v` narrates enough to diagnose a stream; anything
+         * quieter than that hid the underruns that made episodes play silently.
+         */
+        private val LOG_LEVEL = if (BuildConfig.DEBUG) "v" else "error"
 
         /** mpv's default playlist index for loadfile, meaning "append". */
         private const val INSERT_AT_END = "-1"
