@@ -1,0 +1,7 @@
+Fixed: a series with a thousand episodes no longer bogs the app down. Opening One Piece was doing about three thousand storage lookups on the drawing thread and rebuilding the whole list three times over.
+
+Fixed: episodes have sound. Android 16 was muting the app because the player never claimed the audio output. Also holds a real buffer for sources that send the audio as a separate stream, so it no longer runs dry and stutters.
+
+Fixed: the player shows that it is loading instead of a black screen.
+
+Changed: an anime entry now looks like a manga entry — backdrop, author and status, action row, description with genre chips, filter and sort, batch download, and a play button that continues where you left off. It also fetches its own description and genres on first open.

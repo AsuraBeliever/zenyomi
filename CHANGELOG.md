@@ -10,7 +10,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
-## [Unreleased]
+## [0.9.0] - 2026-09-13
 ### Fixed
 - **A series with a thousand episodes no longer bogs the app down.** Opening One Piece from KickAssAnime — 1196 episodes — made the app slow to a crawl and stop responding, while a short series felt fine. Three things scaled with the episode count and all three ran on the thread that draws the screen: the entry asked the storage framework whether each episode was already downloaded, one episode at a time, which is around three thousand round trips before a frame could be drawn; every read of the episode list rebuilt all eleven hundred rows and decoded a json column for each; and syncing an entry woke that read three times over. The download check is now one directory listing, the reads happen off the drawing thread, and repeat reads are dropped. Measured on the same first open of One Piece: the app went from 440 frames to draw, 96% of them missing their deadline and a garbage collection every 0.7 seconds, to 37 frames, 6 missed and no collection at all.
 - **Episodes have sound.** Android 16 mutes media from an app that has not claimed the audio output, and the player never claimed it — so the platform silenced every episode while the player itself reported healthy playback, which is why it looked right and sounded like nothing. It now asks for the output, which also means an episode pauses for a phone call and picks up afterwards instead of playing on underneath it.
