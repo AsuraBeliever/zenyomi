@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animelibrary
 
+import android.content.res.Configuration
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.zacsweers.metro.AppScope
@@ -22,6 +23,7 @@ import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
 import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.library.anime.LibraryAnime
+import tachiyomi.domain.library.service.LibraryPreferences
 
 /**
  * The anime library: what is in it, and how the user wants it shown.
@@ -41,6 +43,7 @@ class AnimeLibraryViewModel(
     private val getLibraryAnime: GetLibraryAnime,
     private val getAnimeCategories: GetAnimeCategories,
     private val preferences: AnimeLibraryPreferences,
+    private val libraryPreferences: LibraryPreferences,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -91,6 +94,23 @@ class AnimeLibraryViewModel(
         filterChanges(),
     ) { sort, ascending, display, filters ->
         Settings(sort, ascending, display, filters)
+    }
+
+    /**
+     * How many columns the grid gets, from the very preference the manga library reads.
+     *
+     * Shared on purpose rather than duplicated: grid density is part of what makes two
+     * libraries look alike, and a separate anime setting would let them drift apart again
+     * the first time someone changed one of them. 0 means "fit what you can", the default
+     * on both sides.
+     */
+    fun columnsFor(orientation: Int): Int {
+        val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
+        return if (isLandscape) {
+            libraryPreferences.landscapeColumns
+        } else {
+            libraryPreferences.portraitColumns
+        }.get()
     }
 
     private fun filterChanges() = combine(

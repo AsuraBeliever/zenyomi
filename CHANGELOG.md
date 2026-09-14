@@ -10,6 +10,11 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [Unreleased]
+### Changed
+- **The Library tab is called Manga.** With an Anime tab beside it, "Library" read as though the anime was not part of the library. Only the tab and its title change — backup, settings and notifications still say Library, because there the word means the whole thing.
+- **The anime library looks like the manga library.** It was a hand-written grid: covers at the wrong proportions, no gradient under the titles, a five-icon toolbar next to the manga library's three. It now draws its rows with Mihon's own components, so the two are the same grid and the same list. It also gains the compact grid — the mode the manga library uses by default and the anime one did not offer at all — and reads the same column setting, so changing the density changes both.
+
 ## [0.9.0] - 2026-09-13
 ### Fixed
 - **A series with a thousand episodes no longer bogs the app down.** Opening One Piece from KickAssAnime — 1196 episodes — made the app slow to a crawl and stop responding, while a short series felt fine. Three things scaled with the episode count and all three ran on the thread that draws the screen: the entry asked the storage framework whether each episode was already downloaded, one episode at a time, which is around three thousand round trips before a frame could be drawn; every read of the episode list rebuilt all eleven hundred rows and decoded a json column for each; and syncing an entry woke that read three times over. The download check is now one directory listing, the reads happen off the drawing thread, and repeat reads are dropped. Measured on the same first open of One Piece: the app went from 440 frames to draw, 96% of them missing their deadline and a garbage collection every 0.7 seconds, to 37 frames, 6 missed and no collection at all.

@@ -1,172 +1,176 @@
 package eu.kanade.tachiyomi.ui.animelibrary
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import eu.kanade.presentation.library.components.DownloadsBadge
+import eu.kanade.presentation.library.components.GlobalSearchItem
+import eu.kanade.presentation.library.components.LazyLibraryGrid
+import eu.kanade.presentation.library.components.MangaComfortableGridItem
+import eu.kanade.presentation.library.components.MangaCompactGridItem
+import eu.kanade.presentation.library.components.MangaListItem
+import eu.kanade.presentation.library.components.UnreadBadge
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibraryDisplayMode
+import tachiyomi.domain.anime.model.asAnimeCover
 import tachiyomi.domain.library.anime.LibraryAnime
+import tachiyomi.presentation.core.components.FastScrollLazyColumn
+import tachiyomi.presentation.core.util.plus
 
 /**
- * Grid of anime in the library.
+ * The anime library's grid and list, drawn by Mihon's own components.
  *
- * Written for the anime side rather than reusing Mihon's library grid, whose components
- * are internal to its own package; sharing them would mean widening their visibility and
- * touching files that need to keep merging cleanly from upstream.
+ * This used to be a hand-written grid, on the reasoning that Mihon's were internal to their
+ * package and sharing them would mean touching upstream files. Half of that was wrong:
+ * `internal` in Kotlin is visible across the whole module and both live in `:app`, so
+ * [LazyLibraryGrid], the badges and the three item composables were always callable from here.
+ * The only real obstacle was that the items typed their cover parameter as a MangaCover; it is
+ * `Any` now, because Coil picks its fetcher from the runtime type and an AnimeCover finds
+ * AnimeCoverFetcher on its own.
  *
- * Covers go through [eu.kanade.tachiyomi.data.coil.AnimeCoverFetcher], which asks the source
- * that published them and carries its headers. Requesting the thumbnail url directly, as this
- * used to, gets a 403 from any site that checks the Referer.
+ * What is left here is only the part that differs: which entries to draw and what their badges
+ * count. Every pixel comes from the manga library, which is the point — two libraries that look
+ * different are two libraries someone has to keep looking different on purpose.
  */
 @Composable
 fun AnimeLibraryContent(
     library: List<LibraryAnime>,
     displayMode: AnimeLibraryDisplayMode,
+    columns: Int,
     contentPadding: PaddingValues,
+    searchQuery: String?,
     onAnimeClick: (Long) -> Unit,
+    onGlobalSearchClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (displayMode == AnimeLibraryDisplayMode.LIST) {
-        LazyColumn(contentPadding = contentPadding, modifier = modifier) {
-            items(library, key = { it.id }) { item ->
-                AnimeLibraryListItem(item, onClick = { onAnimeClick(item.id) })
+    when (displayMode) {
+        AnimeLibraryDisplayMode.LIST -> FastScrollLazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = contentPadding + PaddingValues(vertical = 8.dp),
+        ) {
+            item {
+                if (!searchQuery.isNullOrEmpty()) {
+                    GlobalSearchItem(
+                        modifier = Modifier.fillMaxWidth(),
+                        searchQuery = searchQuery,
+                        onClick = onGlobalSearchClicked,
+                    )
+                }
+            }
+            items(
+                items = library,
+                key = { it.id },
+                contentType = { "anime_library_list_item" },
+            ) { item ->
+                MangaListItem(
+                    isSelected = false,
+                    title = item.anime.title,
+                    coverData = item.anime.asAnimeCover(),
+                    badge = { UnreadBadge(count = item.unseenCount) },
+                    onLongClick = {},
+                    onClick = { onAnimeClick(item.id) },
+                    onClickContinueReading = null,
+                )
             }
         }
-        return
-    }
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 108.dp),
-        contentPadding = contentPadding,
-        modifier = modifier,
-    ) {
-        items(library, key = { it.id }) { item ->
-            AnimeLibraryGridItem(
-                item = item,
-                titleUnderCover = displayMode == AnimeLibraryDisplayMode.COMFORTABLE_GRID,
-                onClick = { onAnimeClick(item.id) },
-            )
+        AnimeLibraryDisplayMode.COMFORTABLE_GRID -> LazyLibraryGrid(
+            modifier = modifier.fillMaxSize(),
+            columns = columns,
+            contentPadding = contentPadding,
+        ) {
+            globalSearch(searchQuery, onGlobalSearchClicked)
+            items(
+                items = library,
+                key = { it.id },
+                contentType = { "anime_library_comfortable_grid_item" },
+            ) { item ->
+                MangaComfortableGridItem(
+                    isSelected = false,
+                    title = item.anime.title,
+                    coverData = item.anime.asAnimeCover(),
+                    coverBadgeStart = {
+                        DownloadsBadge(count = 0)
+                        UnreadBadge(count = item.unseenCount)
+                    },
+                    onLongClick = {},
+                    onClick = { onAnimeClick(item.id) },
+                    onClickContinueReading = null,
+                )
+            }
+        }
+
+        AnimeLibraryDisplayMode.COMPACT_GRID -> LazyLibraryGrid(
+            modifier = modifier.fillMaxSize(),
+            columns = columns,
+            contentPadding = contentPadding,
+        ) {
+            globalSearch(searchQuery, onGlobalSearchClicked)
+            items(
+                items = library,
+                key = { it.id },
+                contentType = { "anime_library_compact_grid_item" },
+            ) { item ->
+                MangaCompactGridItem(
+                    isSelected = false,
+                    title = item.anime.title,
+                    coverData = item.anime.asAnimeCover(),
+                    coverBadgeStart = {
+                        DownloadsBadge(count = 0)
+                        UnreadBadge(count = item.unseenCount)
+                    },
+                    onLongClick = {},
+                    onClick = { onAnimeClick(item.id) },
+                    onClickContinueReading = null,
+                )
+            }
+        }
+
+        AnimeLibraryDisplayMode.COVER_ONLY_GRID -> LazyLibraryGrid(
+            modifier = modifier.fillMaxSize(),
+            columns = columns,
+            contentPadding = contentPadding,
+        ) {
+            globalSearch(searchQuery, onGlobalSearchClicked)
+            items(
+                items = library,
+                key = { it.id },
+                contentType = { "anime_library_cover_only_grid_item" },
+            ) { item ->
+                MangaCompactGridItem(
+                    isSelected = false,
+                    // Cover only: the title is what tells this mode from the compact grid.
+                    title = null,
+                    coverData = item.anime.asAnimeCover(),
+                    coverBadgeStart = {
+                        DownloadsBadge(count = 0)
+                        UnreadBadge(count = item.unseenCount)
+                    },
+                    onLongClick = {},
+                    onClick = { onAnimeClick(item.id) },
+                    onClickContinueReading = null,
+                )
+            }
         }
     }
 }
 
-@Composable
-private fun AnimeLibraryGridItem(
-    item: LibraryAnime,
-    titleUnderCover: Boolean,
-    onClick: () -> Unit,
+/** The "search this everywhere" row above the grid, spanning its full width. */
+private fun androidx.compose.foundation.lazy.grid.LazyGridScope.globalSearch(
+    searchQuery: String?,
+    onGlobalSearchClicked: () -> Unit,
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .padding(4.dp)
-            .clickable(onClick = onClick),
-    ) {
-        Box {
-            AsyncImage(
-                model = item.anime,
-                contentDescription = item.anime.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(4.dp)),
-            )
-            // Only when there is something to say: a "0" on every finished anime is noise.
-            if (item.unseenCount > 0) {
-                Text(
-                    text = item.unseenCount.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(MaterialTheme.colorScheme.primary)
-                        .padding(horizontal = 5.dp, vertical = 1.dp),
-                )
-            }
-            // Cover-only lays the title over the bottom of the art, on a scrim so it stays
-            // readable whatever the cover happens to be.
-            if (!titleUnderCover) {
-                Text(
-                    text = item.anime.title,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                )
-            }
-        }
-        if (titleUnderCover) {
-            Text(
-                text = item.anime.title,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
+    item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+        if (!searchQuery.isNullOrEmpty()) {
+            GlobalSearchItem(
+                modifier = Modifier.fillMaxWidth(),
+                searchQuery = searchQuery,
+                onClick = onGlobalSearchClicked,
             )
         }
     }
-}
-
-@Composable
-private fun AnimeLibraryListItem(item: LibraryAnime, onClick: () -> Unit) {
-    ListItem(
-        leadingContent = {
-            AsyncImage(
-                model = item.anime,
-                contentDescription = item.anime.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(width = 40.dp, height = 60.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-            )
-        },
-        headlineContent = {
-            Text(item.anime.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        },
-        trailingContent = {
-            if (item.unseenCount > 0) {
-                Text(
-                    text = item.unseenCount.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(MaterialTheme.colorScheme.primary)
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-            }
-        },
-        modifier = Modifier.clickable(onClick = onClick),
-    )
 }

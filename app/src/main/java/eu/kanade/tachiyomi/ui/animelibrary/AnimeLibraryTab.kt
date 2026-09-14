@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.animelibrary.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.ui.animebrowse.AnimeBrowseScreen
+import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
@@ -141,22 +143,10 @@ data object AnimeLibraryTab : Tab {
                                 onClearFilters = viewModel::clearFilters,
                             )
                         }
-                        IconButton(
-                            onClick = onClickRefresh,
-                        ) {
-                            Icon(
-                                imageVector = MaterialSymbols.Rounded.Refresh,
-                                contentDescription = stringResource(MR.strings.action_update_library),
-                            )
-                        }
-                        IconButton(onClick = { navigator.push(AnimeUpdatesScreen()) }) {
-                            Icon(
-                                imageVector = MaterialSymbols.Rounded.NewReleases,
-                                contentDescription = stringResource(ANMR.strings.label_anime_updates),
-                            )
-                        }
-                        // The bar was up to six icons and about to gain a seventh. What is
-                        // used on every visit stays out; the rest goes behind the overflow.
+                        // Search, filter, overflow — the three the manga library shows, in
+                        // that order. Refreshing and the updates shortcut moved into the menu
+                        // where Mihon keeps them; a bar with five icons beside one with three
+                        // is the difference you notice before you notice anything else.
                         var overflow by remember { mutableStateOf(false) }
                         IconButton(onClick = { overflow = true }) {
                             Icon(
@@ -165,6 +155,26 @@ data object AnimeLibraryTab : Tab {
                             )
                         }
                         DropdownMenu(expanded = overflow, onDismissRequest = { overflow = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(MR.strings.action_update_library)) },
+                                leadingIcon = {
+                                    Icon(MaterialSymbols.Rounded.Refresh, contentDescription = null)
+                                },
+                                onClick = {
+                                    overflow = false
+                                    onClickRefresh()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(ANMR.strings.label_anime_updates)) },
+                                leadingIcon = {
+                                    Icon(MaterialSymbols.Rounded.NewReleases, contentDescription = null)
+                                },
+                                onClick = {
+                                    overflow = false
+                                    navigator.push(AnimeUpdatesScreen())
+                                },
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(MR.strings.categories)) },
                                 leadingIcon = {
@@ -257,8 +267,17 @@ data object AnimeLibraryTab : Tab {
                     else -> AnimeLibraryContent(
                         library = state.library,
                         displayMode = state.settings.displayMode,
+                        // The same preference the manga library reads, on purpose: it is how
+                        // dense the grid is, and two libraries at different densities is the
+                        // difference this screen exists to remove. 0 is "fit what you can",
+                        // which is the default on both.
+                        columns = viewModel.columnsFor(LocalConfiguration.current.orientation),
                         contentPadding = innerPadding,
+                        searchQuery = state.searchQuery,
                         onAnimeClick = { navigator.push(AnimeDetailsScreen(it)) },
+                        onGlobalSearchClicked = {
+                            navigator.push(AnimeGlobalSearchScreen(initialQuery = state.searchQuery.orEmpty()))
+                        },
                     )
                 }
             }
