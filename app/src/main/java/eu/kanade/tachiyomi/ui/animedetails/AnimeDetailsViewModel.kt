@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import logcat.LogPriority
+import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
 import tachiyomi.domain.anime.interactor.UpdateAnime
@@ -63,32 +65,41 @@ class AnimeDetailsViewModel(
     val state: StateFlow<State> = _state.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            getAnimeWithEpisodesAndSeasons.subscribe(animeId).collect { (anime, episodes, _) ->
-                _state.update {
-                    it.copy(isLoading = false, anime = anime, episodes = episodes)
-                }
-                // The catalogue only stores the entry; its episodes have to be asked for.
-                // Done once. A failure used to be swallowed, which left an entry reading
-                // "0 episodes" whether the source was unreachable, blocked, or genuinely
-                // empty — three very different things with the same appearance.
-                refreshDownloaded()
-                if (!episodesFetched) {
-                    episodesFetched = true
-                    sourceManager.get(anime.source)?.let { source ->
-                        runCatching { syncEpisodesWithSource.await(anime, source) }
-                            .onFailure { error ->
-                                logcat(LogPriority.WARN, error) { "Could not fetch episodes" }
-                                _state.update { state ->
-                                    state.copy(episodeError = error)
+        // launchIO, as Mihon's MangaScreenModel does, and not the default main dispatcher:
+        // the query and the row mapping happen on whichever thread collects, and the mapping
+        // allocates one Episode per row and decodes a json column for each. On One Piece that
+        // is eleven hundred rows per emission, and on the main thread it is eleven hundred
+        // rows the UI cannot draw through. distinctUntilChanged because syncing an entry
+        // writes in three passes and every one of them wakes this flow with a list that is
+        // often identical to the last.
+        viewModelScope.launchIO {
+            getAnimeWithEpisodesAndSeasons.subscribe(animeId)
+                .distinctUntilChanged()
+                .collect { (anime, episodes, _) ->
+                    _state.update {
+                        it.copy(isLoading = false, anime = anime, episodes = episodes)
+                    }
+                    // The catalogue only stores the entry; its episodes have to be asked for.
+                    // Done once. A failure used to be swallowed, which left an entry reading
+                    // "0 episodes" whether the source was unreachable, blocked, or genuinely
+                    // empty — three very different things with the same appearance.
+                    refreshDownloaded(anime, episodes)
+                    if (!episodesFetched) {
+                        episodesFetched = true
+                        sourceManager.get(anime.source)?.let { source ->
+                            runCatching { syncEpisodesWithSource.await(anime, source) }
+                                .onFailure { error ->
+                                    logcat(LogPriority.WARN, error) { "Could not fetch episodes" }
+                                    _state.update { state ->
+                                        state.copy(episodeError = error)
+                                    }
                                 }
-                            }
-                            .onSuccess {
-                                _state.update { state -> state.copy(episodeError = null) }
-                            }
+                                .onSuccess {
+                                    _state.update { state -> state.copy(episodeError = null) }
+                                }
+                        }
                     }
                 }
-            }
         }
     }
 
@@ -104,8 +115,12 @@ class AnimeDetailsViewModel(
         _state.update { it.copy(resolvingEpisodeId = episode.id) }
         viewModelScope.launch {
             // A downloaded copy wins: it plays offline and costs the source nothing.
+            // Off the main thread: looking for the file is a round trip to the storage
+            // provider, and this runs from a tap.
             val source = sourceManager.get(anime.source)
-            val local = source?.let { downloadManager.downloadedUri(anime, it, episode) }
+            val local = source?.let {
+                withIOContext { downloadManager.downloadedUri(anime, it, episode) }
+            }
             if (local != null) {
                 _state.update { it.copy(resolvingEpisodeId = null) }
                 return@launch onResolved(PlaybackRequest.local(local))
@@ -173,15 +188,23 @@ class AnimeDetailsViewModel(
         }
     }
 
-    /** Which episodes already have a file on disk, so rows can show it. */
-    fun refreshDownloaded() {
-        val anime = state.value.anime ?: return
+    /**
+     * Which episodes already have a file on disk, so rows can show it.
+     *
+     * One listing of the entry's download directory, off the main thread. It used to ask the
+     * storage framework about each episode in turn, from the main thread, on every emission
+     * of the database flow — three round trips per row, so over three thousand of them on One
+     * Piece before the screen could draw a frame. That is what made a long entry lock the app
+     * up while a short one felt fine.
+     */
+    fun refreshDownloaded(
+        anime: Anime? = state.value.anime,
+        episodes: List<Episode> = state.value.episodes,
+    ) {
+        if (anime == null) return
         viewModelScope.launch {
             val source = sourceManager.get(anime.source) ?: return@launch
-            val ids = state.value.episodes
-                .filter { downloadManager.isDownloaded(anime, source, it) }
-                .map { it.id }
-                .toSet()
+            val ids = withIOContext { downloadManager.downloadedEpisodeIds(anime, source, episodes) }
             _state.update {
                 it.copy(
                     downloadedEpisodeIds = ids,

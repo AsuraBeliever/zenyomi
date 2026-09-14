@@ -24,6 +24,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import logcat.LogPriority
+import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.anime.model.Anime
@@ -76,7 +78,8 @@ class AnimeUpdatesViewModel(
     private var scannedEpisodeIds: Set<Long> = emptySet()
 
     init {
-        viewModelScope.launch {
+        // launchIO: reading and mapping the update rows happens on the collecting thread.
+        viewModelScope.launchIO {
             getAnimeUpdates.subscribe(Clock.System.now() - HOW_FAR_BACK).collect { updates ->
                 _state.update { it.copy(isLoading = false, items = updates.toUiItems()) }
                 refreshDownloadState(updates)
@@ -143,8 +146,11 @@ class AnimeUpdatesViewModel(
     }
 
     fun deleteDownload(update: AnimeUpdatesWithRelations) {
-        viewModelScope.launch {
-            val (anime, source, episode) = resolve(update) ?: return@launch
+        // launchIO, like the collector above: deleting the file and rescanning what is left
+        // are both storage work, and refreshDownloadState carries the scanned-ids field
+        // between them, which two dispatchers would race over.
+        viewModelScope.launchIO {
+            val (anime, source, episode) = resolve(update) ?: return@launchIO
             downloadManager.deleteEpisode(anime, source, episode)
             refreshDownloadState(
                 updates = state.value.items.filterIsInstance<AnimeUpdatesUiItem.Item>().map { it.update },
@@ -194,7 +200,7 @@ class AnimeUpdatesViewModel(
             }
             val (anime, source, episode) = resolved
 
-            val local = downloadManager.downloadedUri(anime, source, episode)
+            val local = withIOContext { downloadManager.downloadedUri(anime, source, episode) }
             if (local != null) {
                 _state.update { it.copy(resolvingEpisodeId = null) }
                 return@launch onResolved(PlaybackRequest.local(local))
