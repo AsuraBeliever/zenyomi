@@ -68,6 +68,31 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     /** The last "HTTP error" mpv logged, which is the useful half of a failure. */
     private var lastHttpError: String? = null
 
+    /**
+     * Called with whether mpv currently has nothing to show.
+     *
+     * True while a file is opening, while a seek is resolving, and while the cache is
+     * refilling. Without it the player is a black rectangle for as long as the network takes —
+     * eight seconds from a standing start and longer when resuming mid-episode — and a black
+     * rectangle is what a broken player looks like too.
+     */
+    var onLoadingChanged: ((Boolean) -> Unit)? = null
+
+    /** The two reasons there is nothing to show, tracked apart because they overlap. */
+    private var restarting = true
+    private var bufferingForCache = false
+
+    /**
+     * Reports the combined state, on the main thread.
+     *
+     * mpv delivers its events on its own threads, and the only consumer of this is Compose
+     * state driving the screen.
+     */
+    private fun updateLoading() {
+        val loading = restarting || bufferingForCache
+        post { onLoadingChanged?.invoke(loading) }
+    }
+
     /** Held open for as long as mpv reads from them. */
     private val openFds = mutableListOf<ParcelFileDescriptor>()
 
@@ -201,6 +226,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             MPVLib.observeProperty("time-pos", MPVLib.mpvFormat.MPV_FORMAT_INT64)
             MPVLib.observeProperty("duration", MPVLib.mpvFormat.MPV_FORMAT_INT64)
             MPVLib.observeProperty("pause", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
+            // Set while mpv has stopped to refill, which is the difference between "stalled"
+            // and "paused" and the only one of the two worth showing a spinner for.
+            MPVLib.observeProperty("paused-for-cache", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
         }
 
         addObserver(
@@ -210,7 +238,18 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
                     addExternalTracks()
                 },
                 onFailure = { reason ->
+                    restarting = false
+                    bufferingForCache = false
+                    updateLoading()
                     onPlaybackError?.invoke(lastHttpError ?: reason)
+                },
+                onRestarting = { value ->
+                    restarting = value
+                    updateLoading()
+                },
+                onBuffering = { value ->
+                    bufferingForCache = value
+                    updateLoading()
                 },
             ),
         )
@@ -638,16 +677,29 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     private class PlaybackObserver(
         private val onFileLoaded: () -> Unit,
         private val onFailure: (String?) -> Unit,
+        private val onRestarting: (Boolean) -> Unit,
+        private val onBuffering: (Boolean) -> Unit,
     ) : MPVLib.EventObserver {
         override fun event(eventId: Int) {
-            if (eventId == MPVLib.mpvEventId.MPV_EVENT_FILE_LOADED) onFileLoaded()
+            when (eventId) {
+                MPVLib.mpvEventId.MPV_EVENT_FILE_LOADED -> onFileLoaded()
+                // START_FILE and SEEK both mean the picture is about to be gone for a while;
+                // PLAYBACK_RESTART is mpv saying it is showing frames again, and is the only
+                // honest signal that the wait is over — FILE_LOADED fires well before it.
+                MPVLib.mpvEventId.MPV_EVENT_START_FILE,
+                MPVLib.mpvEventId.MPV_EVENT_SEEK,
+                -> onRestarting(true)
+                MPVLib.mpvEventId.MPV_EVENT_PLAYBACK_RESTART -> onRestarting(false)
+            }
         }
 
         override fun efEvent(error: String?) = onFailure(error)
 
         override fun eventProperty(property: String) = Unit
         override fun eventProperty(property: String, value: Long) = Unit
-        override fun eventProperty(property: String, value: Boolean) = Unit
+        override fun eventProperty(property: String, value: Boolean) {
+            if (property == "paused-for-cache") onBuffering(value)
+        }
         override fun eventProperty(property: String, value: String) = Unit
         override fun eventProperty(property: String, value: Double) = Unit
     }
