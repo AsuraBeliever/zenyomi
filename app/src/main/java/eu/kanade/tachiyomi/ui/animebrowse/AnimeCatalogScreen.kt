@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.animebrowse
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,17 +32,22 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
+import eu.kanade.presentation.browse.components.InLibraryBadge
 import eu.kanade.presentation.components.AppBarTitle
 import eu.kanade.presentation.components.SearchToolbar
+import eu.kanade.presentation.library.components.CommonMangaItemDefaults
+import eu.kanade.presentation.library.components.MangaCompactGridItem
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import tachiyomi.data.source.anime.NoAnimeResultsException
+import tachiyomi.domain.anime.model.asAnimeCover
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
+import tachiyomi.presentation.core.util.plus
 
 /**
  * One anime source's catalogue.
@@ -92,37 +98,31 @@ class AnimeCatalogScreen(private val sourceId: Long) : Screen() {
                         modifier = Modifier.padding(contentPadding).padding(16.dp),
                     )
                 }
+                // The same grid Mihon's catalogue draws, down to the spacing and the
+                // "already in your library" badge, because it is the same components.
                 else -> LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 108.dp),
-                    contentPadding = contentPadding,
+                    columns = GridCells.Adaptive(minSize = 128.dp),
+                    contentPadding = contentPadding + PaddingValues(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(CommonMangaItemDefaults.GridVerticalSpacer),
+                    horizontalArrangement = Arrangement.spacedBy(CommonMangaItemDefaults.GridHorizontalSpacer),
                 ) {
                     items(animeList.itemCount) { index ->
                         val anime = animeList[index] ?: return@items
-                        androidx.compose.foundation.layout.Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .clickable { navigator.push(AnimeDetailsScreen(anime.id)) },
-                        ) {
-                            AsyncImage(
-                                // The Anime itself, not its url: AnimeCoverFetcher needs
-                                // the source to attach its headers.
-                                model = anime,
-                                contentDescription = anime.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(2f / 3f)
-                                    .clip(RoundedCornerShape(4.dp)),
-                            )
-                            Text(
-                                text = anime.title,
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        }
+                        MangaCompactGridItem(
+                            title = anime.title,
+                            // The AnimeCover, not the url: Coil routes it to
+                            // AnimeCoverFetcher, which asks the source that published it and
+                            // carries its headers.
+                            coverData = anime.asAnimeCover(),
+                            coverAlpha = if (anime.favorite) {
+                                CommonMangaItemDefaults.BrowseFavoriteCoverAlpha
+                            } else {
+                                1f
+                            },
+                            coverBadgeStart = { InLibraryBadge(enabled = anime.favorite) },
+                            onLongClick = { navigator.push(AnimeDetailsScreen(anime.id)) },
+                            onClick = { navigator.push(AnimeDetailsScreen(anime.id)) },
+                        )
                     }
                 }
             }

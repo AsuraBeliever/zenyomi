@@ -160,26 +160,64 @@ class AnimeUpdatesViewModel(
     }
 
     /**
-     * Marks an episode seen or unseen by hand, for one watched somewhere else.
+     * Long-pressing a row starts a selection, as it does on the manga updates screen.
      *
-     * Marking it seen pushes to the trackers the same way finishing it in the player does;
-     * unmarking it does not, because no tracker supports moving a count backwards from here.
+     * That screen has no per-row buttons either: marking seen, downloading and deleting all
+     * happen to a selection, through the same bottom menu Mihon draws. Copying its row without
+     * copying this would have quietly removed the only way to mark an episode watched by hand.
      */
-    fun toggleSeen(update: AnimeUpdatesWithRelations) {
-        viewModelScope.launch {
-            val seen = !update.seen
-            updateEpisode.await(
-                EpisodeUpdate(
-                    id = update.episodeId,
-                    seen = seen,
-                    lastSecondSeen = if (seen) update.lastSecondSeen else 0L,
-                ),
+    fun toggleSelection(update: AnimeUpdatesWithRelations) {
+        _state.update { state ->
+            val id = update.episodeId
+            state.copy(
+                selected = if (id in state.selected) state.selected - id else state.selected + id,
             )
-            if (seen) {
-                val episode = getEpisode.await(update.episodeId) ?: return@launch
+        }
+    }
+
+    fun selectAll() = _state.update { state ->
+        state.copy(selected = state.updates.mapTo(mutableSetOf()) { it.episodeId })
+    }
+
+    fun invertSelection() = _state.update { state ->
+        state.copy(selected = state.updates.map { it.episodeId }.toSet() - state.selected)
+    }
+
+    fun clearSelection() = _state.update { it.copy(selected = emptySet()) }
+
+    /** Marks everything picked out seen, or unseen, in one write. */
+    fun markSelected(seen: Boolean) {
+        val chosen = state.value.selectedUpdates
+        clearSelection()
+        viewModelScope.launchIO {
+            updateEpisode.awaitAll(
+                chosen.map { update ->
+                    EpisodeUpdate(
+                        id = update.episodeId,
+                        seen = seen,
+                        lastSecondSeen = if (seen) update.lastSecondSeen else 0L,
+                    )
+                },
+            )
+            if (!seen) return@launchIO
+            // The trackers only move forwards, so unmarking tells them nothing.
+            chosen.forEach { update ->
+                val episode = getEpisode.await(update.episodeId) ?: return@forEach
                 trackEpisode.await(episode.animeId, episode.episodeNumber)
             }
         }
+    }
+
+    fun downloadSelected() {
+        val chosen = state.value.selectedUpdates
+        clearSelection()
+        chosen.forEach { downloadEpisode(it) }
+    }
+
+    fun deleteSelected() {
+        val chosen = state.value.selectedUpdates
+        clearSelection()
+        chosen.forEach { deleteDownload(it) }
     }
 
     /**
@@ -258,8 +296,16 @@ class AnimeUpdatesViewModel(
         val downloadableEpisodeIds: Set<Long> = emptySet(),
         val resolvingEpisodeId: Long? = null,
         val playbackError: Throwable? = null,
+        /** Episode ids picked out by long-pressing, as on the manga updates screen. */
+        val selected: Set<Long> = emptySet(),
     ) {
         val isEmpty: Boolean get() = items.isEmpty()
+
+        val updates: List<AnimeUpdatesWithRelations>
+            get() = items.filterIsInstance<AnimeUpdatesUiItem.Item>().map { it.update }
+
+        val selectedUpdates: List<AnimeUpdatesWithRelations>
+            get() = updates.filter { it.episodeId in selected }
     }
 
     companion object {

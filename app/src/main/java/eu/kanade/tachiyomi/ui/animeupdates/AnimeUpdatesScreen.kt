@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animeupdates
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -31,18 +32,26 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
+import eu.kanade.presentation.anime.components.AnimeUpdatesItem
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.relativeDateText
+import eu.kanade.presentation.manga.components.ChapterDownloadAction
+import eu.kanade.presentation.manga.components.MangaBottomActionMenu
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Check
 import mihon.icons.materialsymbols.rounded.Download
+import mihon.icons.materialsymbols.rounded.FlipToBack
+import mihon.icons.materialsymbols.rounded.SelectAll
 import mihon.icons.materialsymbols.rounded.SwapCalls
 import mihon.icons.materialsymbols.roundedfilled.CheckCircle
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
+import tachiyomi.presentation.core.components.FastScrollLazyColumn
+import tachiyomi.presentation.core.components.ListGroupHeader
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
@@ -78,12 +87,35 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
             }
         }
 
+        BackHandler(enabled = state.selected.isNotEmpty()) {
+            viewModel.clearSelection()
+        }
+
         Scaffold(
             topBar = { scrollBehavior ->
                 AppBar(
                     title = stringResource(ANMR.strings.label_anime_updates),
                     navigateUp = if (onSwitchToManga == null) ({ navigator.pop() }) else null,
+                    // The counting bar Mihon shows while a selection is open, with the same
+                    // select-all and invert actions.
+                    actionModeCounter = state.selected.size,
+                    onCancelActionMode = viewModel::clearSelection,
                     actions = {
+                        if (state.selected.isNotEmpty()) {
+                            IconButton(onClick = viewModel::selectAll) {
+                                Icon(
+                                    imageVector = MaterialSymbols.Rounded.SelectAll,
+                                    contentDescription = stringResource(MR.strings.action_select_all),
+                                )
+                            }
+                            IconButton(onClick = viewModel::invertSelection) {
+                                Icon(
+                                    imageVector = MaterialSymbols.Rounded.FlipToBack,
+                                    contentDescription = stringResource(MR.strings.action_select_inverse),
+                                )
+                            }
+                            return@AppBar
+                        }
                         onSwitchToManga?.let { switch ->
                             IconButton(onClick = switch) {
                                 Icon(
@@ -97,6 +129,17 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
+            bottomBar = {
+                // Mihon's own menu: it takes nothing but lambdas, so the anime updates get the
+                // identical bar rather than a second one that looks almost like it.
+                MangaBottomActionMenu(
+                    visible = state.selected.isNotEmpty(),
+                    onMarkAsReadClicked = { viewModel.markSelected(seen = true) },
+                    onMarkAsUnreadClicked = { viewModel.markSelected(seen = false) },
+                    onDownloadClicked = { viewModel.downloadSelected() },
+                    onDeleteClicked = { viewModel.deleteSelected() },
+                )
+            },
         ) { contentPadding ->
             when {
                 state.isLoading -> LoadingScreen(Modifier.padding(contentPadding))
@@ -104,7 +147,7 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                     stringRes = ANMR.strings.anime_updates_empty,
                     modifier = Modifier.padding(contentPadding),
                 )
-                else -> LazyColumn(contentPadding = contentPadding) {
+                else -> FastScrollLazyColumn(contentPadding = contentPadding) {
                     items(
                         count = state.items.size,
                         key = { index ->
@@ -115,142 +158,73 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                         },
                     ) { index ->
                         when (val item = state.items[index]) {
-                            is AnimeUpdatesUiItem.Header -> Text(
+                            // ListGroupHeader, like the manga updates: the old header was a
+                            // primary-coloured label, which is not how any other date header
+                            // in the app looks.
+                            is AnimeUpdatesUiItem.Header -> ListGroupHeader(
+                                modifier = Modifier.animateItem(),
                                 text = relativeDateText(item.dateFetch),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             )
-                            is AnimeUpdatesUiItem.Item -> UpdateRow(
-                                item = item,
-                                isResolving = state.resolvingEpisodeId == item.update.episodeId,
-                                resolvingAny = state.resolvingEpisodeId != null,
-                                isDownloaded = item.update.episodeId in state.downloadedEpisodeIds,
-                                canDownload = item.update.episodeId in state.downloadableEpisodeIds,
-                                downloadPercent = downloadProgress[item.update.episodeId],
-                                isQueued = downloadQueue.any { it.episodeId == item.update.episodeId },
-                                onOpenAnime = { navigator.push(AnimeDetailsScreen(item.update.animeId)) },
-                                onToggleSeen = { viewModel.toggleSeen(item.update) },
-                                onDownload = { viewModel.downloadEpisode(item.update) },
-                                onDeleteDownload = { viewModel.deleteDownload(item.update) },
-                                onPlay = {
-                                    viewModel.resolveVideo(item.update) { request ->
-                                        if (request != null) {
-                                            context.startActivity(
-                                                AnimePlayerActivity.newIntent(
-                                                    context,
-                                                    request,
-                                                    item.update.episodeName,
-                                                    item.update.episodeId,
-                                                ),
-                                            )
+                            is AnimeUpdatesUiItem.Item -> {
+                                val update = item.update
+                                val downloaded = update.episodeId in state.downloadedEpisodeIds
+                                val progress = downloadProgress[update.episodeId]
+                                val queued = downloadQueue.any { it.episodeId == update.episodeId }
+                                val downloadState = when {
+                                    downloaded -> Download.State.DOWNLOADED
+                                    progress != null -> Download.State.DOWNLOADING
+                                    queued -> Download.State.QUEUE
+                                    else -> Download.State.NOT_DOWNLOADED
+                                }
+                                AnimeUpdatesItem(
+                                    modifier = Modifier.animateItem(),
+                                    update = update,
+                                    seenProgress = null,
+                                    selected = update.episodeId in state.selected,
+                                    onLongClick = { viewModel.toggleSelection(update) },
+                                    onClick = if (state.selected.isNotEmpty()) {
+                                        { viewModel.toggleSelection(update) }
+                                    } else {
+                                        {
+                                            viewModel.resolveVideo(update) { request ->
+                                                if (request != null) {
+                                                    context.startActivity(
+                                                        AnimePlayerActivity.newIntent(
+                                                            context,
+                                                            request,
+                                                            update.episodeName,
+                                                            update.episodeId,
+                                                        ),
+                                                    )
+                                                }
+                                            }
                                         }
-                                    }
-                                },
-                            )
+                                    },
+                                    onClickCover = {
+                                        navigator.push(AnimeDetailsScreen(update.animeId))
+                                    }.takeIf { state.selected.isEmpty() },
+                                    onDownloadEpisode = if (update.episodeId in state.downloadableEpisodeIds) {
+                                        { action ->
+                                            when (action) {
+                                                ChapterDownloadAction.START,
+                                                ChapterDownloadAction.START_NOW,
+                                                -> viewModel.downloadEpisode(update)
+                                                ChapterDownloadAction.CANCEL,
+                                                ChapterDownloadAction.DELETE,
+                                                -> viewModel.deleteDownload(update)
+                                            }
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    downloadStateProvider = { downloadState },
+                                    downloadProgressProvider = { progress ?: 0 },
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
-
-@Composable
-@Suppress("LongParameterList")
-private fun UpdateRow(
-    item: AnimeUpdatesUiItem.Item,
-    isResolving: Boolean,
-    resolvingAny: Boolean,
-    isDownloaded: Boolean,
-    canDownload: Boolean,
-    downloadPercent: Int?,
-    isQueued: Boolean,
-    onOpenAnime: () -> Unit,
-    onToggleSeen: () -> Unit,
-    onDownload: () -> Unit,
-    onDeleteDownload: () -> Unit,
-    onPlay: () -> Unit,
-) {
-    val update = item.update
-    // A seen episode stays in the list — it is still news that it arrived — but reads as
-    // already dealt with.
-    val contentColor = if (update.seen) {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-
-    ListItem(
-        colors = ListItemDefaults.colors(
-            headlineColor = contentColor,
-            supportingColor = contentColor,
-        ),
-        leadingContent = {
-            AsyncImage(
-                model = update.coverData,
-                contentDescription = update.animeTitle,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(width = 40.dp, height = 60.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .clickable(onClick = onOpenAnime),
-            )
-        },
-        headlineContent = {
-            Text(update.animeTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        },
-        supportingContent = {
-            Text(
-                text = update.episodeName,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        trailingContent = {
-            Row {
-                IconButton(onClick = onToggleSeen) {
-                    Icon(
-                        imageVector = MaterialSymbols.Rounded.Check,
-                        contentDescription = stringResource(
-                            if (update.seen) {
-                                ANMR.strings.anime_action_mark_unseen
-                            } else {
-                                ANMR.strings.anime_action_mark_seen
-                            },
-                        ),
-                        tint = contentColor,
-                    )
-                }
-                when {
-                    isResolving -> CircularProgressIndicator(Modifier.size(20.dp))
-                    downloadPercent != null -> CircularProgressIndicator(
-                        progress = { downloadPercent / 100f },
-                        modifier = Modifier.size(20.dp),
-                    )
-                    // Queued but not started: an indeterminate spinner would claim work is
-                    // happening, so the row just shows it is waiting.
-                    isQueued -> CircularProgressIndicator(
-                        progress = { 0f },
-                        modifier = Modifier.size(20.dp),
-                    )
-                    isDownloaded -> IconButton(onClick = onDeleteDownload) {
-                        Icon(
-                            imageVector = MaterialSymbols.RoundedFilled.CheckCircle,
-                            contentDescription = stringResource(ANMR.strings.anime_action_delete_download),
-                        )
-                    }
-                    !canDownload -> Unit
-                    else -> IconButton(onClick = onDownload) {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Download,
-                            contentDescription = stringResource(MR.strings.action_download),
-                        )
-                    }
-                }
-            }
-        },
-        modifier = Modifier.clickable(enabled = !resolvingAny, onClick = onPlay),
-    )
 }

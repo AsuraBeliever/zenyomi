@@ -13,6 +13,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 ## [Unreleased]
 ### Changed
 - **The Library tab is called Manga.** With an Anime tab beside it, "Library" read as though the anime was not part of the library. Only the tab and its title change — backup, settings and notifications still say Library, because there the word means the whole thing.
+- **The rest of the anime screens look like their manga counterparts.** A source's catalogue drew its own grid at its own proportions; it now draws Mihon's, badge and all, so an anime you already have is marked the same way a manga is. The history gained the day headers, the search, and the row Mihon uses — cover, title, "Ep. 3 - 5 minutes ago", and the favourite and delete buttons — and tapping one resumes the episode instead of going to the entry screen. Updates gained the same row, the standard date headers, and long-press selection with Mihon's action bar behind it.
 - **The anime library looks like the manga library.** It was a hand-written grid: covers at the wrong proportions, no gradient under the titles, a five-icon toolbar next to the manga library's three. It now draws its rows with Mihon's own components, so the two are the same grid and the same list. It also gains the compact grid — the mode the manga library uses by default and the anime one did not offer at all — and reads the same column setting, so changing the density changes both.
 
 ## [0.9.0] - 2026-09-13
@@ -28,6 +29,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - **An anime entry fetches its own details.** A catalogue hands back only a title and a cover, so an entry opened from one had no description, author or status to show — which is half of why the old screen showed so little. It now asks the source on first open, the way the manga side always has.
 
 ### Other
+- The anime updates list drops its per-row "mark watched" button, which the manga list does not have either: marking watched, downloading and deleting now happen to a long-press selection, through the same bar. Nothing is lost — the button did one episode at a time and the bar does any number.
 - Opening an entry no longer creates an empty download folder for it. Only downloading does.
 - The anime library reads its rows, their categories and its display settings in one place instead of two. Two readers arranging the same rows were harmless while both ran on the drawing thread and a race the moment one of them did not.
 - The player logs mpv's verbose output in debug builds only. At that level mpv narrates every stream segment it opens, which is four lines per segment crossing into the app to be written out while the episode plays.
