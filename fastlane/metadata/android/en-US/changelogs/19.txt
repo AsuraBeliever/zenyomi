@@ -1,0 +1,3 @@
+Fixed: the audio of a KickAssAnime episode plays on a real phone. Those episodes carry their audio as a separate stream, and the app was asking mpv which tracks existed before mpv had finished opening it — so the track arrived unselected and the episode ran with video, subtitles and silence. Which machine it happened on came down to how fast the stream opened.
+
+Changed: the anime side now looks like the manga side. The entry screen, the library, a source's catalogue, the history, the updates list and the tracking sheet are drawn with Mihon's own components rather than hand-written copies. The Library tab is called Manga, the anime library gained the compact grid and the missing sort options, and anime statistics and categories moved to More beside the manga ones.

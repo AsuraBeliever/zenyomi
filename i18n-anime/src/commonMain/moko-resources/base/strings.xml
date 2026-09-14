@@ -408,6 +408,10 @@
     <string name="episodes">Episodes</string>
     <string name="backup_settings_warning">Warning: Backing up settings will store your track passwords as well, do not share this backup file!</string>
     <string name="label_manga_library">Manga</string>
+    <string name="label_anime_categories">Anime categories</string>
+    <string name="label_stats_both">Both</string>
+    <string name="sort_anime_last_update_check">Last update check</string>
+    <string name="sort_anime_episode_fetch_date">Episode fetch date</string>
     <string name="label_anime_library">Anime</string>
     <string name="label_anime">Anime</string>
     <string name="label_manga">Manga</string>
@@ -654,6 +658,11 @@
     <string name="sort_anime_last_seen">Last watched</string>
     <string name="sort_anime_unseen">Unwatched episodes</string>
     <string name="anime_library_no_results">No anime matches that</string>
+    <!-- The manga half of the bottom bar. Mihon calls it "Library", which stops being right
+         once an Anime tab sits beside it: it reads as though the anime is not in the library.
+         Deliberately not named "manga" — the shared module already has a string by that name
+         ("Library entries") and the two collide when the resources are merged. -->
+    <string name="label_manga_library">Manga</string>
     <string name="anime_extension_dead">Marked as no longer maintained</string>
     <string name="anime_extension_no_results">No extension matches that</string>
     <string name="anime_extension_all_languages">All languages</string>

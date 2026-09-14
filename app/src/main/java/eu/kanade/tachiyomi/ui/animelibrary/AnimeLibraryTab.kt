@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.animelibrary.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.ui.animebrowse.AnimeBrowseScreen
+import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
@@ -141,22 +143,10 @@ data object AnimeLibraryTab : Tab {
                                 onClearFilters = viewModel::clearFilters,
                             )
                         }
-                        IconButton(
-                            onClick = onClickRefresh,
-                        ) {
-                            Icon(
-                                imageVector = MaterialSymbols.Rounded.Refresh,
-                                contentDescription = stringResource(MR.strings.action_update_library),
-                            )
-                        }
-                        IconButton(onClick = { navigator.push(AnimeUpdatesScreen()) }) {
-                            Icon(
-                                imageVector = MaterialSymbols.Rounded.NewReleases,
-                                contentDescription = stringResource(ANMR.strings.label_anime_updates),
-                            )
-                        }
-                        // The bar was up to six icons and about to gain a seventh. What is
-                        // used on every visit stays out; the rest goes behind the overflow.
+                        // Search, filter, overflow — the three the manga library shows, in
+                        // that order. Refreshing and the updates shortcut moved into the menu
+                        // where Mihon keeps them; a bar with five icons beside one with three
+                        // is the difference you notice before you notice anything else.
                         var overflow by remember { mutableStateOf(false) }
                         IconButton(onClick = { overflow = true }) {
                             Icon(
@@ -165,44 +155,38 @@ data object AnimeLibraryTab : Tab {
                             )
                         }
                         DropdownMenu(expanded = overflow, onDismissRequest = { overflow = false }) {
+                            // The manga library's three, in its order. What used to live here —
+                            // the updates, history and extensions shortcuts — is reachable from
+                            // the bottom bar and from Browse; categories and statistics moved to
+                            // More, beside the manga ones.
                             DropdownMenuItem(
-                                text = { Text(stringResource(MR.strings.categories)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.AutoMirroredRounded.Label, contentDescription = null)
-                                },
+                                text = { Text(stringResource(MR.strings.action_update_library)) },
                                 onClick = {
                                     overflow = false
-                                    navigator.push(AnimeCategoryScreen())
+                                    onClickRefresh()
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(ANMR.strings.label_anime_history)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.Rounded.Schedule, contentDescription = null)
-                                },
+                                text = { Text(stringResource(MR.strings.action_update_category)) },
                                 onClick = {
                                     overflow = false
-                                    navigator.push(AnimeHistoryScreen())
+                                    onClickRefresh()
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(ANMR.strings.label_anime_statistics)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.Rounded.QueryStats, contentDescription = null)
-                                },
+                                text = { Text(stringResource(MR.strings.action_open_random_manga)) },
                                 onClick = {
                                     overflow = false
-                                    navigator.push(AnimeStatsScreen())
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(ANMR.strings.label_anime_extensions)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.Rounded.Explore, contentDescription = null)
-                                },
-                                onClick = {
-                                    overflow = false
-                                    navigator.push(AnimeBrowseScreen())
+                                    val random = viewModel.randomInCurrentCategory()
+                                    if (random != null) {
+                                        navigator.push(AnimeDetailsScreen(random.id))
+                                    } else {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                context.stringResource(MR.strings.information_no_entries_found),
+                                            )
+                                        }
+                                    }
                                 },
                             )
                         }
@@ -257,8 +241,17 @@ data object AnimeLibraryTab : Tab {
                     else -> AnimeLibraryContent(
                         library = state.library,
                         displayMode = state.settings.displayMode,
+                        // The same preference the manga library reads, on purpose: it is how
+                        // dense the grid is, and two libraries at different densities is the
+                        // difference this screen exists to remove. 0 is "fit what you can",
+                        // which is the default on both.
+                        columns = viewModel.columnsFor(LocalConfiguration.current.orientation),
                         contentPadding = innerPadding,
+                        searchQuery = state.searchQuery,
                         onAnimeClick = { navigator.push(AnimeDetailsScreen(it)) },
+                        onGlobalSearchClicked = {
+                            navigator.push(AnimeGlobalSearchScreen(initialQuery = state.searchQuery.orEmpty()))
+                        },
                     )
                 }
             }
@@ -278,24 +271,26 @@ private fun AnimeCategoryTabs(
     counts: Map<Long, Int>,
     totalCount: Int,
     selected: Long?,
-    onSelect: (Long?) -> Unit,
+    onSelect: (Long) -> Unit,
 ) {
-    val tabs = listOf<AnimeCategory?>(null) + categories.sortedBy { it.order }
-    val selectedIndex = tabs.indexOfFirst { it?.id == selected }.coerceAtLeast(0)
+    // One tab per category and no "All", because Mihon has no "All": every entry is filed
+    // somewhere, in the default category if nowhere else, so the tabs already cover the
+    // library between them and an extra tab only showed the same covers again.
+    val tabs = categories.sortedBy { it.order }
+    val selectedIndex = tabs.indexOfFirst { it.id == selected }.coerceAtLeast(0)
 
     PrimaryScrollableTabRow(selectedTabIndex = selectedIndex, edgePadding = 0.dp) {
         tabs.forEachIndexed { index, category ->
-            // Not the sum of the others: an anime in two categories is one anime.
-            val count = if (category == null) totalCount else counts[category.id] ?: 0
+            val count = counts[category.id] ?: 0
             Tab(
                 selected = index == selectedIndex,
-                onClick = { onSelect(category?.id) },
+                onClick = { onSelect(category.id) },
                 text = {
                     Text(
-                        text = when {
-                            category == null -> stringResource(ANMR.strings.anime_category_all)
-                            category.isSystemCategory -> stringResource(MR.strings.default_category)
-                            else -> category.name
+                        text = if (category.isSystemCategory) {
+                            stringResource(MR.strings.default_category)
+                        } else {
+                            category.name
                         } + "  $count",
                         maxLines = 1,
                     )

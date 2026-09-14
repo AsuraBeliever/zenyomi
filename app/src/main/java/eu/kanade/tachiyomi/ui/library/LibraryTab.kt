@@ -55,6 +55,7 @@ import tachiyomi.domain.category.model.Category
 import tachiyomi.domain.library.model.LibraryManga
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
@@ -71,7 +72,11 @@ data object LibraryTab : Tab {
             val image = AnimatedImageVector.animatedVectorResource(R.drawable.anim_library_enter)
             return TabOptions(
                 index = 0u,
-                title = stringResource(MR.strings.label_library),
+                // "Manga", not Mihon's "Library": next to it sits an Anime tab, and a bar
+                // reading Library / Anime says the anime is not part of the library. Only the
+                // two tabs change — backup, settings and notifications still say Library,
+                // because there the word means the whole library, both halves of it.
+                title = stringResource(ANMR.strings.label_manga_library),
                 icon = rememberAnimatedVectorPainter(image, isSelected),
             )
         }
@@ -109,7 +114,7 @@ data object LibraryTab : Tab {
         Scaffold(
             topBar = { scrollBehavior ->
                 val title = state.getToolbarTitle(
-                    defaultTitle = stringResource(MR.strings.label_library),
+                    defaultTitle = stringResource(ANMR.strings.label_manga_library),
                     defaultCategoryTitle = stringResource(MR.strings.label_default),
                     page = state.coercedActiveCategoryIndex,
                 )

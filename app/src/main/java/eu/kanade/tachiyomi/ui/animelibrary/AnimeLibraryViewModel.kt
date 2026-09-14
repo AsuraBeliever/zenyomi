@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animelibrary
 
+import android.content.res.Configuration
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.zacsweers.metro.AppScope
@@ -22,6 +23,8 @@ import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
 import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.library.anime.LibraryAnime
+import tachiyomi.domain.library.service.LibraryPreferences
+import kotlin.random.Random
 
 /**
  * The anime library: what is in it, and how the user wants it shown.
@@ -41,6 +44,7 @@ class AnimeLibraryViewModel(
     private val getLibraryAnime: GetLibraryAnime,
     private val getAnimeCategories: GetAnimeCategories,
     private val preferences: AnimeLibraryPreferences,
+    private val libraryPreferences: LibraryPreferences,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -68,8 +72,11 @@ class AnimeLibraryViewModel(
                 getLibraryAnime.subscribe(),
                 getAnimeCategories.subscribe(),
                 settingsChanges(),
-            ) { library, categories, settings -> Triple(library, categories, settings) }
-                .collect { (library, categories, settings) ->
+                categoryTabsChanges(),
+            ) { library, categories, settings, categoryTabs ->
+                Arrival(library, categories, settings, categoryTabs)
+            }
+                .collect { (library, categories, settings, categoryTabs) ->
                     all = library
                     _state.update { state ->
                         state
@@ -77,6 +84,12 @@ class AnimeLibraryViewModel(
                                 isLoading = false,
                                 categories = categories.filterNot { it.hidden },
                                 settings = settings,
+                                categoryTabs = categoryTabs,
+                                // Land on the first tab, and follow the categories if the one
+                                // that was open has since been deleted.
+                                selectedCategory = state.selectedCategory
+                                    ?.takeIf { open -> categories.any { it.id == open } }
+                                    ?: categories.minByOrNull { it.order }?.id,
                             )
                             .rearranged()
                     }
@@ -90,16 +103,40 @@ class AnimeLibraryViewModel(
         preferences.displayMode.changes(),
         filterChanges(),
     ) { sort, ascending, display, filters ->
-        Settings(sort, ascending, display, filters)
+        Settings(sort, ascending, display, filters, randomSeed)
+    }
+
+    /** One entry at random from the tab that is open, for the menu item of that name. */
+    fun randomInCurrentCategory(): LibraryAnime? = state.value.library.randomOrNull()
+
+    /** The shared *Category tabs* switch, so both libraries hide their tabs together. */
+    private fun categoryTabsChanges() = libraryPreferences.categoryTabs.changes()
+
+    /**
+     * How many columns the grid gets, from the very preference the manga library reads.
+     *
+     * Shared on purpose rather than duplicated: grid density is part of what makes two
+     * libraries look alike, and a separate anime setting would let them drift apart again
+     * the first time someone changed one of them. 0 means "fit what you can", the default
+     * on both sides.
+     */
+    fun columnsFor(orientation: Int): Int {
+        val isLandscape = orientation == Configuration.ORIENTATION_LANDSCAPE
+        return if (isLandscape) {
+            libraryPreferences.landscapeColumns
+        } else {
+            libraryPreferences.portraitColumns
+        }.get()
     }
 
     private fun filterChanges() = combine(
+        preferences.filterDownloaded.changes(),
         preferences.filterUnseen.changes(),
         preferences.filterStarted.changes(),
         preferences.filterBookmarked.changes(),
         preferences.filterCompleted.changes(),
-    ) { unseen, started, bookmarked, completed ->
-        Filters(unseen, started, bookmarked, completed)
+    ) { downloaded, unseen, started, bookmarked, completed ->
+        Filters(downloaded, unseen, started, bookmarked, completed)
     }
 
     private fun State.rearranged(): State {
@@ -122,8 +159,12 @@ class AnimeLibraryViewModel(
         _state.update { it.copy(selectedCategory = categoryId).rearranged() }
     }
 
+    /** Re-rolled each time the random sort is chosen, so a second tap reshuffles. */
+    private var randomSeed: Int = Random.nextInt()
+
     /** Tapping the sort already in use flips its direction, which is what a second tap means. */
     fun setSort(sort: AnimeLibrarySort) {
+        if (sort == AnimeLibrarySort.RANDOM) randomSeed = Random.nextInt()
         if (preferences.sort.get() == sort) {
             preferences.sortAscending.set(!preferences.sortAscending.get())
         } else {
@@ -136,6 +177,7 @@ class AnimeLibraryViewModel(
 
     fun cycleFilter(filter: Filter) {
         val preference = when (filter) {
+            Filter.DOWNLOADED -> preferences.filterDownloaded
             Filter.UNSEEN -> preferences.filterUnseen
             Filter.STARTED -> preferences.filterStarted
             Filter.BOOKMARKED -> preferences.filterBookmarked
@@ -145,24 +187,28 @@ class AnimeLibraryViewModel(
     }
 
     fun clearFilters() {
+        preferences.filterDownloaded.set(TriState.DISABLED)
         preferences.filterUnseen.set(TriState.DISABLED)
         preferences.filterStarted.set(TriState.DISABLED)
         preferences.filterBookmarked.set(TriState.DISABLED)
         preferences.filterCompleted.set(TriState.DISABLED)
     }
 
-    enum class Filter { UNSEEN, STARTED, BOOKMARKED, COMPLETED }
+    enum class Filter { DOWNLOADED, UNSEEN, STARTED, BOOKMARKED, COMPLETED }
 
     data class Filters(
+        val downloaded: TriState = TriState.DISABLED,
         val unseen: TriState = TriState.DISABLED,
         val started: TriState = TriState.DISABLED,
         val bookmarked: TriState = TriState.DISABLED,
         val completed: TriState = TriState.DISABLED,
     ) {
         val any: Boolean
-            get() = listOf(unseen, started, bookmarked, completed).any { it != TriState.DISABLED }
+            get() = listOf(downloaded, unseen, started, bookmarked, completed)
+                .any { it != TriState.DISABLED }
 
         fun of(filter: Filter): TriState = when (filter) {
+            Filter.DOWNLOADED -> downloaded
             Filter.UNSEEN -> unseen
             Filter.STARTED -> started
             Filter.BOOKMARKED -> bookmarked
@@ -175,6 +221,16 @@ class AnimeLibraryViewModel(
         val sortAscending: Boolean = true,
         val displayMode: AnimeLibraryDisplayMode = AnimeLibraryDisplayMode.COMFORTABLE_GRID,
         val filters: Filters = Filters(),
+        /** Only meaningful for [AnimeLibrarySort.RANDOM]; see the field it comes from. */
+        val randomSeed: Int = 0,
+    )
+
+    /** Everything one emission of the library carries, named so the collector reads. */
+    private data class Arrival(
+        val library: List<LibraryAnime>,
+        val categories: List<AnimeCategory>,
+        val settings: Settings,
+        val categoryTabs: Boolean,
     )
 
     data class State(
@@ -183,12 +239,16 @@ class AnimeLibraryViewModel(
         val searchQuery: String? = null,
         val settings: Settings = Settings(),
         val categories: List<AnimeCategory> = emptyList(),
-        /** null means "everything", which is the only sensible landing tab. */
+        /**
+         * Which category tab is open. Null until the categories arrive, and then the first
+         * one — there is no "everything" tab any more, the same as on the manga side.
+         */
         val selectedCategory: Long? = null,
         /**
          * How many entries each tab holds. Counted over the whole library rather than over
          * [library], which is already narrowed to the open tab, the search and the filters.
          */
+        val categoryTabs: Boolean = true,
         val countByCategory: Map<Long, Int> = emptyMap(),
         /**
          * Distinct anime across every category, which is not the sum of [countByCategory]: an
@@ -216,10 +276,15 @@ class AnimeLibraryViewModel(
                 selectedCategory != null
 
         /**
-         * Tabs only earn their space once something has been filed. A library with nothing but
-         * the default category would show a single tab that does nothing.
+         * Mihon's rule, character for character, including the preference.
+         *
+         * It used to be "any category that is not the default", which ignored the
+         * *Category tabs* setting entirely: turning tabs off hid them on the manga library and
+         * left them on the anime one. The setting is shared, so both halves now obey it.
          */
-        val showCategoryTabs: Boolean get() = categories.any { !it.isSystemCategory }
+        val showCategoryTabs: Boolean
+            get() = categoryTabs && categories.isNotEmpty() &&
+                (categories.size > 1 || !categories.first().isSystemCategory)
 
         internal fun arrange(
             source: List<LibraryAnime>,
@@ -251,6 +316,11 @@ class AnimeLibraryViewModel(
                 AnimeLibrarySort.TOTAL_EPISODES -> result.sortedByDescending { it.totalCount }
                 AnimeLibrarySort.LATEST_EPISODE -> result.sortedByDescending { it.latestUpload }
                 AnimeLibrarySort.DATE_ADDED -> result.sortedByDescending { it.anime.dateAdded }
+                AnimeLibrarySort.LAST_UPDATE_CHECK -> result.sortedByDescending { it.anime.lastUpdate }
+                AnimeLibrarySort.EPISODE_FETCH_DATE -> result.sortedByDescending { it.episodeFetchedAt }
+                // Seeded so the order holds while you scroll and changes when you pick it
+                // again, which is what Mihon's random does.
+                AnimeLibrarySort.RANDOM -> result.shuffled(Random(settings.randomSeed))
             }
 
             // Every sort but title reads naturally as "most first", so ascending reverses them

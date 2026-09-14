@@ -34,6 +34,15 @@ class AnimeLibraryPreferences(
     val displayMode: Preference<AnimeLibraryDisplayMode> =
         preferenceStore.getEnum("pref_anime_library_display", AnimeLibraryDisplayMode.COMFORTABLE_GRID)
 
+    /**
+     * Downloaded-only filter. Its own preference rather than Mihon's `filterDownloaded`: the
+     * two libraries are filtered separately, and sharing it would mean narrowing one because
+     * you narrowed the other. The *overlay* preferences are shared, because those are about
+     * how a row is drawn, not about what the library contains.
+     */
+    val filterDownloaded: Preference<TriState> =
+        preferenceStore.getEnum("pref_anime_filter_downloaded", TriState.DISABLED)
+
     val filterUnseen: Preference<TriState> =
         preferenceStore.getEnum("pref_anime_library_filter_unseen", TriState.DISABLED)
 

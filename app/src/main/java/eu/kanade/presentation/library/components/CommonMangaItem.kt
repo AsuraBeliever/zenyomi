@@ -43,7 +43,6 @@ import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.BadgeGroup
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.selectedBackground
-import tachiyomi.domain.manga.model.MangaCover as MangaCoverModel
 
 object CommonMangaItemDefaults {
     val GridHorizontalSpacer = 4.dp
@@ -68,9 +67,19 @@ private const val GRID_SELECTED_COVER_ALPHA = 0.76f
  * Layout of grid list item with title overlaying the cover.
  * Accepts null [title] for a cover-only view.
  */
+/*
+ * Zenyomi: coverData is typed Any rather than MangaCover.
+ *
+ * It is only ever handed to Coil as the model for the cover, and Coil picks the fetcher from
+ * the runtime type — so an AnimeCover routes to AnimeCoverFetcher and carries its own source's
+ * headers. Widening the parameter is what lets the anime library draw its rows with these
+ * composables instead of a copy of them, which is the only way the two libraries stay
+ * identical. Three lines to re-apply on an upstream merge, against four hundred lines of
+ * duplicated layout drifting apart.
+ */
 @Composable
 fun MangaCompactGridItem(
-    coverData: MangaCoverModel,
+    coverData: Any,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     isSelected: Boolean = false,
@@ -175,7 +184,7 @@ private fun BoxScope.CoverTextOverlay(
  */
 @Composable
 fun MangaComfortableGridItem(
-    coverData: MangaCoverModel,
+    coverData: Any,
     title: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
@@ -330,7 +339,7 @@ private fun Modifier.selectedOutline(
  */
 @Composable
 fun MangaListItem(
-    coverData: MangaCoverModel,
+    coverData: Any,
     title: String,
     onClick: () -> Unit,
     onLongClick: () -> Unit,

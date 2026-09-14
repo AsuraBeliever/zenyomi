@@ -23,6 +23,7 @@ import mihon.icons.materialsymbols.rounded.Storage
 import mihon.icons.materialsymbols.rounded.VolunteerActivism
 import tachiyomi.core.common.Constants
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.ScrollbarLazyColumn
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.pluralStringResource
@@ -37,6 +38,7 @@ fun MoreScreen(
     onIncognitoModeChange: (Boolean) -> Unit,
     onClickDownloadQueue: () -> Unit,
     onClickCategories: () -> Unit,
+    onClickAnimeCategories: () -> Unit,
     onClickStats: () -> Unit,
     onClickDataAndStorage: () -> Unit,
     onClickSettings: () -> Unit,
@@ -107,6 +109,16 @@ fun MoreScreen(
                     title = stringResource(MR.strings.categories),
                     icon = MaterialSymbols.AutoMirroredRounded.Label,
                     onPreferenceClick = onClickCategories,
+                )
+            }
+            // Zenyomi: the anime categories used to hang off the anime library's overflow
+            // menu, which now carries the same three items the manga library's does. This is
+            // where the manga categories live, so it is where these belong too.
+            item {
+                TextPreferenceWidget(
+                    title = stringResource(ANMR.strings.label_anime_categories),
+                    icon = MaterialSymbols.AutoMirroredRounded.Label,
+                    onPreferenceClick = onClickAnimeCategories,
                 )
             }
             item {

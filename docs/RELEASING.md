@@ -75,6 +75,16 @@ Esa diferencia es la que hace que parezca un fallo nuestro sin serlo.
 
 ## Verificar una release antes de anunciarla
 
+Sobre el APK **que publicó el CI**, no sobre el que compilaste tú. Son binarios
+distintos: el del CI se firma con los secretos del repositorio, y si esa clave no
+fuese la misma, la actualización no se instalaría encima y el usuario perdería su
+biblioteca. El `SHA-256` de abajo es lo que lo demuestra.
+
+```sh
+gh release download v<version> -p "zenyomi-arm64-v8a-v<version>.apk" -D /tmp
+```
+
+
 ```sh
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
 APK=app/build/outputs/apk/release/app-arm64-v8a-release.apk
