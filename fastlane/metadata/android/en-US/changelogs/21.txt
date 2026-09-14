@@ -1,0 +1,3 @@
+Fixed: the player's controls get out of the way. The title, the track buttons, the seek bar and the clock used to sit on top of the episode for its whole runtime, and a tap on the picture only paused — so the one gesture you would try to dismiss them with stopped the video instead.
+
+They now fade out after five seconds, and a tap on the picture shows or hides them instead of pausing. They stay put while the episode is paused, while your finger is on the seek bar, and while a track list is open. Pressing any control restarts the five seconds. Pausing is what the button in the middle is for.
