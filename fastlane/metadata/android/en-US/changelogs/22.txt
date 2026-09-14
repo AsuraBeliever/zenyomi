@@ -1,0 +1,7 @@
+Added: subtitles can be set to look how you want them. Font, size, scale, bold, italic, alignment, colours, border, shadow, position, delay and speed — in a panel inside the player, where you can see the text change over the scene you are watching, and in Settings > Player for setting up once.
+
+Added: the font setting has fonts to choose from. The player shipped with one face, so the setting had nothing to change; six of the phone's own are now available, with the bundled one still the default because it is the only one that covers Japanese.
+
+Fixed: a long episode name no longer prints over the Audio, Subtitles and picture-in-picture buttons.
+
+Fixed: in landscape, the seek bar no longer covers the subtitle you are reading.
