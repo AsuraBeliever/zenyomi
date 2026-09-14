@@ -110,22 +110,6 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     private var shownFirstFrame = false
 
     /**
-     * Set while the picture is being held back for a side-car audio track.
-     *
-     * `audio-add` opens a second network stream, and mpv does not wait for it: the video
-     * starts, plays silently for as long as that stream takes to answer, and the sound joins
-     * several seconds in. Nothing is out of sync — it is simply missing at the start, which is
-     * the part of an episode a person is most likely to be paying attention to.
-     *
-     * So the file is loaded paused and released once the track is in and chosen. The loading
-     * overlay stays up meanwhile, which is the truth: it is still opening.
-     */
-    private var waitingForExternalAudio = false
-
-    /** How many audio tracks the file itself carried, to tell an external one from its own. */
-    private var ownAudioCount = 0
-
-    /**
      * Reports the combined state, on the main thread.
      *
      * mpv delivers its events on its own threads, and the only consumer of this is Compose
@@ -133,11 +117,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      */
     private fun updateLoading() {
         val stalled = restarting || bufferingForCache
-        // Waiting on an external audio track counts as opening, not as stalling: the picture
-        // is deliberately held on its first frame until the sound is ready to go with it.
-        val opening = !shownFirstFrame || waitingForExternalAudio
+        val opening = !shownFirstFrame
         post {
-            onLoadingChanged?.invoke(opening && (stalled || waitingForExternalAudio))
+            onLoadingChanged?.invoke(opening && stalled)
             onBufferingChanged?.invoke(!opening && stalled)
         }
     }
@@ -362,18 +344,6 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         pendingResumeAt = resumeAt
         externalSubtitles = subtitleTracks
         externalAudio = audioTracks
-        waitingForExternalAudio = audioTracks.isNotEmpty()
-        if (waitingForExternalAudio) {
-            setPaused(true)
-            // Nothing else can rescue a side-car track that never answers: mpv reports no
-            // failure for one, it simply never appears. Without a deadline the episode would
-            // sit on its first frame for as long as the viewer let it.
-            mpvThread.schedule(
-                { if (waitingForExternalAudio) releaseForAudio() },
-                EXTERNAL_AUDIO_WAIT_SECONDS,
-                TimeUnit.SECONDS,
-            )
-        }
         if (mpvArgs.isNotEmpty()) {
             postToMpv {
                 mpvArgs.forEach { (name, value) ->
@@ -409,7 +379,6 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         addedSubtitles = subtitles.isNotEmpty()
 
         postToMpv {
-            ownAudioCount = tracks().count { it.isAudio }
             // The source's label stays as the track title, because that is what the picker
             // shows and "Español (Spain)" tells a person more than "spa" does. The language
             // field gets the code, because that is what mpv matches the preference against.
@@ -459,19 +428,6 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         val wantedAudio = audioTracks.preferring(preferredAudio)
             ?: audioTracks.firstOrNull()?.takeIf { audioTracks.none { track -> track.selected } }
         wantedAudio?.let { selectAudio(it.id) }
-
-        // The side-car track is in and something is playing it, so the picture can go.
-        if (waitingForExternalAudio && audioTracks.size > ownAudioCount) {
-            if (wantedAudio != null || audioTracks.any { it.selected }) releaseForAudio()
-        }
-    }
-
-    /** Lets the held-back file play, whether the audio arrived or the wait ran out. */
-    private fun releaseForAudio() {
-        if (!waitingForExternalAudio) return
-        waitingForExternalAudio = false
-        setPaused(false)
-        updateLoading()
     }
 
     /**
@@ -843,14 +799,6 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
          * It is a ceiling, not a reservation — [DEMUXER_CACHE_BYTES] still caps what is held.
          */
         private const val READAHEAD_SECONDS = 30
-
-        /**
-         * How long the picture waits for a side-car audio track before giving up on it.
-         *
-         * Long enough for a slow host to answer, short enough that a dead audio url costs the
-         * viewer one wait rather than the episode. Silent video beats no video.
-         */
-        private const val EXTERNAL_AUDIO_WAIT_SECONDS = 15L
 
         /** How much of that has to be there before playback starts. */
         private const val CACHE_WAIT_SECONDS = 3
