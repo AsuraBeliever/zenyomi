@@ -63,6 +63,7 @@ import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.i18n.stringResource
 import java.io.File
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Plays one video with mpv.
@@ -98,9 +99,18 @@ fun AnimePlayerContent(
     // Read from the polling loop rather than from the button that needs it: asking mpv costs
     // two blocking property reads, and the button is on the main thread.
     var videoAspect by remember { mutableFloatStateOf(DEFAULT_ASPECT) }
-    // Set while a finger is on the seek bar. The polling loop keeps writing `position`, and
-    // without this the thumb jumps back under the finger between drag events.
+    // Set while a finger is on the seek bar, so incoming positions do not fight the finger.
     var scrubbing by remember { mutableStateOf<Float?>(null) }
+    // Where the last seek was aimed, held until mpv reports arriving there.
+    //
+    // A seek is not instant: mpv keeps reporting the old position until it has the new one
+    // decoded. Letting those through made the thumb snap back to where the episode was, sit
+    // there, and then jump forward — the drag looked like it had been refused and then obeyed
+    // a second later.
+    var seekTarget by remember { mutableStateOf<Int?>(null) }
+    // A stall after the episode is up. Distinct from `loading`, which covers opening it: this
+    // one is a spinner over a picture that is still there, and it must not block anything.
+    var buffering by remember { mutableStateOf(false) }
 
     // The jump indicator is a flash, not a state: clear it shortly after it appears.
     LaunchedEffect(seekFeedback) {
@@ -121,6 +131,27 @@ fun AnimePlayerContent(
             // mirror looks exactly like one that is still loading — forever.
             view.onPlaybackError = { reason -> playbackFailure = reason.orEmpty() }
             view.onLoadingChanged = { loading = it }
+            view.onBufferingChanged = { buffering = it }
+            // Pushed by mpv rather than polled. Polling ran every two seconds, so the clock
+            // advanced in two-second steps — and because each pass first made several blocking
+            // reads, the steps were uneven: 30, then 34. mpv reports time-pos as it changes,
+            // which is once a second and on the beat.
+            view.onPositionChanged = { value ->
+                val target = seekTarget
+                when {
+                    // Within a second of where the drag asked for: mpv has arrived, hand the
+                    // bar back to it.
+                    target != null && abs(value - target) <= SEEK_SETTLED_SECONDS -> {
+                        seekTarget = null
+                        position = value
+                    }
+                    // Still on its way there. Keep showing the destination.
+                    target != null -> Unit
+                    else -> position = value
+                }
+            }
+            view.onDurationChanged = { value -> duration = value }
+            view.onPausedChanged = { value -> paused = value }
             view.initialise(
                 configDir = File(context.filesDir, "mpv"),
                 audioLanguages = viewModel.preferences.preferredAudioLanguages.get(),
@@ -141,6 +172,10 @@ fun AnimePlayerContent(
         onDispose {
             view.onPlaybackError = null
             view.onLoadingChanged = null
+            view.onBufferingChanged = null
+            view.onPositionChanged = null
+            view.onDurationChanged = null
+            view.onPausedChanged = null
             if (playerState.loaded) {
                 // Uses what the polling loop already read instead of asking mpv again:
                 // mpv_get_property waits on mpv's own event loop, and onDispose runs on the
@@ -152,28 +187,23 @@ fun AnimePlayerContent(
         }
     }
 
-    // mpv reports progress through property observers; polling keeps this first cut
-    // small, and a second of drift on a seek bar is not worth an observer plumbing.
+    // What is left to poll for, now that position, duration and pause arrive as events: the
+    // track list and the aspect ratio, neither of which moves while anyone is watching.
     //
     // Every one of these reads blocks on mpv's event loop, so they happen off the main
     // thread: doing them on the composition's dispatcher is what turned a busy player into
-    // an ANR.
+    // an ANR. That cost is also why this no longer drives the seek bar — the reads made the
+    // loop's period uneven, and the clock inherited the unevenness.
     LaunchedEffect(Unit) {
         while (true) {
             if (!view.isReady) {
                 delay(200)
                 continue
             }
-            val snapshot = withContext(Dispatchers.IO) {
-                Snapshot(view.timePos, view.duration, view.paused, view.videoAspect)
-            }
-            position = snapshot.position ?: position
-            duration = snapshot.duration ?: duration
-            paused = snapshot.paused ?: paused
-            videoAspect = snapshot.aspect ?: videoAspect
+            videoAspect = withContext(Dispatchers.IO) { view.videoAspect } ?: videoAspect
             // Written as it plays, so a process death mid-episode still leaves a
             // usable resume point rather than losing the whole session.
-            if (!paused) viewModel.saveProgress(position, duration)
+            if (!paused && duration > 0) viewModel.saveProgress(position, duration)
             // Re-read rather than read once. The selection is no longer only the viewer's to
             // change — an external audio track that arrives late is chosen by the player
             // itself — and a picker showing a stale tick is worse than one showing none.
@@ -261,10 +291,20 @@ fun AnimePlayerContent(
             }
         }
 
+        // A stall once the episode is up: a spinner where the controls were, and nothing
+        // blocked. Refilling the cache after a seek is the common case, and a player that
+        // locked the screen for each one would be worse than the stutter it was reporting.
+        if (buffering && !loading && playbackFailure == null && !inPictureInPicture) {
+            CircularProgressIndicator(
+                color = Color.White,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+
         // The three controls people reach for, where every video app puts them: the big one in
         // the middle, the two jumps either side of it. The bottom bar keeps the seek bar and
         // the clock, which is where those belong.
-        if (!inPictureInPicture && !loading && playbackFailure == null) {
+        if (!inPictureInPicture && !loading && !buffering && playbackFailure == null) {
             val step = remember { viewModel.preferences.seekStep.get() }
             Row(
                 modifier = Modifier.align(Alignment.Center),
@@ -435,7 +475,15 @@ fun AnimePlayerContent(
                     // answers each of them by actually moving the stream.
                     onValueChange = { scrubbing = it },
                     onValueChangeFinished = {
-                        scrubbing?.let { view.seekTo(it.toInt()) }
+                        scrubbing?.let { value ->
+                            val target = value.toInt()
+                            // The bar moves to where it was asked to go straight away and
+                            // stays there. mpv is told at the same moment, and `seekTarget`
+                            // keeps its stale reports from dragging the thumb back.
+                            position = target
+                            seekTarget = target
+                            view.seekTo(target)
+                        }
                         scrubbing = null
                     },
                     modifier = Modifier
@@ -450,14 +498,6 @@ fun AnimePlayerContent(
 
 /** Used only until mpv reports the real one, which takes a moment after the file opens. */
 private const val DEFAULT_ASPECT = 16f / 9f
-
-/** What one pass of the polling loop read out of mpv. */
-private data class Snapshot(
-    val position: Int?,
-    val duration: Int?,
-    val paused: Boolean?,
-    val aspect: Float?,
-)
 
 private fun formatTime(seconds: Int): String {
     val h = seconds / 3600
@@ -562,3 +602,11 @@ private fun SeekLabel(icon: ImageVector, seconds: Int, contentDescription: Strin
         Text(text = "$seconds", style = MaterialTheme.typography.labelSmall)
     }
 }
+
+/**
+ * How close mpv has to get to a seek's destination before the bar follows it again.
+ *
+ * One second, because that is the resolution mpv reports positions at: asking for exactly the
+ * requested second would mean waiting for a report that may never come.
+ */
+private const val SEEK_SETTLED_SECONDS = 1
