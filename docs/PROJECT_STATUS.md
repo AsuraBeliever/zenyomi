@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-09-13
+**Actualizado:** 2026-09-14
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.8.2, tag en `main`
+**Última release:** v0.9.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,7 +18,8 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x – 0.8.x | ✅ | hasta `v0.8.1`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Releases 0.5.x – 0.9.0 | ✅ | hasta `v0.9.0`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real |
 | Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
 | Trackers de anime (código) | ✅ | MyAnimeList y AniList |
 | PiP del player | ✅ | Activity propia |
