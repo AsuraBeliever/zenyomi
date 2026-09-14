@@ -1,79 +1,79 @@
 package eu.kanade.tachiyomi.ui.animedetails
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
-import eu.kanade.presentation.components.AppBar
+import eu.kanade.presentation.anime.components.AnimeInfoBox
+import eu.kanade.presentation.anime.components.AnimeToolbar
+import eu.kanade.presentation.anime.components.EpisodeHeader
+import eu.kanade.presentation.anime.components.EpisodeSettingsDialog
+import eu.kanade.presentation.components.relativeDateText
+import eu.kanade.presentation.manga.components.ChapterDownloadAction
+import eu.kanade.presentation.manga.components.ExpandableMangaDescription
+import eu.kanade.presentation.manga.components.MangaActionRow
+import eu.kanade.presentation.manga.components.MangaChapterListItem
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
+import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
 import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackScreen
+import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import mihon.icons.materialsymbols.MaterialSymbols
-import mihon.icons.materialsymbols.automirroredrounded.Label
-import mihon.icons.materialsymbols.rounded.Download
-import mihon.icons.materialsymbols.rounded.Favorite
-import mihon.icons.materialsymbols.rounded.MoreVert
-import mihon.icons.materialsymbols.rounded.Sync
-import mihon.icons.materialsymbols.roundedfilled.CheckCircle
-import mihon.icons.materialsymbols.roundedfilled.Favorite
-import tachiyomi.domain.anime.model.Anime
+import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.domain.category.anime.model.AnimeCategory
+import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
-import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
-import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
+import tachiyomi.presentation.core.util.shouldExpandFAB
+import kotlin.time.Instant
 
 /**
  * One anime entry: cover, description and the list of episodes.
  *
- * An episode row resolves its video and opens the player, shows download state and offers
- * tracking once the anime is in the library.
+ * Deliberately the same screen as Mihon's [eu.kanade.presentation.manga.MangaScreen], piece for
+ * piece and in the same order: a blurred backdrop behind the cover and titles, the row of
+ * actions, the description that expands with its genre chips, then the episodes. The charter
+ * makes Mihon the reference for how a thing is done, and an app where opening a manga and
+ * opening an anime feel like two different apps has failed that regardless of what each screen
+ * does on its own.
+ *
+ * Everything Mihon exposes on primitives is reused rather than copied — the action row, the
+ * description, the list rows, the download indicator — so the two cannot drift apart. What is
+ * copied is only what was bound to the Manga type.
  */
 class AnimeDetailsScreen(private val animeId: Long) : Screen() {
 
@@ -90,8 +90,8 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
         val anime = state.anime
 
         val snackbarHostState = remember { SnackbarHostState() }
-        // Resolved outside the effect: turning a failure into words needs the string
-        // resources, which only a composable can reach.
+        val episodeListState = rememberLazyListState()
+
         state.categoryDialog?.let { dialog ->
             AnimeCategoryDialog(
                 categories = dialog.categories,
@@ -105,6 +105,19 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
             )
         }
 
+        if (state.episodeSettingsDialog) {
+            EpisodeSettingsDialog(
+                onDismissRequest = viewModel::dismissEpisodeSettings,
+                anime = anime,
+                onDownloadFilterChanged = viewModel::setDownloadedFilter,
+                onUnseenFilterChanged = viewModel::setUnseenFilter,
+                onBookmarkedFilterChanged = viewModel::setBookmarkedFilter,
+                onSortModeChanged = viewModel::setSorting,
+            )
+        }
+
+        // Resolved outside the effect: turning a failure into words needs the string
+        // resources, which only a composable can reach.
         val playbackErrorText = state.playbackError?.let { animeSourceErrorText(it) }
         LaunchedEffect(playbackErrorText) {
             playbackErrorText?.let {
@@ -113,76 +126,82 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
             }
         }
 
+        // A tap that resolves to nothing is already reported through playbackError, so this
+        // only has to know what to do when there is something to play.
+        fun openPlayer(request: PlaybackRequest?, title: String, id: Long) {
+            if (request != null) {
+                context.startActivity(AnimePlayerActivity.newIntent(context, request, title, id))
+            }
+        }
+
         Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = { scrollBehavior ->
-                AppBar(
-                    title = anime?.title.orEmpty(),
-                    navigateUp = navigator::pop,
-                    actions = {
-                        if (anime != null) {
-                            IconButton(onClick = viewModel::toggleFavorite) {
-                                Icon(
-                                    imageVector = if (anime.favorite) {
-                                        MaterialSymbols.RoundedFilled.Favorite
-                                    } else {
-                                        MaterialSymbols.Rounded.Favorite
-                                    },
-                                    contentDescription = stringResource(
-                                        if (anime.favorite) {
-                                            MR.strings.remove_from_library
-                                        } else {
-                                            MR.strings.add_to_library
-                                        },
-                                    ),
-                                )
-                            }
-                            // Tracking and categories are only meaningful for something in the
-                            // library, so they follow the favourite rather than standing alone.
-                            if (anime.favorite) {
-                                IconButton(onClick = viewModel::showCategoryDialog) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.AutoMirroredRounded.Label,
-                                        contentDescription = stringResource(MR.strings.categories),
-                                    )
-                                }
-                                IconButton(onClick = { navigator.push(AnimeTrackScreen(anime.id)) }) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Rounded.Sync,
-                                        contentDescription = stringResource(MR.strings.manga_tracking_tab),
-                                    )
-                                }
-                                var overflow by remember { mutableStateOf(false) }
-                                IconButton(onClick = { overflow = true }) {
-                                    Icon(
-                                        imageVector = MaterialSymbols.Rounded.MoreVert,
-                                        contentDescription = stringResource(
-                                            MR.strings.action_menu_overflow_description,
-                                        ),
-                                    )
-                                }
-                                DropdownMenu(
-                                    expanded = overflow,
-                                    onDismissRequest = { overflow = false },
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(ANMR.strings.anime_migrate)) },
-                                        onClick = {
-                                            overflow = false
-                                            navigator.push(
-                                                AnimeGlobalSearchScreen(
-                                                    initialQuery = anime.title,
-                                                    migrateFromId = anime.id,
-                                                ),
-                                            )
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    scrollBehavior = scrollBehavior,
+            topBar = {
+                // The bar is transparent over the cover and fades in as the list arrives under
+                // it, which is what makes the backdrop read as part of the entry rather than as
+                // a picture behind a toolbar.
+                val isFirstItemVisible by remember {
+                    derivedStateOf { episodeListState.firstVisibleItemIndex == 0 }
+                }
+                val isFirstItemScrolled by remember {
+                    derivedStateOf { episodeListState.firstVisibleItemScrollOffset > 0 }
+                }
+                val titleAlpha by animateFloatAsState(
+                    if (!isFirstItemVisible) 1f else 0f,
+                    label = "Top Bar Title",
                 )
+                val backgroundAlpha by animateFloatAsState(
+                    if (!isFirstItemVisible || isFirstItemScrolled) 1f else 0f,
+                    label = "Top Bar Background",
+                )
+                AnimeToolbar(
+                    title = anime?.title.orEmpty(),
+                    hasFilters = state.filterActive,
+                    navigateUp = navigator::pop,
+                    onClickFilter = viewModel::showEpisodeSettings,
+                    onClickDownload = viewModel::downloadEpisodes.takeIf { state.canDownload },
+                    onClickRefresh = viewModel::refreshDownloaded,
+                    onClickEditCategory = viewModel::showCategoryDialog
+                        .takeIf { anime?.favorite == true },
+                    onClickMigrate = {
+                        navigator.push(
+                            AnimeGlobalSearchScreen(
+                                initialQuery = anime?.title.orEmpty(),
+                                migrateFromId = anime?.id,
+                            ),
+                        )
+                    }.takeIf { anime?.favorite == true },
+                    onClickShare = null,
+                    titleAlphaProvider = { titleAlpha },
+                    backgroundAlphaProvider = { backgroundAlpha },
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            floatingActionButton = {
+                val episodes = state.visibleEpisodes
+                val isWatching = remember(episodes) { episodes.any { it.seen } }
+                if (anime != null && episodes.any { !it.seen }) {
+                    SmallExtendedFloatingActionButton(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (isWatching) MR.strings.action_resume else MR.strings.action_start,
+                                ),
+                            )
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = MaterialSymbols.RoundedFilled.PlayArrow,
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            viewModel.continueWatching { request, episode ->
+                                if (episode != null) openPlayer(request, episode.name, episode.id)
+                            }
+                        },
+                        expanded = episodeListState.shouldExpandFAB(),
+                    )
+                }
             },
         ) { contentPadding ->
             if (state.isLoading || anime == null) {
@@ -190,17 +209,72 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                 return@Scaffold
             }
 
-            LazyColumn(contentPadding = contentPadding) {
-                item { AnimeHeader(anime) }
-                item {
-                    Text(
-                        text = pluralStringResource(
-                            ANMR.plurals.num_episodes,
-                            state.episodes.size,
-                            state.episodes.size,
-                        ),
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            val topPadding = contentPadding.calculateTopPadding()
+            LazyColumn(
+                modifier = Modifier.fillMaxHeight(),
+                state = episodeListState,
+                // The info box draws behind the bar, so the top padding belongs to it rather
+                // than to the list.
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    bottom = contentPadding.calculateBottomPadding(),
+                ),
+            ) {
+                item(key = "info-box", contentType = "info-box") {
+                    AnimeInfoBox(
+                        appBarPadding = topPadding,
+                        anime = anime,
+                        sourceName = state.sourceName,
+                        isStubSource = state.isStubSource,
+                        onCoverClick = {},
+                        doSearch = { query, _ ->
+                            navigator.push(AnimeGlobalSearchScreen(initialQuery = query))
+                        },
+                    )
+                }
+
+                item(key = "action-row", contentType = "action-row") {
+                    MangaActionRow(
+                        favorite = anime.favorite,
+                        trackingCount = state.trackingCount,
+                        nextUpdate = anime.expectedNextUpdate
+                            ?.let { Instant.fromEpochMilliseconds(it.toEpochMilli()) },
+                        isUserIntervalMode = anime.fetchInterval < 0,
+                        onAddToLibraryClicked = viewModel::toggleFavorite,
+                        onWebViewClicked = state.webViewUrl?.let { url ->
+                            {
+                                navigator.push(
+                                    WebViewScreen(url = url, initialTitle = anime.title, sourceId = anime.source),
+                                )
+                            }
+                        },
+                        onWebViewLongClicked = null,
+                        onTrackingClicked = { navigator.push(AnimeTrackScreen(anime.id)) },
+                        // Anime has no per-entry update interval of its own yet, so the
+                        // countdown is shown but not editable.
+                        onEditIntervalClicked = null,
+                        onEditCategory = viewModel::showCategoryDialog.takeIf { anime.favorite },
+                    )
+                }
+
+                item(key = "description", contentType = "description") {
+                    ExpandableMangaDescription(
+                        defaultExpandState = !anime.favorite,
+                        description = anime.description,
+                        tagsProvider = { anime.genre },
+                        notes = "",
+                        onTagSearch = { tag ->
+                            navigator.push(AnimeGlobalSearchScreen(initialQuery = tag))
+                        },
+                        onCopyTagToClipboard = {},
+                        onEditNotes = {},
+                    )
+                }
+
+                item(key = "episode-header", contentType = "episode-header") {
+                    EpisodeHeader(
+                        enabled = true,
+                        episodeCount = state.visibleEpisodes.size,
+                        onClick = viewModel::showEpisodeSettings,
                     )
                     // An empty list and a source that refused to answer look the same
                     // otherwise, and only one of them is worth retrying.
@@ -212,100 +286,56 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                         )
                     }
-                    HorizontalDivider()
                 }
-                items(state.episodes, key = { it.id }) { episode ->
-                    ListItem(
-                        headlineContent = { Text(episode.name) },
-                        supportingContent = episode.scanlator?.let { scanlator ->
-                            { Text(scanlator, style = MaterialTheme.typography.bodySmall) }
-                        },
-                        trailingContent = {
-                            val percent = downloadProgress[episode.id]
-                            val queued = downloadQueue.any { it.episodeId == episode.id }
-                            when {
-                                state.resolvingEpisodeId == episode.id ->
-                                    CircularProgressIndicator(Modifier.size(20.dp))
-                                percent != null ->
-                                    CircularProgressIndicator(
-                                        progress = { percent / 100f },
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                // Queued but not started: an indeterminate spinner would claim
-                                // work is happening, so the row just shows it is waiting.
-                                queued ->
-                                    CircularProgressIndicator(
-                                        progress = { 0f },
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                episode.id in state.downloadedEpisodeIds ->
-                                    IconButton(onClick = { viewModel.deleteDownload(episode) }) {
-                                        Icon(
-                                            imageVector = MaterialSymbols.RoundedFilled.CheckCircle,
-                                            contentDescription = stringResource(
-                                                ANMR.strings.anime_action_delete_download,
-                                            ),
-                                        )
-                                    }
-                                !state.canDownload -> Unit
-                                else ->
-                                    IconButton(onClick = { viewModel.downloadEpisode(episode) }) {
-                                        Icon(
-                                            imageVector = MaterialSymbols.Rounded.Download,
-                                            contentDescription = stringResource(MR.strings.action_download),
-                                        )
-                                    }
-                            }
-                        },
-                        modifier = Modifier.clickable(
-                            enabled = state.resolvingEpisodeId == null,
-                        ) {
+
+                items(
+                    items = state.visibleEpisodes,
+                    key = { "episode-${it.id}" },
+                    contentType = { "episode" },
+                ) { episode ->
+                    val downloaded = episode.id in state.downloadedEpisodeIds
+                    val progress = downloadProgress[episode.id]
+                    val queued = downloadQueue.any { it.episodeId == episode.id }
+                    val downloadState = when {
+                        downloaded -> Download.State.DOWNLOADED
+                        progress != null -> Download.State.DOWNLOADING
+                        queued -> Download.State.QUEUE
+                        else -> Download.State.NOT_DOWNLOADED
+                    }
+                    MangaChapterListItem(
+                        title = episode.name,
+                        date = relativeDateText(episode.dateUpload),
+                        readProgress = null,
+                        scanlator = episode.scanlator?.takeIf { it.isNotBlank() },
+                        read = episode.seen,
+                        bookmark = episode.bookmark,
+                        selected = false,
+                        downloadIndicatorEnabled = state.canDownload,
+                        downloadStateProvider = { downloadState },
+                        downloadProgressProvider = { progress ?: 0 },
+                        // Swiping a row is a manga-side shortcut for marking read and
+                        // bookmarking, neither of which the anime list offers yet.
+                        chapterSwipeStartAction = LibraryPreferences.ChapterSwipeAction.Disabled,
+                        chapterSwipeEndAction = LibraryPreferences.ChapterSwipeAction.Disabled,
+                        onLongClick = {},
+                        onClick = {
                             viewModel.resolveVideo(episode) { request ->
-                                if (request != null) {
-                                    context.startActivity(
-                                        AnimePlayerActivity.newIntent(
-                                            context,
-                                            request,
-                                            episode.name,
-                                            episode.id,
-                                        ),
-                                    )
-                                }
+                                openPlayer(request, episode.name, episode.id)
                             }
                         },
+                        onDownloadClick = { action ->
+                            when (action) {
+                                ChapterDownloadAction.START,
+                                ChapterDownloadAction.START_NOW,
+                                -> viewModel.downloadEpisode(episode)
+                                ChapterDownloadAction.CANCEL,
+                                ChapterDownloadAction.DELETE,
+                                -> viewModel.deleteDownload(episode)
+                            }
+                        },
+                        onChapterSwipe = {},
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AnimeHeader(anime: Anime) {
-    Row(Modifier.padding(16.dp)) {
-        AsyncImage(
-            model = anime,
-            contentDescription = anime.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .width(120.dp)
-                .height(180.dp)
-                .clip(RoundedCornerShape(4.dp)),
-        )
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.fillMaxWidth()) {
-            Text(anime.title, style = MaterialTheme.typography.titleMedium)
-            anime.author?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(Modifier.height(8.dp))
-            anime.description?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
         }
     }

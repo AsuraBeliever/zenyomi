@@ -41,7 +41,8 @@
 | Novedades e Historial de anime en la barra inferior | ✅ | las pestañas de Mihon intercambian entre manga y anime |
 | Baseline profile | ✅ | el generador cubre ahora las pantallas de anime; 13 → 1418 reglas de anime |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
-| Ficha de anime y episodios | ✅ | verificada con un fixture y con One Piece (1196 episodios) desde KickAssAnime |
+| Ficha de anime y episodios | ✅ | mismo diseño que la de manga: fondo difuminado, autor y estado, fila de acciones, sinopsis con géneros, filtro/orden, descarga por lotes y botón de continuar |
+| Paridad visual manga ↔ anime | ✅ | se reutilizan los componentes de Mihon que van con primitivas; solo se duplica lo que estaba atado al tipo `Manga` |
 | Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
 | Errores de fuente legibles | ✅ | `AnimeSourceError`: nunca se enseña la excepción cruda; el mensaje propio de una extensión sí |
 | Estado medido de las extensiones | ✅ | arnés en debug + `anime-source-health.json`; ver `docs/EXTENSIONS_STATUS.md` |

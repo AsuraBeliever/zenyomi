@@ -18,6 +18,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 
 - **The player says it is loading.** Opening an episode showed a black screen with nothing on it until the first frame arrived — around four seconds from a standing start on KickAssAnime, and about twelve when resuming part-way through, because the stream has to be reopened and sought. A black rectangle is also what a player that is never going to work looks like, so there was no way to tell the two apart. There is a spinner now, and it comes back if the stream stalls mid-episode.
 
+### Changed
+- **An anime entry looks like a manga entry.** They were two different screens: the manga one has a blurred backdrop behind the cover, the author and status beside it, a row of actions, an expandable description with genre chips, and chapter rows that show what you have read; the anime one had a cover, a title and a bare list. Same app, so it is now the same screen — the same pieces, in the same order, drawn by the same code wherever Mihon's components could be used as they are. The anime entry gains the action row, the description and genres, filter and sort for its episodes, batch download, the play button that continues where you left off, and episode rows that dim once watched.
+- **An anime entry fetches its own details.** A catalogue hands back only a title and a cover, so an entry opened from one had no description, author or status to show — which is half of why the old screen showed so little. It now asks the source on first open, the way the manga side always has.
+
 ### Other
 - Opening an entry no longer creates an empty download folder for it. Only downloading does.
 - The anime library reads its rows, their categories and its display settings in one place instead of two. Two readers arranging the same rows were harmless while both ran on the drawing thread and a race the moment one of them did not.
