@@ -481,3 +481,25 @@ mensajes de error que Mihon ya tiene, en vez de inventar un segundo camino para 
 
 De paso desaparece la entrada "Anime extension repositories" del menú de Extensions. Eran dos
 sitios para lo mismo, y uno de ellos le preguntaba al usuario algo que la app puede averiguar.
+
+## 2026-09-14 — Ajustes de aspecto de los subtítulos
+
+Origen: `aniyomi@4b5b90a3749b2c0504d4ffdd9416051d4730226c`
+
+| Fichero de Aniyomi | Destino en Zenyomi | Qué se tomó |
+|---|---|---|
+| `ui/player/settings/SubtitlePreferences.kt` | `ui/animeplayer/setting/SubtitlePreferences.kt` | El conjunto de ajustes y sus valores por defecto |
+| `ui/player/AniyomiMPVView.kt` (`setupSubtitlesOptions`) | `ui/animeplayer/SubtitleStyle.kt` | El mapeo ajuste → opción `sub-*` de mpv |
+| `ui/player/controls/components/panels/SubtitleSettings*.kt` | `ui/animeplayer/SubtitleSettingsPanel.kt` | La idea del panel en el reproductor; la UI está reescrita |
+
+Diferencias deliberadas:
+
+- Los porcentajes (escala, velocidad) se guardan como `Int`, no `Float`: un float
+  aparece en el backup como `1.2000000476837158`.
+- El mapeo a mpv vive en un único `toMpvOptions()` que se usa tanto al abrir el
+  fichero como en caliente, para que un ajuste no pueda funcionar solo en uno de
+  los dos momentos.
+- Aniyomi no resuelve el problema de la fuente: su librería mpv trae una sola cara
+  (`Droid Sans Fallback`), así que el selector de fuente no tenía nada que elegir.
+  Zenyomi copia seis caras de `/system/fonts` a la carpeta que lee libass.
+- La UI es propia, con los componentes de Mihon, no las tarjetas de Aniyomi.
