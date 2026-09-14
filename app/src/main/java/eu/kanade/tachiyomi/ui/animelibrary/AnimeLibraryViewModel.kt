@@ -24,6 +24,7 @@ import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
 import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.library.anime.LibraryAnime
 import tachiyomi.domain.library.service.LibraryPreferences
+import kotlin.random.Random
 
 /**
  * The anime library: what is in it, and how the user wants it shown.
@@ -102,7 +103,7 @@ class AnimeLibraryViewModel(
         preferences.displayMode.changes(),
         filterChanges(),
     ) { sort, ascending, display, filters ->
-        Settings(sort, ascending, display, filters)
+        Settings(sort, ascending, display, filters, randomSeed)
     }
 
     /** One entry at random from the tab that is open, for the menu item of that name. */
@@ -129,12 +130,13 @@ class AnimeLibraryViewModel(
     }
 
     private fun filterChanges() = combine(
+        preferences.filterDownloaded.changes(),
         preferences.filterUnseen.changes(),
         preferences.filterStarted.changes(),
         preferences.filterBookmarked.changes(),
         preferences.filterCompleted.changes(),
-    ) { unseen, started, bookmarked, completed ->
-        Filters(unseen, started, bookmarked, completed)
+    ) { downloaded, unseen, started, bookmarked, completed ->
+        Filters(downloaded, unseen, started, bookmarked, completed)
     }
 
     private fun State.rearranged(): State {
@@ -157,8 +159,12 @@ class AnimeLibraryViewModel(
         _state.update { it.copy(selectedCategory = categoryId).rearranged() }
     }
 
+    /** Re-rolled each time the random sort is chosen, so a second tap reshuffles. */
+    private var randomSeed: Int = Random.nextInt()
+
     /** Tapping the sort already in use flips its direction, which is what a second tap means. */
     fun setSort(sort: AnimeLibrarySort) {
+        if (sort == AnimeLibrarySort.RANDOM) randomSeed = Random.nextInt()
         if (preferences.sort.get() == sort) {
             preferences.sortAscending.set(!preferences.sortAscending.get())
         } else {
@@ -171,6 +177,7 @@ class AnimeLibraryViewModel(
 
     fun cycleFilter(filter: Filter) {
         val preference = when (filter) {
+            Filter.DOWNLOADED -> preferences.filterDownloaded
             Filter.UNSEEN -> preferences.filterUnseen
             Filter.STARTED -> preferences.filterStarted
             Filter.BOOKMARKED -> preferences.filterBookmarked
@@ -180,24 +187,28 @@ class AnimeLibraryViewModel(
     }
 
     fun clearFilters() {
+        preferences.filterDownloaded.set(TriState.DISABLED)
         preferences.filterUnseen.set(TriState.DISABLED)
         preferences.filterStarted.set(TriState.DISABLED)
         preferences.filterBookmarked.set(TriState.DISABLED)
         preferences.filterCompleted.set(TriState.DISABLED)
     }
 
-    enum class Filter { UNSEEN, STARTED, BOOKMARKED, COMPLETED }
+    enum class Filter { DOWNLOADED, UNSEEN, STARTED, BOOKMARKED, COMPLETED }
 
     data class Filters(
+        val downloaded: TriState = TriState.DISABLED,
         val unseen: TriState = TriState.DISABLED,
         val started: TriState = TriState.DISABLED,
         val bookmarked: TriState = TriState.DISABLED,
         val completed: TriState = TriState.DISABLED,
     ) {
         val any: Boolean
-            get() = listOf(unseen, started, bookmarked, completed).any { it != TriState.DISABLED }
+            get() = listOf(downloaded, unseen, started, bookmarked, completed)
+                .any { it != TriState.DISABLED }
 
         fun of(filter: Filter): TriState = when (filter) {
+            Filter.DOWNLOADED -> downloaded
             Filter.UNSEEN -> unseen
             Filter.STARTED -> started
             Filter.BOOKMARKED -> bookmarked
@@ -210,6 +221,8 @@ class AnimeLibraryViewModel(
         val sortAscending: Boolean = true,
         val displayMode: AnimeLibraryDisplayMode = AnimeLibraryDisplayMode.COMFORTABLE_GRID,
         val filters: Filters = Filters(),
+        /** Only meaningful for [AnimeLibrarySort.RANDOM]; see the field it comes from. */
+        val randomSeed: Int = 0,
     )
 
     /** Everything one emission of the library carries, named so the collector reads. */
@@ -303,6 +316,11 @@ class AnimeLibraryViewModel(
                 AnimeLibrarySort.TOTAL_EPISODES -> result.sortedByDescending { it.totalCount }
                 AnimeLibrarySort.LATEST_EPISODE -> result.sortedByDescending { it.latestUpload }
                 AnimeLibrarySort.DATE_ADDED -> result.sortedByDescending { it.anime.dateAdded }
+                AnimeLibrarySort.LAST_UPDATE_CHECK -> result.sortedByDescending { it.anime.lastUpdate }
+                AnimeLibrarySort.EPISODE_FETCH_DATE -> result.sortedByDescending { it.episodeFetchedAt }
+                // Seeded so the order holds while you scroll and changes when you pick it
+                // again, which is what Mihon's random does.
+                AnimeLibrarySort.RANDOM -> result.shuffled(Random(settings.randomSeed))
             }
 
             // Every sort but title reads naturally as "most first", so ascending reverses them

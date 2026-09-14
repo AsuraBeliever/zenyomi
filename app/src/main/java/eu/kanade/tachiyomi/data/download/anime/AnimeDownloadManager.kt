@@ -64,6 +64,14 @@ class AnimeDownloadManager(
     fun isDownloaded(anime: Anime, source: AnimeSource, episode: Episode): Boolean =
         downloader.isDownloaded(anime, source, episode)
 
+    /**
+     * How many episodes of this entry are on disk, for the library's download badge.
+     *
+     * One directory listing, like everything else on this path. Blocking I/O.
+     */
+    fun getDownloadCount(anime: Anime, source: AnimeSource): Int =
+        downloader.downloadedFileNames(anime, source).size
+
     /** The same question for a whole episode list, in one listing. Blocking I/O. */
     fun downloadedEpisodeIds(anime: Anime, source: AnimeSource, episodes: List<Episode>): Set<Long> =
         downloader.downloadedEpisodeIds(anime, source, episodes)

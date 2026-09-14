@@ -410,6 +410,8 @@
     <string name="label_manga_library">Manga</string>
     <string name="label_anime_categories">Anime categories</string>
     <string name="label_stats_both">Both</string>
+    <string name="sort_anime_last_update_check">Last update check</string>
+    <string name="sort_anime_episode_fetch_date">Episode fetch date</string>
     <string name="label_anime_library">Anime</string>
     <string name="label_anime">Anime</string>
     <string name="label_manga">Manga</string>

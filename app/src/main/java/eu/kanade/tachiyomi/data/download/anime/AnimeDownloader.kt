@@ -53,6 +53,10 @@ class AnimeDownloader(
     fun isDownloaded(anime: Anime, source: AnimeSource, episode: Episode): Boolean =
         provider.findEpisodeFile(anime, source, episode) != null
 
+    /** The base names of what is on disk for this entry. Blocking I/O. */
+    fun downloadedFileNames(anime: Anime, source: AnimeSource): Set<String> =
+        provider.downloadedFileNames(anime, source)
+
     /**
      * Which of [episodes] already have a file, from one listing of the entry's directory.
      *
