@@ -140,8 +140,15 @@ fun TrackInfoDialogHome(
     }
 }
 
+/*
+ * Zenyomi: internal rather than private so the anime tracking sheet can draw the same rows.
+ *
+ * Both take primitives already — a title, a status, a progress string, callbacks — so the anime
+ * side needs no copy of them, only its own adapter above. Two words to re-apply on an upstream
+ * merge, against three hundred lines of tracking UI drifting apart.
+ */
 @Composable
-private fun TrackInfoItem(
+internal fun TrackInfoItem(
     title: String,
     tracker: Tracker,
     status: StringResource?,
@@ -303,7 +310,7 @@ private fun TrackDetailsItem(
 }
 
 @Composable
-private fun TrackInfoItemEmpty(
+internal fun TrackInfoItemEmpty(
     tracker: Tracker,
     onNewSearch: () -> Unit,
 ) {

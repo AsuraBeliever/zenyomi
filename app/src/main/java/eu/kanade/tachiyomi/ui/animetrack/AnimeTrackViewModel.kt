@@ -14,7 +14,14 @@ import eu.kanade.domain.track.anime.model.toDomainTrack
 import eu.kanade.tachiyomi.data.track.AnimeTracker
 import eu.kanade.tachiyomi.data.track.Tracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
+import eu.kanade.tachiyomi.data.track.displayAnimeScore
 import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
+import eu.kanade.tachiyomi.data.track.setRemoteAnimeFinishDate
+import eu.kanade.tachiyomi.data.track.setRemoteAnimePrivate
+import eu.kanade.tachiyomi.data.track.setRemoteAnimeScore
+import eu.kanade.tachiyomi.data.track.setRemoteAnimeStartDate
+import eu.kanade.tachiyomi.data.track.setRemoteAnimeStatus
+import eu.kanade.tachiyomi.data.track.setRemoteLastEpisodeSeen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +29,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.episode.interactor.GetEpisodesByAnimeId
@@ -29,6 +37,7 @@ import tachiyomi.domain.track.anime.interactor.DeleteAnimeTrack
 import tachiyomi.domain.track.anime.interactor.GetAnimeTracks
 import tachiyomi.domain.track.anime.interactor.InsertAnimeTrack
 import tachiyomi.domain.track.anime.model.AnimeTrack
+import eu.kanade.tachiyomi.data.database.models.anime.AnimeTrack as DbAnimeTrack
 
 /**
  * Drives the tracking sheet for one anime.
@@ -57,10 +66,58 @@ class AnimeTrackViewModel(
         // launchIO: the query runs on the collecting thread, as in every other screen here.
         viewModelScope.launchIO {
             getTracks.subscribe(animeId).collect { tracks ->
-                _state.update { it.copy(loading = false, tracks = tracks) }
+                // One row per logged-in anime tracker, bound or not — the sheet offers the
+                // empty ones too, which is how you add a new binding, the same as on the
+                // manga side. The score string is formatted here rather than in the
+                // composable: it is the service's own scale and it is not free to compute.
+                val items = animeTrackers
+                    .filter { (it as Tracker).isLoggedIn }
+                    .map { tracker ->
+                        val bound = tracks.firstOrNull { it.trackerId == (tracker as Tracker).id }
+                        AnimeTrackItem(
+                            track = bound,
+                            tracker = tracker,
+                            displayScore = bound
+                                ?.let { (tracker as Tracker).displayAnimeScore(it.score) }
+                                .orEmpty(),
+                        )
+                    }
+                _state.update { it.copy(loading = false, tracks = tracks, items = items) }
             }
         }
         refreshLoggedIn()
+    }
+
+    private fun trackerOf(item: AnimeTrackItem) = item.tracker
+
+    /** Every edit follows the same shape: change the remote entry, then the local row. */
+    private fun edit(item: AnimeTrackItem, block: suspend (AnimeTracker, DbAnimeTrack) -> Unit) {
+        val track = item.track ?: return
+        viewModelScope.launchNonCancellable { block(trackerOf(item), track.toDbTrack()) }
+    }
+
+    fun setStatus(item: AnimeTrackItem, status: Long) = edit(item) { tracker, db ->
+        tracker.setRemoteAnimeStatus(db, status, insertTrack)
+    }
+
+    fun setEpisodesSeen(item: AnimeTrackItem, episodes: Int) = edit(item) { tracker, db ->
+        tracker.setRemoteLastEpisodeSeen(db, episodes, insertTrack)
+    }
+
+    fun setScore(item: AnimeTrackItem, score: String) = edit(item) { tracker, db ->
+        tracker.setRemoteAnimeScore(db, score, insertTrack)
+    }
+
+    fun setStartDate(item: AnimeTrackItem, epochMillis: Long) = edit(item) { tracker, db ->
+        tracker.setRemoteAnimeStartDate(db, epochMillis, insertTrack)
+    }
+
+    fun setFinishDate(item: AnimeTrackItem, epochMillis: Long) = edit(item) { tracker, db ->
+        tracker.setRemoteAnimeFinishDate(db, epochMillis, insertTrack)
+    }
+
+    fun togglePrivate(item: AnimeTrackItem) = edit(item) { tracker, db ->
+        tracker.setRemoteAnimePrivate(db, !db.private, insertTrack)
     }
 
     private fun refreshLoggedIn() {
@@ -123,6 +180,8 @@ class AnimeTrackViewModel(
     data class State(
         val loading: Boolean = true,
         val tracks: List<AnimeTrack> = emptyList(),
+        /** What the sheet draws: one row per logged-in service. */
+        val items: List<AnimeTrackItem> = emptyList(),
         val loggedIn: List<Tracker> = emptyList(),
         val searching: Boolean = false,
         val searchResults: List<AnimeTrackSearch> = emptyList(),
