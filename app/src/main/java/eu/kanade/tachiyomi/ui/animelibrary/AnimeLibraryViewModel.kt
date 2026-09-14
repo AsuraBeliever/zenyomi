@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import tachiyomi.core.common.preference.TriState
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.anime.interactor.GetLibraryAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
@@ -49,35 +49,48 @@ class AnimeLibraryViewModel(
     private var all: List<LibraryAnime> = emptyList()
 
     init {
-        viewModelScope.launch {
+        // One collector for the rows, their categories and the display settings, rather than
+        // one for the library and one for the settings.
+        //
+        // Both arrange the same [all] and both write the same state, so as two coroutines they
+        // were two writers racing over one field: whichever landed second decided what the
+        // grid showed, and when that was the settings one — reading an [all] the library
+        // collector had not filled yet — the answer was an empty library. On the main
+        // dispatcher they happened to serialise and it never showed. Combined, there is one
+        // writer and the question does not arise.
+        //
+        // launchIO: the query and the mapping of every library row happen on the collecting
+        // thread, and a large library makes that too much work for the main one.
+        viewModelScope.launchIO {
             // The library rows carry their category, so both have to arrive before the grid
             // can be drawn: a tab with no name is worse than a moment of loading.
             combine(
                 getLibraryAnime.subscribe(),
                 getAnimeCategories.subscribe(),
-            ) { library, categories -> library to categories }
-                .collect { (library, categories) ->
+                settingsChanges(),
+            ) { library, categories, settings -> Triple(library, categories, settings) }
+                .collect { (library, categories, settings) ->
                     all = library
                     _state.update { state ->
                         state
-                            .copy(isLoading = false, categories = categories.filterNot { it.hidden })
+                            .copy(
+                                isLoading = false,
+                                categories = categories.filterNot { it.hidden },
+                                settings = settings,
+                            )
                             .rearranged()
                     }
                 }
         }
+    }
 
-        viewModelScope.launch {
-            combine(
-                preferences.sort.changes(),
-                preferences.sortAscending.changes(),
-                preferences.displayMode.changes(),
-                filterChanges(),
-            ) { sort, ascending, display, filters ->
-                Settings(sort, ascending, display, filters)
-            }.collect { settings ->
-                _state.update { it.copy(settings = settings).rearranged() }
-            }
-        }
+    private fun settingsChanges() = combine(
+        preferences.sort.changes(),
+        preferences.sortAscending.changes(),
+        preferences.displayMode.changes(),
+        filterChanges(),
+    ) { sort, ascending, display, filters ->
+        Settings(sort, ascending, display, filters)
     }
 
     private fun filterChanges() = combine(

@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-09-12
+**Actualizado:** 2026-09-13
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
 **Última release:** v0.8.2, tag en `main`
 **¿Compila?** sí
@@ -41,7 +41,7 @@
 | Novedades e Historial de anime en la barra inferior | ✅ | las pestañas de Mihon intercambian entre manga y anime |
 | Baseline profile | ✅ | el generador cubre ahora las pantallas de anime; 13 → 1418 reglas de anime |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
-| Ficha de anime y episodios | ✅ | verificada con un fixture insertado en la BD del emulador |
+| Ficha de anime y episodios | ✅ | verificada con un fixture y con One Piece (1196 episodios) desde KickAssAnime |
 | Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
 | Errores de fuente legibles | ✅ | `AnimeSourceError`: nunca se enseña la excepción cruda; el mensaje propio de una extensión sí |
 | Estado medido de las extensiones | ✅ | arnés en debug + `anime-source-health.json`; ver `docs/EXTENSIONS_STATUS.md` |
@@ -51,11 +51,14 @@
 | Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque sigue sin poder dispararse por adb, ver TESTING.md |
 | PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
 | Resolución de vídeo desde la fuente | ✅ | verificada de punta a punta con la fuente local **y con extensiones HTTP reales** |
-| Reproducción de una extensión online | ✅ | KickAssAnime, AnimeOnsen y TioAnime se ven en el emulador; ver `EXTENSIONS_STATUS.md` |
+| Reproducción de una extensión online | ✅ | KickAssAnime, AnimeOnsen y TioAnime se ven **y se oyen** en el emulador; ver `EXTENSIONS_STATUS.md` |
 | Cabeceras HTTP hasta mpv | ✅ | se resolvían bien y se perdían camino del player; corregido y comprobado contra un servidor que las imprime |
 | Subtítulos y audio externos | ✅ | las pistas que la fuente entrega aparte se añaden a mpv y se seleccionan |
 | Idiomas preferidos | ✅ | la preferencia no casaba con las etiquetas de la fuente y no elegía nada; verificado: audio inglés + sub español solos |
 | Controles del player sin bloquear | ✅ | arrastrar la barra congelaba la app; ninguna llamada a libmpv queda ya en el hilo principal |
+| Foco de audio | ✅ | sin él Android 16 silencia la app entera; verificado en `dumpsys audio` (la app aparece en la pila de foco y no hay evento de *AudioHardening*) |
+| Series largas sin bloquear la app | ✅ | One Piece pasó de 440 fotogramas con 96% fuera de plazo y un GC cada 0,7 s a 37 fotogramas, 6 fuera de plazo y ningún GC |
+| Buffer de streams con audio aparte | ✅ | 30 s de lectura anticipada y sin *keepalive* imposible; 0 *underruns* frente a los continuos de antes |
 | Fallo de reproducción visible | ✅ | un mirror muerto dice por qué en vez de dejar la pantalla en negro |
 | Progreso de reproducción | ✅ | verificado en la BD: `seen=1`, `last_second_seen=9`, `total_seconds=10` |
 | Fuente local de anime | ✅ | reproduce vídeos de la carpeta `localanime` |

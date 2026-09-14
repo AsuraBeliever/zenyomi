@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.category.anime.interactor.CreateAnimeCategoryWithName
 import tachiyomi.domain.category.anime.interactor.DeleteAnimeCategory
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
@@ -47,7 +48,8 @@ class AnimeCategoryViewModel(
     val events: Flow<Event> = _events.receiveAsFlow()
 
     init {
-        viewModelScope.launch {
+        // launchIO: the query runs on the collecting thread, as in every other screen here.
+        viewModelScope.launchIO {
             getAnimeCategories.subscribe().collect { categories ->
                 _state.update {
                     it.copy(

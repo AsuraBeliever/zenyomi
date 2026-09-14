@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.domain.history.anime.interactor.GetAnimeHistory
 import tachiyomi.domain.history.anime.interactor.RemoveAnimeHistory
 import tachiyomi.domain.history.anime.model.AnimeHistoryWithRelations
@@ -35,7 +36,8 @@ class AnimeHistoryViewModel(
     val state: StateFlow<State> = _state.asStateFlow()
 
     init {
-        viewModelScope.launch {
+        // launchIO: reading and mapping the history rows happens on the collecting thread.
+        viewModelScope.launchIO {
             getAnimeHistory.subscribe("").collect { history ->
                 _state.update { it.copy(isLoading = false, history = history) }
             }

@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import logcat.LogPriority
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.episode.interactor.GetEpisodesByAnimeId
@@ -53,7 +54,8 @@ class AnimeTrackViewModel(
     val state: StateFlow<State> = _state.asStateFlow()
 
     init {
-        viewModelScope.launch {
+        // launchIO: the query runs on the collecting thread, as in every other screen here.
+        viewModelScope.launchIO {
             getTracks.subscribe(animeId).collect { tracks ->
                 _state.update { it.copy(loading = false, tracks = tracks) }
             }
