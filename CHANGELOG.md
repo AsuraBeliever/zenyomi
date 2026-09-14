@@ -10,6 +10,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.11.1] - 2026-09-14
+### Fixed
+- **The player's controls get out of the way.** The title, the track buttons, the seek bar and the clock sat on top of the episode for its whole runtime, and the only thing a tap on the picture did was pause — so the one gesture anyone would try to dismiss them with stopped the video instead, and they stayed. They now fade out after five seconds without a touch, and a tap on the picture toggles them rather than pausing; pausing is what the button in the middle is for. They stay while the episode is paused, while a finger is on the seek bar and while a track list is open, since in all three you are mid-something and looking straight at them. Pressing any control restarts the five seconds, and a double tap to jump brings them back, because where the episode landed is worth seeing.
+
 ## [0.11.0] - 2026-09-14
 ### Added
 - **The player's controls sit where every video app puts them.** Play/pause in the centre of the picture with a jump button either side, and the bottom bar left to the seek bar and the clock. The jump buttons show the actual step — the one from settings — instead of a painted-on 10.

@@ -1,6 +1,9 @@
 package eu.kanade.tachiyomi.ui.animeplayer
 
 import android.view.ViewGroup
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -111,6 +114,32 @@ fun AnimePlayerContent(
     // A stall after the episode is up. Distinct from `loading`, which covers opening it: this
     // one is a spinner over a picture that is still there, and it must not block anything.
     var buffering by remember { mutableStateOf(false) }
+    // The controls get out of the way, the way they do in every other video player. Nobody
+    // wants to watch an episode through a title bar and a seek bar.
+    var controlsVisible by remember { mutableStateOf(true) }
+    // Which track list is open, if any — held here rather than inside the picker so the
+    // countdown below can see it. A list that vanished mid-choice would be worse than one
+    // that overstays.
+    var openPicker by remember { mutableStateOf<TrackKind?>(null) }
+    // Bumped by anything the viewer does to a control, to start the countdown over. It is the
+    // change that matters, not the value: a button press has to restart a timer that is
+    // already running, and only a new key does that.
+    var interaction by remember { mutableIntStateOf(0) }
+
+    fun showControls() {
+        controlsVisible = true
+        interaction++
+    }
+
+    // They stay while the episode is paused, while a finger is on the seek bar and while a
+    // track list is open: in all three the viewer is mid-something and looking right at them.
+    LaunchedEffect(controlsVisible, interaction, paused, scrubbing != null, openPicker, loading) {
+        if (!controlsVisible || paused || scrubbing != null || openPicker != null || loading) {
+            return@LaunchedEffect
+        }
+        delay(CONTROLS_TIMEOUT_MS)
+        controlsVisible = false
+    }
 
     // The jump indicator is a flash, not a state: clear it shortly after it appears.
     LaunchedEffect(seekFeedback) {
@@ -247,8 +276,14 @@ fun AnimePlayerContent(
                                 val step = viewModel.preferences.seekStep.get()
                                 view.seekBy(if (forward) step else -step)
                                 seekFeedback = if (forward) "+$step s" else "-$step s"
+                                // Where the episode landed is worth seeing after a jump.
+                                showControls()
                             },
-                            onTap = { view.togglePause() },
+                            // Shows or hides the controls; it does not pause. A tap on the
+                            // picture pausing the episode is what made them impossible to get
+                            // rid of — the only way to dismiss them also stopped the video.
+                            // Pausing is what the button in the middle is for.
+                            onTap = { if (controlsVisible) controlsVisible = false else showControls() },
                         )
                     },
             )
@@ -304,10 +339,15 @@ fun AnimePlayerContent(
         // The three controls people reach for, where every video app puts them: the big one in
         // the middle, the two jumps either side of it. The bottom bar keeps the seek bar and
         // the clock, which is where those belong.
-        if (!inPictureInPicture && !loading && !buffering && playbackFailure == null) {
+        AnimatedVisibility(
+            visible = controlsVisible &&
+                !inPictureInPicture && !loading && !buffering && playbackFailure == null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center),
+        ) {
             val step = remember { viewModel.preferences.seekStep.get() }
             Row(
-                modifier = Modifier.align(Alignment.Center),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(40.dp),
             ) {
@@ -315,6 +355,7 @@ fun AnimePlayerContent(
                     onClick = {
                         view.seekBy(-step)
                         seekFeedback = "-$step s"
+                        interaction++
                     },
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = Color.Black.copy(alpha = 0.35f),
@@ -329,7 +370,10 @@ fun AnimePlayerContent(
                     )
                 }
                 FilledIconButton(
-                    onClick = { view.togglePause() },
+                    onClick = {
+                        view.togglePause()
+                        interaction++
+                    },
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = Color.Black.copy(alpha = 0.35f),
                         contentColor = Color.White,
@@ -352,6 +396,7 @@ fun AnimePlayerContent(
                     onClick = {
                         view.seekBy(step)
                         seekFeedback = "+$step s"
+                        interaction++
                     },
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = Color.Black.copy(alpha = 0.35f),
@@ -402,11 +447,19 @@ fun AnimePlayerContent(
             )
         }
 
-        if (!inPictureInPicture) {
+        // The title, the track pickers and the seek bar come and go together: they are the
+        // furniture, and a picture with half of it still on it is not a clear picture.
+        val chromeVisible = controlsVisible && !inPictureInPicture
+
+        AnimatedVisibility(
+            visible = chromeVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopStart),
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .align(Alignment.TopStart)
                     .systemBarsPadding()
                     .padding(16.dp),
             ) {
@@ -426,11 +479,17 @@ fun AnimePlayerContent(
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
+        }
 
+        AnimatedVisibility(
+            visible = chromeVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopEnd),
+        ) {
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
                     // The player draws edge to edge, so without this the track buttons sit
                     // under the status bar and the system swallows taps meant for them.
                     .systemBarsPadding()
@@ -439,11 +498,15 @@ fun AnimePlayerContent(
                 TrackPicker(
                     label = stringResource(ANMR.strings.player_track_audio),
                     tracks = tracks.filter { it.isAudio },
+                    expanded = openPicker == TrackKind.Audio,
+                    onExpandedChange = { open -> openPicker = if (open) TrackKind.Audio else null },
                     onSelect = view::selectAudio,
                 )
                 TrackPicker(
                     label = stringResource(ANMR.strings.player_track_subtitle),
                     tracks = tracks.filter { it.isSubtitle },
+                    expanded = openPicker == TrackKind.Subtitle,
+                    onExpandedChange = { open -> openPicker = if (open) TrackKind.Subtitle else null },
                     onSelect = view::selectSubtitle,
                 )
                 IconButton(onClick = { onEnterPictureInPicture(videoAspect) }) {
@@ -454,11 +517,17 @@ fun AnimePlayerContent(
                     )
                 }
             }
+        }
 
+        AnimatedVisibility(
+            visible = chromeVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .systemBarsPadding()
                     .padding(16.dp),
@@ -499,6 +568,17 @@ fun AnimePlayerContent(
 /** Used only until mpv reports the real one, which takes a moment after the file opens. */
 private const val DEFAULT_ASPECT = 16f / 9f
 
+/**
+ * How long the controls stay up with nobody touching them.
+ *
+ * Five seconds: long enough to read the clock and reach the button you came for, short enough
+ * that they are gone before the scene they are sitting on top of matters.
+ */
+private const val CONTROLS_TIMEOUT_MS = 5_000L
+
+/** Which of the two track lists is open. Only one is, and often neither. */
+private enum class TrackKind { Audio, Subtitle }
+
 private fun formatTime(seconds: Int): String {
     val h = seconds / 3600
     val m = (seconds % 3600) / 60
@@ -524,14 +604,15 @@ private fun formatTime(seconds: Int): String {
 private fun TrackPicker(
     label: String,
     tracks: List<ZenyomiMPVView.Track>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     onSelect: (Int?) -> Unit,
 ) {
     if (tracks.isEmpty()) return
-    var expanded by remember { mutableStateOf(false) }
     val nothingSelected = tracks.none { it.selected }
 
     Column(horizontalAlignment = Alignment.End) {
-        TextButton(onClick = { expanded = !expanded }) {
+        TextButton(onClick = { onExpandedChange(!expanded) }) {
             Text(label, color = Color.White)
         }
         if (expanded) {
@@ -545,12 +626,12 @@ private fun TrackPicker(
                         selected = nothingSelected,
                     ) {
                         onSelect(null)
-                        expanded = false
+                        onExpandedChange(false)
                     }
                     tracks.forEach { track ->
                         TrackRow(label = track.label, selected = track.selected) {
                             onSelect(track.id)
-                            expanded = false
+                            onExpandedChange(false)
                         }
                     }
                 }
