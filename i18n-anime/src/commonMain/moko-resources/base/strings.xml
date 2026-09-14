@@ -321,6 +321,26 @@
     <string name="player_sheets_subtitles_border_style_outline_and_shadow">Outline and shadow</string>
     <string name="player_sheets_subtitles_border_style_opaque_box">Opaque box</string>
     <string name="player_sheets_subtitles_border_style_background_box">Background box</string>
+    <!-- Subtitle appearance: the handful Aniyomi had no string for -->
+    <string name="player_sheets_sub_bold">Bold</string>
+    <string name="player_sheets_sub_italic">Italic</string>
+    <string name="player_sheets_sub_justify">Alignment</string>
+    <string name="player_sheets_sub_justify_auto">Auto</string>
+    <string name="player_sheets_sub_justify_left">Left</string>
+    <string name="player_sheets_sub_justify_center">Center</string>
+    <string name="player_sheets_sub_justify_right">Right</string>
+    <string name="player_sheets_sub_reset">Reset to defaults</string>
+    <string name="player_sheets_sub_override_ass_summary">Fansubbed tracks carry their own font and colours, and are left alone unless this is on</string>
+    <string name="player_sheets_sub_position_summary">100 sits the text on the bottom edge of the picture; lower lifts it</string>
+    <string name="player_sheets_sub_delay_summary">Negative is earlier, positive is later</string>
+    <string name="player_sheets_sub_speed_summary">For a track timed to a different cut</string>
+    <string name="pref_player_subtitle_appearance">Subtitle appearance</string>
+    <string name="pref_player_subtitle_appearance_summary">Size, font, colour, border and position</string>
+    <string name="pref_player_subtitle_colours_note">Text, border and background colours are set in the player itself, from the subtitles button — a colour is only worth judging against a picture.</string>
+    <string name="player_subtitle_settings">Subtitle settings</string>
+    <string name="player_sheets_sub_preview">The quick brown fox jumps over the lazy dog</string>
+    <string name="player_milliseconds">%1$d ms</string>
+    <string name="player_percent">%1$d%%</string>
     <!-- Sheets - Video filters -->
     <string name="player_sheets_filters_title">Filters</string>
     <string name="player_sheets_filters_brightness">Brightness</string>
