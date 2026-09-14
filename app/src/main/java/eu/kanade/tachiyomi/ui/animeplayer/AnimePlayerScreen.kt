@@ -451,50 +451,50 @@ fun AnimePlayerContent(
         // furniture, and a picture with half of it still on it is not a clear picture.
         val chromeVisible = controlsVisible && !inPictureInPicture
 
+        // One row across the top, not two anchored to opposite corners. As two, nothing told
+        // the title where the track buttons began: a long episode name simply kept going and
+        // ran underneath Audio, Subtitles and the picture-in-picture button. It is the
+        // buttons that get the room they need now, and the title takes what is left — which
+        // is also why this is a layout rule rather than a cap on characters. How much room
+        // there is depends on what is beside it: an episode with no separate audio track
+        // does not draw the Audio button at all, and the title is free to be longer.
         AnimatedVisibility(
             visible = chromeVisible,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopStart),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .systemBarsPadding()
-                    .padding(16.dp),
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = MaterialSymbols.Rounded.Close,
-                        contentDescription = stringResource(MR.strings.action_close),
-                        tint = Color.White,
-                    )
-                }
-                Text(
-                    text = title,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
-        }
-
-        AnimatedVisibility(
-            visible = chromeVisible,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopEnd),
+            modifier = Modifier.align(Alignment.TopCenter),
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier
+                    .fillMaxWidth()
                     // The player draws edge to edge, so without this the track buttons sit
                     // under the status bar and the system swallows taps meant for them.
                     .systemBarsPadding()
                     .padding(16.dp),
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Close,
+                            contentDescription = stringResource(MR.strings.action_close),
+                            tint = Color.White,
+                        )
+                    }
+                    Text(
+                        text = title,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(start = 8.dp),
+                    )
+                }
                 TrackPicker(
                     label = stringResource(ANMR.strings.player_track_audio),
                     tracks = tracks.filter { it.isAudio },
