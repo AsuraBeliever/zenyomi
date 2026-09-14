@@ -379,19 +379,70 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         addedSubtitles = subtitles.isNotEmpty()
 
         postToMpv {
-            // The source's label stays as the track title, because that is what the picker
-            // shows and "Español (Spain)" tells a person more than "spa" does. The language
-            // field gets the code, because that is what mpv matches the preference against.
-            subtitles.forEach { track ->
+            // Audio before subtitles, and the wanted subtitle before the rest.
+            //
+            // `sub-add` and `audio-add` are synchronous against mpv's core: each one opens the
+            // url, downloads it and parses it before the next runs. A source that offers
+            // sixteen subtitle languages — KickAssAnime does — therefore spent about four
+            // seconds on each, one after another, and the `audio-add` queued behind all of
+            // them did not land for thirty-seven seconds. That is the episode that starts
+            // playing and only finds its voice most of a minute later.
+            //
+            // Nothing here makes a single download faster. What changes is who waits for whom:
+            // the sound and the subtitle the viewer actually reads are first in the queue, and
+            // the fifteen languages nobody asked for load behind the episode rather than in
+            // front of it.
+            // `select` on the wanted one, `auto` on the rest.
+            //
+            // Every track used to be added with `auto`, which in mpv means "register it and
+            // choose nothing", so the choosing had to happen afterwards from the track-list
+            // observer. That reply goes through [postToMpv] — the back of this very queue —
+            // and each `sub-add` below holds the queue for as long as its download takes. The
+            // audio track existed two seconds in and was not selected for another twenty.
+            //
+            // `select` closes that: mpv selects the track the moment it registers it, with no
+            // round trip to make and nothing to race against.
+            audio.preferredFirst(preferredAudio).forEachIndexed { index, track ->
                 MPVLib.command(
-                    arrayOf("sub-add", track.url, "auto", track.lang, TrackLanguage.of(track.lang)),
+                    arrayOf(
+                        "audio-add",
+                        track.url,
+                        if (index == 0) "select" else "auto",
+                        track.lang,
+                        TrackLanguage.of(track.lang),
+                    ),
                 )
             }
-            audio.forEach { track ->
+            subtitles.preferredFirst(preferredSubtitles).forEachIndexed { index, track ->
                 MPVLib.command(
-                    arrayOf("audio-add", track.url, "auto", track.lang, TrackLanguage.of(track.lang)),
+                    // The source's label stays as the track title, because that is what the
+                    // picker shows and "Español (Spain)" tells a person more than "spa" does.
+                    // The language field gets the code, because that is what mpv matches the
+                    // preference against.
+                    arrayOf(
+                        "sub-add",
+                        track.url,
+                        if (index == 0) "select" else "auto",
+                        track.lang,
+                        TrackLanguage.of(track.lang),
+                    ),
                 )
             }
+        }
+    }
+
+    /**
+     * The viewer's languages first, in the order they prefer them, then everything else.
+     *
+     * Decides which track gets mpv's `select` flag, and so which one is playing when the
+     * episode starts. Stable within each group, so a source's own ordering survives for the
+     * languages the preference says nothing about.
+     */
+    private fun List<SourceTrack>.preferredFirst(preferred: List<String>): List<SourceTrack> {
+        if (preferred.isEmpty()) return this
+        return sortedBy { track ->
+            val rank = preferred.indexOf(TrackLanguage.of(track.lang))
+            if (rank < 0) preferred.size else rank
         }
     }
 
@@ -410,24 +461,40 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      * fighting the viewer.
      */
     private fun applyTrackPreferences() = postToMpv {
-        // Asked of the track list rather than of `sid`: that property is a choice — it
+        selectPreferredAudio()
+        selectPreferredSubtitle()
+    }
+
+    /**
+     * Chooses the audio track. Must run on the mpv thread.
+     *
+     * Split out so it can be called straight after `audio-add` rather than only from the
+     * track-list observer. The observer's call goes through [postToMpv], which is a queue
+     * behind every pending `sub-add` — so on a source with sixteen subtitle languages the
+     * track existed within three seconds and stayed unselected for another twenty-three,
+     * which sounds exactly like audio that loads after the video.
+     */
+    private fun selectPreferredAudio() {
+        // Asked of the track list rather than of `aid`: that property is a choice — it
         // holds "no" and "auto" as well as a number — so reading it as an integer always
         // fails, and the failure is indistinguishable from "nothing is selected".
-        val all = tracks()
-        val subtitleTracks = all.filter { it.isSubtitle }
-        val audioTracks = all.filter { it.isAudio }
+        val audioTracks = tracks().filter { it.isAudio }
+        // Nothing selected at all is the case this exists for: an external audio track that
+        // arrived after the file opened leaves mpv with no audio chosen.
+        val wantedAudio = audioTracks.preferring(preferredAudio)
+            ?: audioTracks.firstOrNull()?.takeIf { audioTracks.none { track -> track.selected } }
+        wantedAudio?.let { selectAudio(it.id) }
+    }
 
+    /** Chooses the subtitle track. Must run on the mpv thread. */
+    private fun selectPreferredSubtitle() {
+        val subtitleTracks = tracks().filter { it.isSubtitle }
         val wantedSubtitle = subtitleTracks.preferring(preferredSubtitles)
         when {
             wantedSubtitle != null -> selectSubtitle(wantedSubtitle.id)
             addedSubtitles && subtitleTracks.isNotEmpty() && subtitleTracks.none { it.selected } ->
                 subtitleTracks.firstOrNull()?.let { selectSubtitle(it.id) }
         }
-        // Nothing selected at all is the case this exists for: an external audio track that
-        // arrived after the file opened leaves mpv with no audio chosen.
-        val wantedAudio = audioTracks.preferring(preferredAudio)
-            ?: audioTracks.firstOrNull()?.takeIf { audioTracks.none { track -> track.selected } }
-        wantedAudio?.let { selectAudio(it.id) }
     }
 
     /**
