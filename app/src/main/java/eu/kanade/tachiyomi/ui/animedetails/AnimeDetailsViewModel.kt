@@ -23,6 +23,7 @@ import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -186,6 +187,21 @@ class AnimeDetailsViewModel(
     }
 
     /**
+     * The job behind [resolvingEpisodeId], kept so the viewer can call it off.
+     *
+     * Asking a source for a video is a network round trip that can take many seconds, and
+     * there was no way out of it but to wait or kill the app — see [cancelResolve].
+     */
+    private var resolveJob: Job? = null
+
+    /** Abandons the tap. The state clears, the screen unblocks, nothing is opened. */
+    fun cancelResolve() {
+        resolveJob?.cancel()
+        resolveJob = null
+        _state.update { it.copy(resolvingEpisodeId = null) }
+    }
+
+    /**
      * Asks the source for the episode's videos and hands back the one to open.
      *
      * Sources reach the network here, so this reports failure instead of throwing: an
@@ -194,8 +210,11 @@ class AnimeDetailsViewModel(
      */
     fun resolveVideo(episode: Episode, onResolved: (PlaybackRequest?) -> Unit) {
         val anime = state.value.anime ?: return onResolved(null)
+        // A second tap while one is in flight replaces it rather than stacking a second
+        // network call behind the first.
+        resolveJob?.cancel()
         _state.update { it.copy(resolvingEpisodeId = episode.id) }
-        viewModelScope.launch {
+        resolveJob = viewModelScope.launch {
             // A downloaded copy wins: it plays offline and costs the source nothing.
             // Off the main thread: looking for the file is a round trip to the storage
             // provider, and this runs from a tap.

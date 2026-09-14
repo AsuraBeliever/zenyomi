@@ -1,9 +1,15 @@
 package eu.kanade.tachiyomi.ui.animedetails
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallExtendedFloatingActionButton
@@ -26,8 +33,11 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -51,10 +61,12 @@ import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
 import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackScreen
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Close
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
@@ -132,6 +144,14 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
             if (request != null) {
                 context.startActivity(AnimePlayerActivity.newIntent(context, request, title, id))
             }
+        }
+
+        // A tap that opens an episode reaches the source over the network, which can take the
+        // better part of ten seconds. Until now that was a spinner on one row and an app that
+        // still accepted taps everywhere else, so it read as "nothing happened" and invited a
+        // second tap on something else.
+        if (state.resolvingEpisodeId != null) {
+            EpisodeLoadingOverlay(onCancel = viewModel::cancelResolve)
         }
 
         Scaffold(
@@ -409,4 +429,47 @@ private fun AnimeCategoryDialog(
             }
         },
     )
+}
+
+/**
+ * Covers the screen while an episode is being opened.
+ *
+ * It swallows taps on purpose: the point is that nothing else responds until the source has
+ * answered. Back and the close button both call it off, so a mistaken tap costs a second rather
+ * than the app.
+ */
+@Composable
+private fun EpisodeLoadingOverlay(onCancel: () -> Unit) {
+    BackHandler(onBack = onCancel)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(1f)
+            .background(Color.Black.copy(alpha = 0.6f))
+            // No ripple and no onClick: this exists to absorb taps, not to act on them.
+            .pointerInput(Unit) { detectTapGestures { } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(color = Color.White)
+            Text(
+                text = stringResource(ANMR.strings.player_loading),
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+            TextButton(onClick = onCancel, modifier = Modifier.padding(top = 8.dp)) {
+                Icon(
+                    imageVector = MaterialSymbols.Rounded.Close,
+                    contentDescription = null,
+                    tint = Color.White,
+                )
+                Text(
+                    text = stringResource(ANMR.strings.player_cancel_loading),
+                    color = Color.White,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        }
+    }
 }

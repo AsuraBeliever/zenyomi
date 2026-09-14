@@ -1,0 +1,7 @@
+Added: the player's controls moved to the middle of the picture — play/pause with a jump either side, showing the jump step you actually set. The track picker ticks what is playing and keeps up with tracks that arrive late. Opening an episode now covers the screen while it loads and lets you back out, instead of a spinner on one row with the rest of the screen still taking taps.
+
+Fixed: the buttons work from the first second. Pause, seek and track selection did nothing for the first half-minute and then did everything at once, because loading a subtitle blocks mpv and a source offering sixteen languages held it for about a minute. Only your preferred language loads up front; the rest are still in the picker.
+
+Fixed: the sound starts with the picture rather than thirty-seven seconds after it, and the language you pick stays picked.
+
+Fixed: the clock ticks once a second instead of jumping 30 to 34, and the seek bar stays where you drop it instead of snapping back. Seeking no longer locks the screen.
