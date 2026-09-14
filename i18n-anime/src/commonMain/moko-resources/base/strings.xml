@@ -409,6 +409,7 @@
     <string name="backup_settings_warning">Warning: Backing up settings will store your track passwords as well, do not share this backup file!</string>
     <string name="label_manga_library">Manga</string>
     <string name="label_anime_categories">Anime categories</string>
+    <string name="label_stats_both">Both</string>
     <string name="label_anime_library">Anime</string>
     <string name="label_anime">Anime</string>
     <string name="label_manga">Manga</string>

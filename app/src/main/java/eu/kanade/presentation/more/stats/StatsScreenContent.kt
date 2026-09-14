@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -37,18 +38,29 @@ fun StatsScreenContent(
         contentPadding = paddingValues,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
     ) {
-        item {
-            OverviewSection(state.overview)
-        }
-        item {
-            TitlesStats(state.titles)
-        }
-        item {
-            ChapterStats(state.chapters)
-        }
-        item {
-            TrackerStats(state.trackers)
-        }
+        mangaStatsSections(state)
+    }
+}
+
+/*
+ * Zenyomi: the sections lifted out of the LazyColumn above, unchanged.
+ *
+ * The Statistics screen can show the manga figures, the anime ones, or both, and "both" means
+ * one list carrying two sets of sections. That needs the rows without the list around them.
+ * StatsScreenContent still exists and still does exactly what it did.
+ */
+fun LazyListScope.mangaStatsSections(state: StatsScreenState.Success) {
+    item {
+        OverviewSection(state.overview)
+    }
+    item {
+        TitlesStats(state.titles)
+    }
+    item {
+        ChapterStats(state.chapters)
+    }
+    item {
+        TrackerStats(state.trackers)
     }
 }
 
