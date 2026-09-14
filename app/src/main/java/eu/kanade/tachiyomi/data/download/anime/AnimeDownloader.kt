@@ -53,6 +53,26 @@ class AnimeDownloader(
     fun isDownloaded(anime: Anime, source: AnimeSource, episode: Episode): Boolean =
         provider.findEpisodeFile(anime, source, episode) != null
 
+    /**
+     * Which of [episodes] already have a file, from one listing of the entry's directory.
+     *
+     * The per-episode question answered in bulk, because a screen asks it about every row it
+     * has: on an entry with a thousand episodes, asking one at a time is a thousand listings
+     * of the same directory. Blocking I/O, like the rest of this class.
+     */
+    fun downloadedEpisodeIds(
+        anime: Anime,
+        source: AnimeSource,
+        episodes: List<Episode>,
+    ): Set<Long> {
+        if (episodes.isEmpty()) return emptySet()
+        val names = provider.downloadedFileNames(anime, source)
+        if (names.isEmpty()) return emptySet()
+        return episodes
+            .filter { provider.episodeFileName(it) in names }
+            .mapTo(mutableSetOf()) { it.id }
+    }
+
     fun downloadedUri(anime: Anime, source: AnimeSource, episode: Episode): String? =
         provider.findEpisodeFile(anime, source, episode)?.uri?.toString()
 

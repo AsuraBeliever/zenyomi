@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -80,6 +81,10 @@ fun AnimePlayerContent(
     var tracks by remember { mutableStateOf(emptyList<ZenyomiMPVView.Track>()) }
     var seekFeedback by remember { mutableStateOf<String?>(null) }
     var playbackFailure by remember { mutableStateOf<String?>(null) }
+    // Starts true: from the tap until mpv shows a frame there is nothing on screen, and on a
+    // stream that takes eight seconds to open, a bare black rectangle reads as a player that
+    // is not going to work.
+    var loading by remember { mutableStateOf(true) }
     // Read from the polling loop rather than from the button that needs it: asking mpv costs
     // two blocking property reads, and the button is on the main thread.
     var videoAspect by remember { mutableFloatStateOf(DEFAULT_ASPECT) }
@@ -105,6 +110,7 @@ fun AnimePlayerContent(
             // mpv keeps the window open on a file it could not read, so without this a dead
             // mirror looks exactly like one that is still loading — forever.
             view.onPlaybackError = { reason -> playbackFailure = reason.orEmpty() }
+            view.onLoadingChanged = { loading = it }
             view.initialise(
                 configDir = File(context.filesDir, "mpv"),
                 audioLanguages = viewModel.preferences.preferredAudioLanguages.get(),
@@ -124,6 +130,7 @@ fun AnimePlayerContent(
         }
         onDispose {
             view.onPlaybackError = null
+            view.onLoadingChanged = null
             if (playerState.loaded) {
                 // Uses what the polling loop already read instead of asking mpv again:
                 // mpv_get_property waits on mpv's own event loop, and onDispose runs on the
@@ -199,6 +206,15 @@ fun AnimePlayerContent(
                             onTap = { view.togglePause() },
                         )
                     },
+            )
+        }
+
+        // Not shown once something has gone wrong: a spinner over an error message says the
+        // player is still trying, and it is not.
+        if (loading && playbackFailure == null && !inPictureInPicture) {
+            CircularProgressIndicator(
+                color = Color.White,
+                modifier = Modifier.align(Alignment.Center),
             )
         }
 

@@ -64,6 +64,10 @@ class AnimeDownloadManager(
     fun isDownloaded(anime: Anime, source: AnimeSource, episode: Episode): Boolean =
         downloader.isDownloaded(anime, source, episode)
 
+    /** The same question for a whole episode list, in one listing. Blocking I/O. */
+    fun downloadedEpisodeIds(anime: Anime, source: AnimeSource, episodes: List<Episode>): Set<Long> =
+        downloader.downloadedEpisodeIds(anime, source, episodes)
+
     fun downloadedUri(anime: Anime, source: AnimeSource, episode: Episode): String? =
         downloader.downloadedUri(anime, source, episode)
 

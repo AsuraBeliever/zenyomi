@@ -6,7 +6,7 @@ cumplimiento y se revisa **antes de cada release**.
 ## Checklist que pide Mihon
 
 Mihon publica sus requisitos para forks en su `CONTRIBUTING.md`, sección *Forks*.
-Estado a 2026-09-12 (revisado antes de la v0.8.2):
+Estado a 2026-09-13 (revisado antes de la v0.9.0):
 
 | Requisito de Mihon | Estado | Cómo se cumple |
 |---|---|---|

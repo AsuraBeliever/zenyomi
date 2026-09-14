@@ -10,6 +10,23 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.9.0] - 2026-09-13
+### Fixed
+- **A series with a thousand episodes no longer bogs the app down.** Opening One Piece from KickAssAnime — 1196 episodes — made the app slow to a crawl and stop responding, while a short series felt fine. Three things scaled with the episode count and all three ran on the thread that draws the screen: the entry asked the storage framework whether each episode was already downloaded, one episode at a time, which is around three thousand round trips before a frame could be drawn; every read of the episode list rebuilt all eleven hundred rows and decoded a json column for each; and syncing an entry woke that read three times over. The download check is now one directory listing, the reads happen off the drawing thread, and repeat reads are dropped. Measured on the same first open of One Piece: the app went from 440 frames to draw, 96% of them missing their deadline and a garbage collection every 0.7 seconds, to 37 frames, 6 missed and no collection at all.
+- **Episodes have sound.** Android 16 mutes media from an app that has not claimed the audio output, and the player never claimed it — so the platform silenced every episode while the player itself reported healthy playback, which is why it looked right and sounded like nothing. It now asks for the output, which also means an episode pauses for a phone call and picks up afterwards instead of playing on underneath it.
+- **Sound on streams that split the audio from the video.** KickAssAnime serves the video and the audio as separate streams and spreads their segments over a rotating set of hosts. The player kept one second of either in hand and tried to reuse a connection that could never be reused, so it wasted a failed request on every segment and ran dry as soon as it started — underrunning, restarting and drifting out of sync for the whole episode. It now holds thirty seconds, waits for three before starting, and opens each segment once.
+
+- **The player says it is loading.** Opening an episode showed a black screen with nothing on it until the first frame arrived — around four seconds from a standing start on KickAssAnime, and about twelve when resuming part-way through, because the stream has to be reopened and sought. A black rectangle is also what a player that is never going to work looks like, so there was no way to tell the two apart. There is a spinner now, and it comes back if the stream stalls mid-episode.
+
+### Changed
+- **An anime entry looks like a manga entry.** They were two different screens: the manga one has a blurred backdrop behind the cover, the author and status beside it, a row of actions, an expandable description with genre chips, and chapter rows that show what you have read; the anime one had a cover, a title and a bare list. Same app, so it is now the same screen — the same pieces, in the same order, drawn by the same code wherever Mihon's components could be used as they are. The anime entry gains the action row, the description and genres, filter and sort for its episodes, batch download, the play button that continues where you left off, and episode rows that dim once watched.
+- **An anime entry fetches its own details.** A catalogue hands back only a title and a cover, so an entry opened from one had no description, author or status to show — which is half of why the old screen showed so little. It now asks the source on first open, the way the manga side always has.
+
+### Other
+- Opening an entry no longer creates an empty download folder for it. Only downloading does.
+- The anime library reads its rows, their categories and its display settings in one place instead of two. Two readers arranging the same rows were harmless while both ran on the drawing thread and a race the moment one of them did not.
+- The player logs mpv's verbose output in debug builds only. At that level mpv narrates every stream segment it opens, which is four lines per segment crossing into the app to be written out while the episode plays.
+
 ## [0.8.2] - 2026-09-12
 ### Fixed
 - **Video from an online source plays.** Until now only a local file did: the headers a source resolves a video with were dropped on the way to the player, so every host that checks where a request came from answered with a refusal and the screen stayed black. Verified with KickAssAnime, AnimeOnsen and TioAnime.
