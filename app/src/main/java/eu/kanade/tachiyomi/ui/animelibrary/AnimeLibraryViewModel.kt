@@ -71,8 +71,11 @@ class AnimeLibraryViewModel(
                 getLibraryAnime.subscribe(),
                 getAnimeCategories.subscribe(),
                 settingsChanges(),
-            ) { library, categories, settings -> Triple(library, categories, settings) }
-                .collect { (library, categories, settings) ->
+                categoryTabsChanges(),
+            ) { library, categories, settings, categoryTabs ->
+                Arrival(library, categories, settings, categoryTabs)
+            }
+                .collect { (library, categories, settings, categoryTabs) ->
                     all = library
                     _state.update { state ->
                         state
@@ -80,6 +83,12 @@ class AnimeLibraryViewModel(
                                 isLoading = false,
                                 categories = categories.filterNot { it.hidden },
                                 settings = settings,
+                                categoryTabs = categoryTabs,
+                                // Land on the first tab, and follow the categories if the one
+                                // that was open has since been deleted.
+                                selectedCategory = state.selectedCategory
+                                    ?.takeIf { open -> categories.any { it.id == open } }
+                                    ?: categories.minByOrNull { it.order }?.id,
                             )
                             .rearranged()
                     }
@@ -95,6 +104,12 @@ class AnimeLibraryViewModel(
     ) { sort, ascending, display, filters ->
         Settings(sort, ascending, display, filters)
     }
+
+    /** One entry at random from the tab that is open, for the menu item of that name. */
+    fun randomInCurrentCategory(): LibraryAnime? = state.value.library.randomOrNull()
+
+    /** The shared *Category tabs* switch, so both libraries hide their tabs together. */
+    private fun categoryTabsChanges() = libraryPreferences.categoryTabs.changes()
 
     /**
      * How many columns the grid gets, from the very preference the manga library reads.
@@ -197,18 +212,30 @@ class AnimeLibraryViewModel(
         val filters: Filters = Filters(),
     )
 
+    /** Everything one emission of the library carries, named so the collector reads. */
+    private data class Arrival(
+        val library: List<LibraryAnime>,
+        val categories: List<AnimeCategory>,
+        val settings: Settings,
+        val categoryTabs: Boolean,
+    )
+
     data class State(
         val isLoading: Boolean = true,
         val library: List<LibraryAnime> = emptyList(),
         val searchQuery: String? = null,
         val settings: Settings = Settings(),
         val categories: List<AnimeCategory> = emptyList(),
-        /** null means "everything", which is the only sensible landing tab. */
+        /**
+         * Which category tab is open. Null until the categories arrive, and then the first
+         * one — there is no "everything" tab any more, the same as on the manga side.
+         */
         val selectedCategory: Long? = null,
         /**
          * How many entries each tab holds. Counted over the whole library rather than over
          * [library], which is already narrowed to the open tab, the search and the filters.
          */
+        val categoryTabs: Boolean = true,
         val countByCategory: Map<Long, Int> = emptyMap(),
         /**
          * Distinct anime across every category, which is not the sum of [countByCategory]: an
@@ -236,10 +263,15 @@ class AnimeLibraryViewModel(
                 selectedCategory != null
 
         /**
-         * Tabs only earn their space once something has been filed. A library with nothing but
-         * the default category would show a single tab that does nothing.
+         * Mihon's rule, character for character, including the preference.
+         *
+         * It used to be "any category that is not the default", which ignored the
+         * *Category tabs* setting entirely: turning tabs off hid them on the manga library and
+         * left them on the anime one. The setting is shared, so both halves now obey it.
          */
-        val showCategoryTabs: Boolean get() = categories.any { !it.isSystemCategory }
+        val showCategoryTabs: Boolean
+            get() = categoryTabs && categories.isNotEmpty() &&
+                (categories.size > 1 || !categories.first().isSystemCategory)
 
         internal fun arrange(
             source: List<LibraryAnime>,

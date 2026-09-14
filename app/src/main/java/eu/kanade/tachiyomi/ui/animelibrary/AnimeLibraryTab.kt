@@ -155,64 +155,38 @@ data object AnimeLibraryTab : Tab {
                             )
                         }
                         DropdownMenu(expanded = overflow, onDismissRequest = { overflow = false }) {
+                            // The manga library's three, in its order. What used to live here —
+                            // the updates, history and extensions shortcuts — is reachable from
+                            // the bottom bar and from Browse; categories and statistics moved to
+                            // More, beside the manga ones.
                             DropdownMenuItem(
                                 text = { Text(stringResource(MR.strings.action_update_library)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.Rounded.Refresh, contentDescription = null)
-                                },
                                 onClick = {
                                     overflow = false
                                     onClickRefresh()
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(ANMR.strings.label_anime_updates)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.Rounded.NewReleases, contentDescription = null)
-                                },
+                                text = { Text(stringResource(MR.strings.action_update_category)) },
                                 onClick = {
                                     overflow = false
-                                    navigator.push(AnimeUpdatesScreen())
+                                    onClickRefresh()
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text(stringResource(MR.strings.categories)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.AutoMirroredRounded.Label, contentDescription = null)
-                                },
+                                text = { Text(stringResource(MR.strings.action_open_random_manga)) },
                                 onClick = {
                                     overflow = false
-                                    navigator.push(AnimeCategoryScreen())
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(ANMR.strings.label_anime_history)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.Rounded.Schedule, contentDescription = null)
-                                },
-                                onClick = {
-                                    overflow = false
-                                    navigator.push(AnimeHistoryScreen())
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(ANMR.strings.label_anime_statistics)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.Rounded.QueryStats, contentDescription = null)
-                                },
-                                onClick = {
-                                    overflow = false
-                                    navigator.push(AnimeStatsScreen())
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(ANMR.strings.label_anime_extensions)) },
-                                leadingIcon = {
-                                    Icon(MaterialSymbols.Rounded.Explore, contentDescription = null)
-                                },
-                                onClick = {
-                                    overflow = false
-                                    navigator.push(AnimeBrowseScreen())
+                                    val random = viewModel.randomInCurrentCategory()
+                                    if (random != null) {
+                                        navigator.push(AnimeDetailsScreen(random.id))
+                                    } else {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                context.stringResource(MR.strings.information_no_entries_found),
+                                            )
+                                        }
+                                    }
                                 },
                             )
                         }
@@ -297,24 +271,26 @@ private fun AnimeCategoryTabs(
     counts: Map<Long, Int>,
     totalCount: Int,
     selected: Long?,
-    onSelect: (Long?) -> Unit,
+    onSelect: (Long) -> Unit,
 ) {
-    val tabs = listOf<AnimeCategory?>(null) + categories.sortedBy { it.order }
-    val selectedIndex = tabs.indexOfFirst { it?.id == selected }.coerceAtLeast(0)
+    // One tab per category and no "All", because Mihon has no "All": every entry is filed
+    // somewhere, in the default category if nowhere else, so the tabs already cover the
+    // library between them and an extra tab only showed the same covers again.
+    val tabs = categories.sortedBy { it.order }
+    val selectedIndex = tabs.indexOfFirst { it.id == selected }.coerceAtLeast(0)
 
     PrimaryScrollableTabRow(selectedTabIndex = selectedIndex, edgePadding = 0.dp) {
         tabs.forEachIndexed { index, category ->
-            // Not the sum of the others: an anime in two categories is one anime.
-            val count = if (category == null) totalCount else counts[category.id] ?: 0
+            val count = counts[category.id] ?: 0
             Tab(
                 selected = index == selectedIndex,
-                onClick = { onSelect(category?.id) },
+                onClick = { onSelect(category.id) },
                 text = {
                     Text(
-                        text = when {
-                            category == null -> stringResource(ANMR.strings.anime_category_all)
-                            category.isSystemCategory -> stringResource(MR.strings.default_category)
-                            else -> category.name
+                        text = if (category.isSystemCategory) {
+                            stringResource(MR.strings.default_category)
+                        } else {
+                            category.name
                         } + "  $count",
                         maxLines = 1,
                     )
