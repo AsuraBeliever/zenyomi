@@ -159,6 +159,9 @@ estadísticas y backup. El módulo `i18n-anime` existe y está poblado.
 
 ## Incidencias resueltas
 
+- **2026-09-14 — la v0.11.1 pasó el CI y el `Release` a la primera.** Sin rastro del
+  fallo de JitPack de la tanda anterior, que era suyo y no nuestro.
+
 - **2026-09-14 — JitPack tumbó el job FOSS de la v0.11.0.** Tercera vez, misma firma:
   `Could not find flexible-adapter:c8013533`. Se comprobó que JitPack servía el `.pom`
   (con `packaging aar`) y el `.aar` antes de tocar nada; relanzar el job bastó. El
