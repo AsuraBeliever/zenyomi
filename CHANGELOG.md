@@ -11,6 +11,9 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Other` - for technical stuff.
 
 ## [Unreleased]
+### Fixed
+- **The audio of a KickAssAnime episode plays on a real phone.** It played on the emulator and not on the client's Galaxy, from the same build and the same episode. The audio of those episodes is a separate stream that mpv has to open over the network, and the app asked for the track list the instant it requested that stream — before mpv had opened it. The track arrived a moment later, unselected, and the episode ran with video, subtitles and silence. Whether the race was won depended on how fast the stream opened, which is why one machine played it and the other did not. Choosing the track is now driven by mpv reporting its track list changed, so it no longer depends on timing.
+
 ### Changed
 - **The Library tab is called Manga.** With an Anime tab beside it, "Library" read as though the anime was not part of the library. Only the tab and its title change — backup, settings and notifications still say Library, because there the word means the whole thing.
 - **The rest of the anime screens look like their manga counterparts.** A source's catalogue drew its own grid at its own proportions; it now draws Mihon's, badge and all, so an anime you already have is marked the same way a manga is. The history gained the day headers, the search, and the row Mihon uses — cover, title, "Ep. 3 - 5 minutes ago", and the favourite and delete buttons — and tapping one resumes the episode instead of going to the entry screen. Updates gained the same row, the standard date headers, and long-press selection with Mihon's action bar behind it.

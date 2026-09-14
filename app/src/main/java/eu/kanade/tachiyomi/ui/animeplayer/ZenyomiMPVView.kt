@@ -52,6 +52,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     private var externalSubtitles: List<SourceTrack> = emptyList()
     private var externalAudio: List<SourceTrack> = emptyList()
 
+    /** Whether the source offered subtitles, for the "pick one rather than none" rule. */
+    private var addedSubtitles = false
+
     /** The viewer's language preferences, as codes, in order. */
     private var preferredAudio: List<String> = emptyList()
     private var preferredSubtitles: List<String> = emptyList()
@@ -229,6 +232,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             // Set while mpv has stopped to refill, which is the difference between "stalled"
             // and "paused" and the only one of the two worth showing a spinner for.
             MPVLib.observeProperty("paused-for-cache", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
+            // How the language preferences get applied to tracks that arrive late; see
+            // applyTrackPreferences.
+            MPVLib.observeProperty("track-list/count", MPVLib.mpvFormat.MPV_FORMAT_INT64)
         }
 
         addObserver(
@@ -236,7 +242,10 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
                 onFileLoaded = {
                     lastHttpError = null
                     addExternalTracks()
+                    // The file's own tracks are here now even if the external ones are not.
+                    applyTrackPreferences()
                 },
+                onTrackListChanged = { applyTrackPreferences() },
                 onFailure = { reason ->
                     restarting = false
                     bufferingForCache = false
@@ -332,6 +341,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         if (subtitles.isEmpty() && audio.isEmpty()) return
         externalSubtitles = emptyList()
         externalAudio = emptyList()
+        // Remembered so the selection below knows whether a subtitle was offered at all,
+        // long after these lists have been cleared.
+        addedSubtitles = subtitles.isNotEmpty()
 
         postToMpv {
             // The source's label stays as the track title, because that is what the picker
@@ -347,21 +359,42 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
                     arrayOf("audio-add", track.url, "auto", track.lang, TrackLanguage.of(track.lang)),
                 )
             }
-            // Asked of the track list rather than of `sid`: that property is a choice — it
-            // holds "no" and "auto" as well as a number — so reading it as an integer always
-            // fails, and the failure is indistinguishable from "nothing is selected".
-            val all = tracks()
-            val subtitleTracks = all.filter { it.isSubtitle }
-            val audioTracks = all.filter { it.isAudio }
-
-            val wantedSubtitle = subtitleTracks.preferring(preferredSubtitles)
-            when {
-                wantedSubtitle != null -> selectSubtitle(wantedSubtitle.id)
-                subtitles.isNotEmpty() && subtitleTracks.none { it.selected } ->
-                    subtitleTracks.firstOrNull()?.let { selectSubtitle(it.id) }
-            }
-            audioTracks.preferring(preferredAudio)?.let { selectAudio(it.id) }
         }
+    }
+
+    /**
+     * Picks the tracks the viewer asked for, every time mpv's track list changes.
+     *
+     * This used to run once, immediately after issuing `audio-add`, and read the track list
+     * straight back. That is a race: `audio-add` on a network url returns long before mpv has
+     * opened the stream and registered the track, so the list came back without it and nothing
+     * was selected. On the emulator the stream happened to open in time and the audio played;
+     * on a real phone it did not, and the episode ran with a track present but unselected —
+     * video, subtitles, and silence, with nothing in the log that looked like a failure.
+     *
+     * So the trigger is mpv itself. Every selection here is idempotent: [preferring] returns
+     * null for a track that is already chosen, so re-running on each change settles rather than
+     * fighting the viewer.
+     */
+    private fun applyTrackPreferences() = postToMpv {
+        // Asked of the track list rather than of `sid`: that property is a choice — it
+        // holds "no" and "auto" as well as a number — so reading it as an integer always
+        // fails, and the failure is indistinguishable from "nothing is selected".
+        val all = tracks()
+        val subtitleTracks = all.filter { it.isSubtitle }
+        val audioTracks = all.filter { it.isAudio }
+
+        val wantedSubtitle = subtitleTracks.preferring(preferredSubtitles)
+        when {
+            wantedSubtitle != null -> selectSubtitle(wantedSubtitle.id)
+            addedSubtitles && subtitleTracks.isNotEmpty() && subtitleTracks.none { it.selected } ->
+                subtitleTracks.firstOrNull()?.let { selectSubtitle(it.id) }
+        }
+        // Nothing selected at all is the case this exists for: an external audio track that
+        // arrived after the file opened leaves mpv with no audio chosen.
+        val wantedAudio = audioTracks.preferring(preferredAudio)
+            ?: audioTracks.firstOrNull()?.takeIf { audioTracks.none { track -> track.selected } }
+        wantedAudio?.let { selectAudio(it.id) }
     }
 
     /**
@@ -679,6 +712,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         private val onFailure: (String?) -> Unit,
         private val onRestarting: (Boolean) -> Unit,
         private val onBuffering: (Boolean) -> Unit,
+        private val onTrackListChanged: () -> Unit,
     ) : MPVLib.EventObserver {
         override fun event(eventId: Int) {
             when (eventId) {
@@ -696,7 +730,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         override fun efEvent(error: String?) = onFailure(error)
 
         override fun eventProperty(property: String) = Unit
-        override fun eventProperty(property: String, value: Long) = Unit
+        override fun eventProperty(property: String, value: Long) {
+            if (property == "track-list/count") onTrackListChanged()
+        }
         override fun eventProperty(property: String, value: Boolean) {
             if (property == "paused-for-cache") onBuffering(value)
         }
