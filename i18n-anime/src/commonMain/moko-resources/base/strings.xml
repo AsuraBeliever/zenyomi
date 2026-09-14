@@ -410,6 +410,11 @@
     <string name="label_manga_library">Manga</string>
     <string name="label_anime_categories">Anime categories</string>
     <string name="label_stats_both">Both</string>
+    <string name="player_seek_backward">Jump back</string>
+    <string name="player_seek_forward">Jump forward</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_loading">Loading episode…</string>
+    <string name="player_cancel_loading">Stop loading</string>
     <string name="sort_anime_last_update_check">Last update check</string>
     <string name="sort_anime_episode_fetch_date">Episode fetch date</string>
     <string name="label_anime_library">Anime</string>

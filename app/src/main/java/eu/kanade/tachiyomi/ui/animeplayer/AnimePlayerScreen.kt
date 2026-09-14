@@ -4,17 +4,21 @@ import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -32,8 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -44,9 +50,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Check
 import mihon.icons.materialsymbols.rounded.Close
 import mihon.icons.materialsymbols.rounded.FlipToBack
+import mihon.icons.materialsymbols.rounded.KeyboardArrowLeft
+import mihon.icons.materialsymbols.rounded.KeyboardArrowRight
 import mihon.icons.materialsymbols.rounded.Pause
+import mihon.icons.materialsymbols.roundedfilled.Pause
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
@@ -164,8 +174,10 @@ fun AnimePlayerContent(
             // Written as it plays, so a process death mid-episode still leaves a
             // usable resume point rather than losing the whole session.
             if (!paused) viewModel.saveProgress(position, duration)
-            // Tracks only exist once the file is open, and can change on a new file.
-            if (tracks.isEmpty() && duration > 0) {
+            // Re-read rather than read once. The selection is no longer only the viewer's to
+            // change — an external audio track that arrives late is chosen by the player
+            // itself — and a picker showing a stale tick is worse than one showing none.
+            if (duration > 0) {
                 tracks = withContext(Dispatchers.IO) { view.tracks() }
             }
             delay(2000)
@@ -191,7 +203,10 @@ fun AnimePlayerContent(
             modifier = Modifier.fillMaxSize(),
         )
 
-        if (!inPictureInPicture) {
+        // Not while loading: the tap that pauses and the double tap that seeks both act on a
+        // video that has not started, so the viewer's first tap used to pause it before the
+        // first frame.
+        if (!inPictureInPicture && !loading) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -212,10 +227,105 @@ fun AnimePlayerContent(
         // Not shown once something has gone wrong: a spinner over an error message says the
         // player is still trying, and it is not.
         if (loading && playbackFailure == null && !inPictureInPicture) {
-            CircularProgressIndicator(
-                color = Color.White,
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Absorbs taps rather than acting on them, so nothing else underneath
+                    // responds until there is something to respond about.
+                    .pointerInput(Unit) { detectTapGestures { } },
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Color.White)
+                    Text(
+                        text = stringResource(ANMR.strings.player_loading),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                    // The way out. A stream that never opens otherwise leaves the viewer on a
+                    // black screen with a spinner and nothing to press.
+                    TextButton(onClick = onBack, modifier = Modifier.padding(top = 8.dp)) {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Close,
+                            contentDescription = null,
+                            tint = Color.White,
+                        )
+                        Text(
+                            text = stringResource(ANMR.strings.player_cancel_loading),
+                            color = Color.White,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        // The three controls people reach for, where every video app puts them: the big one in
+        // the middle, the two jumps either side of it. The bottom bar keeps the seek bar and
+        // the clock, which is where those belong.
+        if (!inPictureInPicture && !loading && playbackFailure == null) {
+            val step = remember { viewModel.preferences.seekStep.get() }
+            Row(
                 modifier = Modifier.align(Alignment.Center),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(40.dp),
+            ) {
+                FilledIconButton(
+                    onClick = {
+                        view.seekBy(-step)
+                        seekFeedback = "-$step s"
+                    },
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color.Black.copy(alpha = 0.35f),
+                        contentColor = Color.White,
+                    ),
+                    modifier = Modifier.size(56.dp),
+                ) {
+                    SeekLabel(
+                        icon = MaterialSymbols.Rounded.KeyboardArrowLeft,
+                        seconds = step,
+                        contentDescription = stringResource(ANMR.strings.player_seek_backward),
+                    )
+                }
+                FilledIconButton(
+                    onClick = { view.togglePause() },
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color.Black.copy(alpha = 0.35f),
+                        contentColor = Color.White,
+                    ),
+                    modifier = Modifier.size(80.dp),
+                ) {
+                    Icon(
+                        imageVector = if (paused) {
+                            MaterialSymbols.RoundedFilled.PlayArrow
+                        } else {
+                            MaterialSymbols.RoundedFilled.Pause
+                        },
+                        contentDescription = stringResource(
+                            if (paused) MR.strings.action_resume else ANMR.strings.player_pause,
+                        ),
+                        modifier = Modifier.size(44.dp),
+                    )
+                }
+                FilledIconButton(
+                    onClick = {
+                        view.seekBy(step)
+                        seekFeedback = "+$step s"
+                    },
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Color.Black.copy(alpha = 0.35f),
+                        contentColor = Color.White,
+                    ),
+                    modifier = Modifier.size(56.dp),
+                ) {
+                    SeekLabel(
+                        icon = MaterialSymbols.Rounded.KeyboardArrowRight,
+                        seconds = step,
+                        contentDescription = stringResource(ANMR.strings.player_seek_forward),
+                    )
+                }
+            }
         }
 
         if (playbackFailure != null && !inPictureInPicture) {
@@ -313,17 +423,6 @@ fun AnimePlayerContent(
                     .systemBarsPadding()
                     .padding(16.dp),
             ) {
-                IconButton(onClick = { view.togglePause() }) {
-                    Icon(
-                        imageVector = if (paused) {
-                            MaterialSymbols.RoundedFilled.PlayArrow
-                        } else {
-                            MaterialSymbols.Rounded.Pause
-                        },
-                        contentDescription = null,
-                        tint = Color.White,
-                    )
-                }
                 Text(
                     formatTime(scrubbing?.toInt() ?: position),
                     color = Color.White,
@@ -389,6 +488,7 @@ private fun TrackPicker(
 ) {
     if (tracks.isEmpty()) return
     var expanded by remember { mutableStateOf(false) }
+    val nothingSelected = tracks.none { it.selected }
 
     Column(horizontalAlignment = Alignment.End) {
         TextButton(onClick = { expanded = !expanded }) {
@@ -400,12 +500,15 @@ private fun TrackPicker(
                 shape = RoundedCornerShape(8.dp),
             ) {
                 Column {
-                    TrackRow(stringResource(MR.strings.off)) {
+                    TrackRow(
+                        label = stringResource(MR.strings.off),
+                        selected = nothingSelected,
+                    ) {
                         onSelect(null)
                         expanded = false
                     }
                     tracks.forEach { track ->
-                        TrackRow(track.label) {
+                        TrackRow(label = track.label, selected = track.selected) {
                             onSelect(track.id)
                             expanded = false
                         }
@@ -417,12 +520,45 @@ private fun TrackPicker(
 }
 
 @Composable
-private fun TrackRow(text: String, onClick: () -> Unit) {
-    Text(
-        text = text,
-        color = Color.White,
+private fun TrackRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-    )
+    ) {
+        // A tick in a fixed-width slot rather than only on the chosen row: without the space
+        // reserved, picking a different track shifts every label sideways.
+        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+            if (selected) {
+                Icon(
+                    imageVector = MaterialSymbols.Rounded.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        Text(
+            text = label,
+            color = Color.White,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.padding(start = 8.dp),
+        )
+    }
+}
+
+/**
+ * A jump button: which way, and how far.
+ *
+ * The number is drawn rather than baked into the icon because the step is a setting — it can be
+ * 5 seconds or 90 — and a "10" stamped on the glyph would be a lie the moment someone changed
+ * it. The icon set carries no replay-10 or forward-10 symbol anyway.
+ */
+@Composable
+private fun SeekLabel(icon: ImageVector, seconds: Int, contentDescription: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(imageVector = icon, contentDescription = contentDescription, modifier = Modifier.size(20.dp))
+        Text(text = "$seconds", style = MaterialTheme.typography.labelSmall)
+    }
 }
