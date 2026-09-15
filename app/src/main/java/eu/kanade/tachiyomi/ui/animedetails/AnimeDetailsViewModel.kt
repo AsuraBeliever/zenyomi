@@ -15,6 +15,7 @@ import eu.kanade.domain.anime.model.copyFrom
 import eu.kanade.domain.anime.model.downloadedFilter
 import eu.kanade.domain.anime.model.episodesFiltered
 import eu.kanade.domain.anime.model.toSAnime
+import eu.kanade.domain.track.anime.interactor.TrackEpisode
 import eu.kanade.presentation.anime.AnimeSourceHealth
 import eu.kanade.presentation.anime.NoVideoFoundException
 import eu.kanade.presentation.anime.SourceOutdatedException
@@ -44,8 +45,11 @@ import tachiyomi.domain.anime.model.toAnimeUpdate
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
 import tachiyomi.domain.category.anime.interactor.SetAnimeCategories
 import tachiyomi.domain.category.anime.model.AnimeCategory
+import tachiyomi.domain.episode.interactor.UpdateEpisode
 import tachiyomi.domain.episode.model.Episode
+import tachiyomi.domain.episode.model.EpisodeUpdate
 import tachiyomi.domain.history.anime.interactor.GetNextEpisodes
+import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.source.anime.model.StubAnimeSource
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import tachiyomi.domain.track.anime.interactor.GetAnimeTracks
@@ -74,6 +78,9 @@ class AnimeDetailsViewModel(
     private val getAnimeTracks: GetAnimeTracks,
     private val getNextEpisodes: GetNextEpisodes,
     private val setAnimeEpisodeFlags: SetAnimeEpisodeFlags,
+    private val updateEpisode: UpdateEpisode,
+    private val trackEpisode: TrackEpisode,
+    private val libraryPreferences: LibraryPreferences,
 ) : ViewModel() {
 
     private var episodesFetched = false
@@ -480,6 +487,198 @@ class AnimeDetailsViewModel(
         }
     }
 
+    /**
+     * Vuelve a pedirle a la fuente los detalles y los episodios, que es lo que hace tirar hacia
+     * abajo en la ficha de un manga. La sincronizacion inicial solo corre una vez por pantalla;
+     * esto es la forma de pedirla de nuevo a proposito.
+     */
+    fun refreshFromSource() {
+        val anime = state.value.anime ?: return
+        if (state.value.isRefreshingData) return
+        _state.update { it.copy(isRefreshingData = true) }
+        viewModelScope.launchIO {
+            try {
+                sourceManager.get(anime.source)?.let { source ->
+                    fetchDetails(anime, source)
+                    runCatching { syncEpisodesWithSource.await(anime, source) }
+                        .onFailure { error ->
+                            logcat(LogPriority.WARN, error) { "Could not refresh episodes" }
+                            _state.update { it.copy(episodeError = error) }
+                        }
+                        .onSuccess { _state.update { it.copy(episodeError = null) } }
+                }
+            } finally {
+                _state.update { it.copy(isRefreshingData = false) }
+            }
+        }
+    }
+
+    // Las mismas preferencias que la lista de capitulos: el gesto significa lo mismo a los dos
+    // lados, asi que se lee el ajuste de Mihon en vez de inventar uno propio que el usuario
+    // tendria que configurar dos veces.
+    val episodeSwipeStartAction = libraryPreferences.swipeToEndAction.get()
+    val episodeSwipeEndAction = libraryPreferences.swipeToStartAction.get()
+
+    fun swipeEpisode(episode: Episode, action: LibraryPreferences.ChapterSwipeAction) {
+        when (action) {
+            LibraryPreferences.ChapterSwipeAction.ToggleRead ->
+                markEpisodesSeen(listOf(episode), !episode.seen)
+            LibraryPreferences.ChapterSwipeAction.ToggleBookmark ->
+                bookmarkEpisodes(listOf(episode), !episode.bookmark)
+            LibraryPreferences.ChapterSwipeAction.Download -> {
+                // El estado de descarga ya vive en el estado de la pantalla, asi que se pregunta
+                // ahi en vez de volver a consultar al gestor.
+                if (episode.id in
+                    state.value.downloadedEpisodeIds
+                ) {
+                    deleteDownload(episode)
+                } else {
+                    downloadEpisode(episode)
+                }
+            }
+            LibraryPreferences.ChapterSwipeAction.Disabled -> Unit
+        }
+    }
+
+    // ---- Seleccion de episodios ---------------------------------------------------------
+    //
+    // El mismo modelo que Mihon usa con los capitulos, rango incluido: mantener pulsado sobre
+    // un episodio alejado del ultimo selecciona todo lo que hay entre medias, que es de donde
+    // sale el "marcar de aqui para abajo" sin tener que ir uno a uno. Las posiciones viven
+    // fuera del estado a proposito; son un detalle de como se calcula, no algo que se dibuje.
+
+    private val selectedPositions = arrayOf(-1, -1)
+
+    fun toggleSelection(episode: Episode, selected: Boolean, fromLongPress: Boolean = false) {
+        _state.update { state ->
+            val visible = state.visibleEpisodes
+            val index = visible.indexOfFirst { it.id == episode.id }
+            if (index < 0) return@update state
+
+            val already = episode.id in state.selectedEpisodeIds
+            if (already == selected) return@update state
+
+            val ids = state.selectedEpisodeIds.toMutableSet()
+            val firstSelection = ids.isEmpty()
+            if (selected) ids.add(episode.id) else ids.remove(episode.id)
+
+            if (selected && fromLongPress) {
+                if (firstSelection) {
+                    selectedPositions[0] = index
+                    selectedPositions[1] = index
+                } else {
+                    val range = when {
+                        index < selectedPositions[0] -> (index + 1)..<selectedPositions[0]
+                        index > selectedPositions[1] -> (selectedPositions[1] + 1)..<index
+                        else -> IntRange.EMPTY
+                    }
+                    if (index < selectedPositions[0]) selectedPositions[0] = index
+                    if (index > selectedPositions[1]) selectedPositions[1] = index
+                    range.forEach { ids.add(visible[it].id) }
+                }
+            } else if (!fromLongPress) {
+                if (selected) {
+                    if (index < selectedPositions[0]) selectedPositions[0] = index
+                    if (index > selectedPositions[1]) selectedPositions[1] = index
+                } else {
+                    if (index == selectedPositions[0]) {
+                        selectedPositions[0] = visible.indexOfFirst { it.id in ids }
+                    }
+                    if (index == selectedPositions[1]) {
+                        selectedPositions[1] = visible.indexOfLast { it.id in ids }
+                    }
+                }
+            }
+
+            state.copy(selectedEpisodeIds = ids)
+        }
+    }
+
+    fun toggleAllSelection(selected: Boolean) {
+        selectedPositions[0] = -1
+        selectedPositions[1] = -1
+        _state.update { state ->
+            state.copy(
+                selectedEpisodeIds = if (selected) state.visibleEpisodes.map { it.id }.toSet() else emptySet(),
+            )
+        }
+    }
+
+    fun invertSelection() {
+        selectedPositions[0] = -1
+        selectedPositions[1] = -1
+        _state.update { state ->
+            state.copy(
+                selectedEpisodeIds = state.visibleEpisodes
+                    .filterNot { it.id in state.selectedEpisodeIds }
+                    .map { it.id }
+                    .toSet(),
+            )
+        }
+    }
+
+    fun clearSelection() {
+        selectedPositions[0] = -1
+        selectedPositions[1] = -1
+        _state.update { it.copy(selectedEpisodeIds = emptySet()) }
+    }
+
+    // ---- Acciones en lote ---------------------------------------------------------------
+
+    /**
+     * Marca visto o no visto de una vez.
+     *
+     * Al desmarcar se pone el segundo a cero: un episodio "no visto" que conserva la posicion
+     * volveria a abrirse por la mitad, que no es lo que nadie espera de desmarcarlo. Y solo se
+     * avisa a los trackers al marcar visto, porque solo avanzan.
+     */
+    fun markEpisodesSeen(episodes: List<Episode>, seen: Boolean) {
+        if (episodes.isEmpty()) return
+        clearSelection()
+        viewModelScope.launchIO {
+            updateEpisode.awaitAll(
+                episodes.map {
+                    EpisodeUpdate(id = it.id, seen = seen, lastSecondSeen = if (seen) it.lastSecondSeen else 0L)
+                },
+            )
+            if (!seen) return@launchIO
+            episodes.maxByOrNull { it.episodeNumber }?.let { trackEpisode.await(animeId, it.episodeNumber) }
+        }
+    }
+
+    /**
+     * Marca vistos todos los episodios anteriores al señalado, en el orden en que se ven, no en
+     * el que estan puestos en pantalla: con la lista invertida "anterior" sigue queriendo decir
+     * el episodio de antes, no el de arriba.
+     */
+    fun markPreviousAsSeen(pointer: Episode) {
+        val episodes = state.value.episodes
+        val previous = episodes.filter { it.episodeNumber < pointer.episodeNumber && !it.seen }
+        markEpisodesSeen(previous, seen = true)
+    }
+
+    fun bookmarkEpisodes(episodes: List<Episode>, bookmarked: Boolean) {
+        if (episodes.isEmpty()) return
+        clearSelection()
+        viewModelScope.launchIO {
+            updateEpisode.awaitAll(episodes.map { EpisodeUpdate(id = it.id, bookmark = bookmarked) })
+        }
+    }
+
+    /** Encola varios. Nombre distinto de [downloadEpisodes] a proposito: esa toma una accion
+     *  de la barra superior, y dos sobrecargas harian ambigua la referencia `::downloadEpisodes`. */
+    fun enqueueDownloads(episodes: List<Episode>) {
+        if (episodes.isEmpty()) return
+        clearSelection()
+        episodes.forEach { downloadEpisode(it) }
+    }
+
+    fun deleteEpisodeDownloads(episodes: List<Episode>) {
+        if (episodes.isEmpty()) return
+        clearSelection()
+        episodes.forEach { deleteDownload(it) }
+    }
+
     fun toggleFavorite() {
         val anime = state.value.anime ?: return
         viewModelScope.launch {
@@ -506,7 +705,13 @@ class AnimeDetailsViewModel(
         /** Null when the source is not an http one, which hides the WebView button. */
         val webViewUrl: String? = null,
         val trackingCount: Int = 0,
-    )
+        /** Los episodios marcados ahora mismo. Vacio = no hay modo seleccion. */
+        val selectedEpisodeIds: Set<Long> = emptySet(),
+        /** Tirando hacia abajo para volver a pedirle los episodios a la fuente. */
+        val isRefreshingData: Boolean = false,
+    ) {
+        val selectedEpisodes: List<Episode> get() = visibleEpisodes.filter { it.id in selectedEpisodeIds }
+    }
 
     /** The categories that exist, and the ones this anime is currently filed under. */
     data class CategoryDialog(
