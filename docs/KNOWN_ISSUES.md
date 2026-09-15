@@ -27,7 +27,7 @@ El toque simple (pausa) **sí** está verificado: no necesita ventana temporal.
 
 ---
 
-## 2. Vincular un tracker a una cuenta real — ✅ MyAnimeList y AniList (2026-09-15), ⚠️ Kitsu
+## 2. Vincular un tracker a una cuenta real — ✅ VERIFICADO (2026-09-15)
 
 Ya no es una incógnita. El cliente facilitó una cuenta de pruebas y se probó de punta a punta
 contra los servicios reales, comprobando el resultado **en sus servidores**, no en la app:
@@ -57,24 +57,34 @@ otro proyecto al conceder acceso a su cuenta. Corregirlo es registrar aplicacion
 ambos servicios, lo cual requiere que el cliente cree esas apps. Mientras tanto queda anotado
 aquí para que no se descubra por sorpresa.
 
-### Kitsu sigue sin cuenta (2026-09-15)
+### Kitsu — ✅ VERIFICADO (2026-09-15)
 
-Kitsu ya hace anime en el código, pero aquí no hay cuenta con la que escribir en una
-biblioteca, así que **vincular, empujar progreso y desvincular no constan como probados**. Lo
-que sí está comprobado, enviando a `kitsu.app/api/graphql` exactamente las consultas que
-construye la app: buscar por título, buscar por id, buscar por *slug* y pedir la entrada de
-biblioteca de un anime. Las cuatro responden sin errores de esquema y los DTO decodifican esas
-respuestas reales.
+El cliente facilitó una cuenta y se probó igual que las otras dos: conduciendo la app en el
+emulador y comprobando cada paso **en los servidores de Kitsu**, no en la pantalla.
 
-**Cómo probarlo.** Kitsu no usa OAuth: se entra con correo y contraseña desde
-*Ajustes → Tracking → Kitsu*. Con la sesión abierta, en la ficha de un anime, el icono de
-tracking debe ofrecer Kitsu; buscar la serie, vincularla, y ver un episodio. Después, en
-kitsu.app, la entrada debe aparecer en la biblioteca **de anime** (no en la de manga) con el
-progreso y el estado *Watching*.
+| Paso | Resultado |
+|---|---|
+| Iniciar sesión (correo y contraseña, sin OAuth) | ✅ Ajustes muestra el nombre de la cuenta |
+| Leer el sistema de puntuación de la cuenta | ✅ la cuenta usa *simple*, y el selector ofrece caritas |
+| Buscar un anime desde la app | ✅ «Sousou no Frieren, 28 episodios» y sus secuelas |
+| Vincular | ✅ entrada creada, estado *Plan to watch* |
+| Empujar progreso | ✅ 3 / 28, y el estado pasa solo a *Watching* |
+| Empujar puntuación | ✅ 😊 → `rating: 14` en la escala 2-20 de Kitsu |
+| Marcar como privado | ✅ `private: true` |
+| Desvincular | ✅ la entrada desaparece de Kitsu |
 
-Lo que no se puede dar por bueno hasta entonces son las tres mutaciones —crear, actualizar y
-borrar la entrada—, que es justo donde un `mediaType` mal puesto mandaría la serie a la
-biblioteca equivocada.
+Y lo que de verdad importaba comprobar: la entrada aparece en la biblioteca **de anime**
+(`mediaType: ANIME`) y la de manga se queda vacía.
+
+```
+anime library: [{"id":"108338122","progress":3,"status":"CURRENT","rating":14,"private":true}]
+manga library: []
+```
+
+**La prueba encontró un fallo**, ya corregido: borrar una entrada que ya no existe devuelve un
+500 cuyo cuerpo trae `"data":{}` —un objeto vacío, no `null`—, y la deserialización reventaba
+antes de llegar a mirar el error, de modo que el perdón previsto para ese caso nunca se
+ejecutaba. Está contado en `PORTING_LOG.md`.
 
 ---
 

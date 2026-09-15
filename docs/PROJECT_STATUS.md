@@ -72,7 +72,7 @@
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
 | Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
-| Trackers de anime | ⚠️ | MyAnimeList y AniList verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación y progreso, comprobado en los servidores de cada servicio. **Kitsu implementado el 2026-09-15**: las consultas de lectura están comprobadas contra la API real, escribir en la biblioteca no — hace falta una cuenta de Kitsu |
+| Trackers de anime | ✅ | MyAnimeList, AniList y **Kitsu** verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación, progreso, puntuación, privado y desvincular, comprobado en los servidores de cada servicio. En Kitsu además se comprobó que la entrada cae en la biblioteca de anime y no en la de manga |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
 | Aspecto de los subtítulos | ✅ | paridad con Aniyomi: fuente, tamaño, colores, borde, sombra, posición, retardo y velocidad, en el reproductor y en Ajustes |
 | Estadísticas de anime | ✅ | contadores verificados uno a uno contra la BD |

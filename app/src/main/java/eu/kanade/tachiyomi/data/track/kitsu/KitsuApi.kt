@@ -770,7 +770,7 @@ class KitsuApi(
                     throw Exception("Encountered unexpected error while trying to $action anime")
                 }
 
-                parsed.data.libraryEntry.entry
+                parsed.data.libraryEntry?.entry
             }
         }
     }
