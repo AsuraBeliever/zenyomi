@@ -27,7 +27,7 @@ El toque simple (pausa) **sí** está verificado: no necesita ventana temporal.
 
 ---
 
-## 2. Vincular un tracker a una cuenta real — ✅ VERIFICADO (2026-09-15)
+## 2. Vincular un tracker a una cuenta real — ✅ MyAnimeList y AniList (2026-09-15), ⚠️ Kitsu
 
 Ya no es una incógnita. El cliente facilitó una cuenta de pruebas y se probó de punta a punta
 contra los servicios reales, comprobando el resultado **en sus servidores**, no en la app:
@@ -56,6 +56,25 @@ cliente OAuth son los de Mihon, heredados del fork. Funciona, pero un usuario ve
 otro proyecto al conceder acceso a su cuenta. Corregirlo es registrar aplicaciones propias en
 ambos servicios, lo cual requiere que el cliente cree esas apps. Mientras tanto queda anotado
 aquí para que no se descubra por sorpresa.
+
+### Kitsu sigue sin cuenta (2026-09-15)
+
+Kitsu ya hace anime en el código, pero aquí no hay cuenta con la que escribir en una
+biblioteca, así que **vincular, empujar progreso y desvincular no constan como probados**. Lo
+que sí está comprobado, enviando a `kitsu.app/api/graphql` exactamente las consultas que
+construye la app: buscar por título, buscar por id, buscar por *slug* y pedir la entrada de
+biblioteca de un anime. Las cuatro responden sin errores de esquema y los DTO decodifican esas
+respuestas reales.
+
+**Cómo probarlo.** Kitsu no usa OAuth: se entra con correo y contraseña desde
+*Ajustes → Tracking → Kitsu*. Con la sesión abierta, en la ficha de un anime, el icono de
+tracking debe ofrecer Kitsu; buscar la serie, vincularla, y ver un episodio. Después, en
+kitsu.app, la entrada debe aparecer en la biblioteca **de anime** (no en la de manga) con el
+progreso y el estado *Watching*.
+
+Lo que no se puede dar por bueno hasta entonces son las tres mutaciones —crear, actualizar y
+borrar la entrada—, que es justo donde un `mediaType` mal puesto mandaría la serie a la
+biblioteca equivocada.
 
 ---
 

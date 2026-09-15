@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-09-14
+**Actualizado:** 2026-09-15
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
 **Última release:** v0.12.0, tag en `main`
 **¿Compila?** sí
@@ -21,7 +21,7 @@
 | Releases 0.5.x – 0.12.0 | ✅ | hasta `v0.12.0`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.12.0, 2026-09-14 |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
-| Trackers de anime (código) | ✅ | MyAnimeList y AniList |
+| Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
 | PiP del player | ✅ | Activity propia |
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
 | Dominio anime | ✅ | 33 ficheros: modelos, repositorios e interactors; compila y corre |
@@ -72,7 +72,7 @@
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
 | Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
-| Trackers de anime | ✅ | MyAnimeList y AniList verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación y progreso, comprobado en los servidores de cada servicio |
+| Trackers de anime | ⚠️ | MyAnimeList y AniList verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación y progreso, comprobado en los servidores de cada servicio. **Kitsu implementado el 2026-09-15**: las consultas de lectura están comprobadas contra la API real, escribir en la biblioteca no — hace falta una cuenta de Kitsu |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
 | Aspecto de los subtítulos | ✅ | paridad con Aniyomi: fuente, tamaño, colores, borde, sombra, posición, retardo y velocidad, en el reproductor y en Ajustes |
 | Estadísticas de anime | ✅ | contadores verificados uno a uno contra la BD |
