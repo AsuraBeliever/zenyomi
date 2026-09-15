@@ -59,7 +59,6 @@ import mihon.icons.materialsymbols.rounded.Close
 import mihon.icons.materialsymbols.rounded.Edit
 import mihon.icons.materialsymbols.rounded.Save
 import mihon.icons.materialsymbols.rounded.Share
-import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
@@ -67,7 +66,12 @@ import tachiyomi.presentation.core.util.clickableNoIndication
 
 @Composable
 fun MangaCoverDialog(
-    manga: Manga,
+    /**
+     * Lo que coil tiene que pintar. Es `Any` y no `Manga` porque dentro solo se usa como
+     * `.data(...)`: asi la ficha de anime abre este mismo dialogo con su propia portada en vez
+     * de tener una copia igual con otro tipo en la firma.
+     */
+    cover: Any,
     isCustomCover: Boolean,
     snackbarHostState: SnackbarHostState,
     onShareClick: () -> Unit,
@@ -166,7 +170,7 @@ fun MangaCoverDialog(
                 val state = ImageViewerState()
 
                 ImageRequest.Builder(view.context)
-                    .data(manga)
+                    .data(cover)
                     .size(Size.ORIGINAL)
                     .memoryCachePolicy(CachePolicy.DISABLED)
                     .newDecoder(true)
@@ -215,7 +219,7 @@ fun MangaCoverDialog(
                     },
                     update = { view ->
                         val request = ImageRequest.Builder(view.context)
-                            .data(manga)
+                            .data(cover)
                             .size(Size.ORIGINAL)
                             .memoryCachePolicy(CachePolicy.DISABLED)
                             .target { image ->

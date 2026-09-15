@@ -51,7 +51,6 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.anime.components.AnimeInfoBox
-import eu.kanade.presentation.anime.components.AnimeToolbar
 import eu.kanade.presentation.anime.components.EpisodeHeader
 import eu.kanade.presentation.anime.components.EpisodeSettingsDialog
 import eu.kanade.presentation.components.NavigatorAdaptiveSheet
@@ -61,10 +60,14 @@ import eu.kanade.presentation.manga.components.ExpandableMangaDescription
 import eu.kanade.presentation.manga.components.MangaActionRow
 import eu.kanade.presentation.manga.components.MangaBottomActionMenu
 import eu.kanade.presentation.manga.components.MangaChapterListItem
+import eu.kanade.presentation.manga.components.MangaCoverDialog
+import eu.kanade.presentation.manga.components.MangaToolbar
+import eu.kanade.presentation.manga.components.SetIntervalDialog
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
+import eu.kanade.tachiyomi.ui.animedetails.notes.AnimeNotesScreen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
 import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
 import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackScreen
@@ -75,6 +78,7 @@ import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Close
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.domain.anime.model.Anime
+import tachiyomi.domain.anime.model.asAnimeCover
 import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
@@ -147,6 +151,32 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
             )
         }
 
+        if (state.coverDialog && anime != null) {
+            // El mismo dialogo de Mihon, ahora que solo pide un modelo de coil.
+            // Sin "editar portada": las portadas personalizadas viven en un CoverCache tipado
+            // a Manga, y falsear el boton seria peor que no tenerlo.
+            MangaCoverDialog(
+                cover = anime.asAnimeCover(),
+                isCustomCover = false,
+                snackbarHostState = viewModel.coverSnackbarHostState,
+                onShareClick = { viewModel.shareCover(context) },
+                onSaveClick = { viewModel.saveCover(context) },
+                onEditClick = null,
+                onDismissRequest = viewModel::dismissCover,
+            )
+        }
+
+        if (state.setIntervalDialog && anime != null) {
+            // El mismo dialogo de Mihon: solo toma un entero y una fecha.
+            SetIntervalDialog(
+                interval = anime.fetchInterval,
+                nextUpdate = anime.expectedNextUpdate
+                    ?.let { Instant.fromEpochMilliseconds(it.toEpochMilli()) },
+                onDismissRequest = viewModel::dismissSetIntervalDialog,
+                onValueChanged = viewModel::setFetchInterval,
+            )
+        }
+
         if (state.episodeSettingsDialog) {
             EpisodeSettingsDialog(
                 onDismissRequest = viewModel::dismissEpisodeSettings,
@@ -203,7 +233,8 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                     if (!isFirstItemVisible || isFirstItemScrolled) 1f else 0f,
                     label = "Top Bar Background",
                 )
-                AnimeToolbar(
+                // Ahora que el anime tiene notas, esta es literalmente la barra de Mihon.
+                MangaToolbar(
                     title = anime?.title.orEmpty(),
                     hasFilters = state.filterActive,
                     navigateUp = navigator::pop,
@@ -227,6 +258,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                     onCancelActionMode = viewModel::clearSelection,
                     onSelectAll = { viewModel.toggleAllSelection(true) },
                     onInvertSelection = viewModel::invertSelection,
+                    onClickEditNotes = { navigator.push(AnimeNotesScreen(anime!!)) },
                     titleAlphaProvider = { titleAlpha },
                     backgroundAlphaProvider = { backgroundAlpha },
                 )
@@ -321,7 +353,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                             anime = anime,
                             sourceName = state.sourceName,
                             isStubSource = state.isStubSource,
-                            onCoverClick = {},
+                            onCoverClick = viewModel::showCover,
                             doSearch = { query, _ ->
                                 navigator.push(AnimeGlobalSearchScreen(initialQuery = query))
                             },
@@ -347,7 +379,8 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                             onTrackingClicked = { showTrackSheet = true },
                             // Anime has no per-entry update interval of its own yet, so the
                             // countdown is shown but not editable.
-                            onEditIntervalClicked = null,
+                            onEditIntervalClicked = viewModel::showSetIntervalDialog
+                                .takeIf { anime.favorite },
                             onEditCategory = viewModel::showCategoryDialog.takeIf { anime.favorite },
                         )
                     }

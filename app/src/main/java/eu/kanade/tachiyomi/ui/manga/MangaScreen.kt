@@ -244,7 +244,7 @@ class MangaScreen(
                         vm.editCover(context, it)
                     }
                     MangaCoverDialog(
-                        manga = manga!!,
+                        cover = manga!!,
                         snackbarHostState = vm.snackbarHostState,
                         isCustomCover = remember(manga) { manga!!.hasCustomCover() },
                         onShareClick = { vm.shareCover(context) },

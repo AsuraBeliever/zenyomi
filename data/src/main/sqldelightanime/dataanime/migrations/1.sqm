@@ -1,0 +1,9 @@
+-- Notas por anime, lo que el lado de manga ya tiene.
+--
+-- Primera migracion de la base de datos de anime. Hasta aqui el esquema iba por la version 1
+-- y no habia ninguna, asi que este fichero es tambien el que estrena el mecanismo: sqldelight
+-- sube la version a 2 y el driver la aplica sola al abrir una instalacion ya existente.
+--
+-- Con DEFAULT '' y NOT NULL, una fila vieja queda con la nota vacia, que es justo lo que
+-- significa "no tiene notas". Nada que rellenar despues.
+ALTER TABLE animes ADD COLUMN notes TEXT NOT NULL DEFAULT '';

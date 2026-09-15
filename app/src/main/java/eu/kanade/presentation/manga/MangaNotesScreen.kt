@@ -15,7 +15,10 @@ import tachiyomi.presentation.core.i18n.stringResource
 
 @Composable
 fun MangaNotesScreen(
-    state: MangaNotesScreen.State,
+    /** El titulo que va de subtitulo en la barra. String y no `Manga` para que la ficha de
+     *  anime abra esta misma pantalla en vez de tener una copia igual con otro tipo. */
+    title: String,
+    notes: String,
     navigateUp: () -> Unit,
     onUpdate: (String) -> Unit,
 ) {
@@ -25,7 +28,7 @@ fun MangaNotesScreen(
                 titleContent = {
                     AppBarTitle(
                         title = stringResource(MR.strings.action_edit_notes),
-                        subtitle = state.manga.title,
+                        subtitle = title,
                     )
                 },
                 navigateUp = navigateUp,
@@ -34,7 +37,7 @@ fun MangaNotesScreen(
         },
     ) { contentPadding ->
         MangaNotesTextArea(
-            state = state,
+            notes = notes,
             onUpdate = onUpdate,
             modifier = Modifier
                 .padding(contentPadding)

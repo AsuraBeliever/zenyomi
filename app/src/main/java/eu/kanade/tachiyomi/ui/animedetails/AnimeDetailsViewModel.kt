@@ -1,7 +1,14 @@
 package eu.kanade.tachiyomi.ui.animedetails
 
+import android.content.Context
+import android.net.Uri
+import androidx.compose.material3.SnackbarHostState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil3.asDrawable
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.size.Size
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
@@ -23,7 +30,12 @@ import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
+import eu.kanade.tachiyomi.data.saver.Image
+import eu.kanade.tachiyomi.data.saver.ImageSaver
+import eu.kanade.tachiyomi.data.saver.Location
 import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
+import eu.kanade.tachiyomi.util.system.getBitmapOrNull
+import eu.kanade.tachiyomi.util.system.toShareIntent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,14 +45,18 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import logcat.LogPriority
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.withIOContext
+import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnimeWithEpisodesAndSeasons
 import tachiyomi.domain.anime.interactor.SetAnimeEpisodeFlags
 import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.anime.model.Anime
+import tachiyomi.domain.anime.model.AnimeUpdate
+import tachiyomi.domain.anime.model.asAnimeCover
 import tachiyomi.domain.anime.model.toAnimeUpdate
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
 import tachiyomi.domain.category.anime.interactor.SetAnimeCategories
@@ -53,6 +69,7 @@ import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.source.anime.model.StubAnimeSource
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import tachiyomi.domain.track.anime.interactor.GetAnimeTracks
+import tachiyomi.i18n.MR
 
 /**
  * One anime entry: its details and its episodes.
@@ -81,6 +98,7 @@ class AnimeDetailsViewModel(
     private val updateEpisode: UpdateEpisode,
     private val trackEpisode: TrackEpisode,
     private val libraryPreferences: LibraryPreferences,
+    private val imageSaver: ImageSaver,
 ) : ViewModel() {
 
     private var episodesFetched = false
@@ -540,6 +558,89 @@ class AnimeDetailsViewModel(
         }
     }
 
+    // ---- Portada a pantalla completa -----------------------------------------------------
+
+    val coverSnackbarHostState = SnackbarHostState()
+
+    fun showCover() = _state.update { it.copy(coverDialog = true) }
+
+    fun dismissCover() = _state.update { it.copy(coverDialog = false) }
+
+    fun saveCover(context: Context) {
+        viewModelScope.launch {
+            try {
+                writeCover(context, temp = false)
+                coverSnackbarHostState.showSnackbar(
+                    context.stringResource(MR.strings.cover_saved),
+                    withDismissAction = true,
+                )
+            } catch (e: Throwable) {
+                logcat(LogPriority.ERROR, e)
+                coverSnackbarHostState.showSnackbar(
+                    context.stringResource(MR.strings.error_saving_cover),
+                    withDismissAction = true,
+                )
+            }
+        }
+    }
+
+    fun shareCover(context: Context) {
+        viewModelScope.launch {
+            try {
+                val uri = writeCover(context, temp = true) ?: return@launch
+                withUIContext { context.startActivity(uri.toShareIntent(context)) }
+            } catch (e: Throwable) {
+                logcat(LogPriority.ERROR, e)
+                coverSnackbarHostState.showSnackbar(
+                    context.stringResource(MR.strings.error_sharing_cover),
+                    withDismissAction = true,
+                )
+            }
+        }
+    }
+
+    /** Decodifica la portada a su tamaño original y la deja en Imágenes, o en caché si es para compartir. */
+    private suspend fun writeCover(context: Context, temp: Boolean): Uri? {
+        val anime = state.value.anime ?: return null
+        val request = ImageRequest.Builder(context)
+            .data(anime.asAnimeCover())
+            .size(Size.ORIGINAL)
+            .build()
+        return withIOContext {
+            val bitmap = context.imageLoader.execute(request).image
+                ?.asDrawable(context.resources)
+                ?.getBitmapOrNull()
+                ?: return@withIOContext null
+            imageSaver.save(
+                Image.Cover(
+                    bitmap = bitmap,
+                    name = anime.title,
+                    location = if (temp) Location.Cache else Location.Pictures.create(),
+                ),
+            )
+        }
+    }
+
+    // ---- Intervalo de actualizacion -----------------------------------------------------
+
+    fun showSetIntervalDialog() = _state.update { it.copy(setIntervalDialog = true) }
+
+    fun dismissSetIntervalDialog() = _state.update { it.copy(setIntervalDialog = false) }
+
+    /**
+     * El valor que elige el usuario se guarda **en negativo**, que es como el lado de manga
+     * distingue "lo he puesto yo" de "lo he calculado": asi la siguiente pasada del job no lo
+     * pisa con su propia estimacion.
+     */
+    fun setFetchInterval(interval: Int) {
+        val anime = state.value.anime ?: return
+        dismissSetIntervalDialog()
+        viewModelScope.launchIO {
+            updateAnime.await(AnimeUpdate(id = anime.id, fetchInterval = -interval.coerceAtLeast(0)))
+            state.value.anime?.let { updateAnime.awaitUpdateFetchInterval(it) }
+        }
+    }
+
     // ---- Seleccion de episodios ---------------------------------------------------------
     //
     // El mismo modelo que Mihon usa con los capitulos, rango incluido: mantener pulsado sobre
@@ -709,6 +810,8 @@ class AnimeDetailsViewModel(
         val selectedEpisodeIds: Set<Long> = emptySet(),
         /** Tirando hacia abajo para volver a pedirle los episodios a la fuente. */
         val isRefreshingData: Boolean = false,
+        val setIntervalDialog: Boolean = false,
+        val coverDialog: Boolean = false,
     ) {
         val selectedEpisodes: List<Episode> get() = visibleEpisodes.filter { it.id in selectedEpisodeIds }
     }

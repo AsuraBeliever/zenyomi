@@ -34,6 +34,7 @@ data class AnimeUpdate(
     val seasonNumber: Double? = null,
     val seasonSourceOrder: Long? = null,
     val memo: JsonObject? = null,
+    val notes: String? = null,
 )
 
 fun Anime.toAnimeUpdate(): AnimeUpdate {
