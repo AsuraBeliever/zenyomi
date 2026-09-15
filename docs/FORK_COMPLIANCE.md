@@ -6,7 +6,7 @@ cumplimiento y se revisa **antes de cada release**.
 ## Checklist que pide Mihon
 
 Mihon publica sus requisitos para forks en su `CONTRIBUTING.md`, sección *Forks*.
-Estado a 2026-09-14 (revisado antes de la v0.12.0):
+Estado a 2026-09-15 (revisado antes de la v0.13.0):
 
 | Requisito de Mihon | Estado | Cómo se cumple |
 |---|---|---|
@@ -56,6 +56,19 @@ Menciones legítimas y esperadas: `LICENSE`, `NOTICE`, `README`, `CHANGELOG`,
 `CONTRIBUTING`, `docs/` — ahí Mihon y Aniyomi **deben** aparecer, es la atribución.
 También los espacios de nombres internos de Kotlin (`eu.kanade.tachiyomi`,
 `mihon.app.*`), que se conservan a propósito para no romper los merges con upstream.
+
+## Observación abierta: credenciales de API heredadas
+
+Los identificadores de cliente de MyAnimeList, AniList y **Kitsu** son los de Mihon,
+heredados del fork. No es un incumplimiento de licencia ni de marca —no hay activo de
+marca ajeno en el repo—, pero son credenciales de otro proyecto ante servicios de
+terceros. En MyAnimeList y AniList además se ve: su pantalla de autorización dice
+«Mihon». En Kitsu no, porque se entra con correo y contraseña y no hay pantalla de
+consentimiento; la credencial sigue siendo suya.
+
+Corregirlo pide registrar aplicaciones propias en cada servicio, lo cual requiere que
+el cliente las cree. Anotado aquí para que cada auditoría lo encuentre ya discutido en
+vez de volver a descubrirlo.
 
 ## Incidencias corregidas
 

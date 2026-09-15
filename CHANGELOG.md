@@ -10,6 +10,15 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.13.0] - 2026-09-15
+### Added
+- **Kitsu tracks anime.** The third service to do so, after MyAnimeList and AniList, and it was the odd one out: Kitsu has always been in the list, but picking it for an anime offered nothing. Searching, linking, pushing what you have watched, scoring, marking an entry private and unlinking all work now, and Kitsu's own scale is used for the score — if your account is set to smileys you get smileys, not a number. Kitsu signs in with an email and a password, so unlike the other two there is no authorisation screen carrying somebody else's name.
+
+### Fixed
+- **The tracking sheet says "Watching" over an anime.** It said "Reading". The status numbers are shared between an anime and a manga on these services, but the words are not, and the sheet was asking for the manga label. The status list now offers Watching, Plan to watch and Rewatching over an anime.
+- **The progress picker is headed "Episodes", not "Chapters".**
+- **The status and progress pickers have something under them.** Both drew straight over the card behind, so two sets of text sat on top of each other and neither could be read.
+
 ## [0.12.0] - 2026-09-14
 ### Added
 - **Subtitles can be set to look how you want them.** Nothing about them was adjustable before: they were drawn with mpv's defaults and that was the whole of it. Font, size, scale, bold, italic, alignment, text/border/background colour, border style and size, shadow, vertical position, delay and speed — all of it now, in two places over one set of values. There is a panel in the player, on the new subtitles button, where a change lands on the picture behind it as the slider moves, because "is this big enough over this scene" cannot be answered anywhere else; and the same settings sit in Settings → Player for setting up once. The colours stay in the player only, since four sliders with no picture behind them tell you nothing.

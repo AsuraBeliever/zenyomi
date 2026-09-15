@@ -53,8 +53,8 @@ Once, y **ninguno es código**:
 | Textos de README, CONTRIBUTING, fastlane | documentación |
 
 El resto de modificaciones son **puramente aditivas**: una interfaz más en la declaración de
-`Anilist` y `MyAnimeList`, un valor por defecto en `ALSearchItem.chapters`, entradas nuevas en
-`AppGraph` y una fila más en el índice de Ajustes.
+`Anilist`, `MyAnimeList` y `Kitsu`, un valor por defecto en `ALSearchItem.chapters`, entradas
+nuevas en `AppGraph` y una fila más en el índice de Ajustes.
 
 ```sh
 # Reproducir la comprobación

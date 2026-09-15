@@ -230,6 +230,7 @@ que nunca podrá guardar una serie. El login, el logout y el estado de la cuenta
 |---|---|
 | AniList | `SaveMediaListEntry` y `DeleteMediaListEntry` reciben un `mediaId` y no distinguen el tipo, así que añadir, actualizar y borrar valen tal cual; solo se duplicaron las **lecturas** con `type: ANIME` y `episodes` en vez de `chapters` |
 | MyAnimeList | Endpoints propios de anime: `/v2/anime`, `num_episodes`, `num_episodes_watched`. Nada reutilizable salvo el OAuth |
+| Kitsu | La biblioteca de Kitsu es **una sola lista con un `mediaType` en cada entrada**, así que las tres mutaciones son el mismo GraphQL salvo `mediaType: ANIME` al crear. Lo que sí cambia son las **lecturas**: `findAnimeById` / `searchAnimeByTitle` en vez de sus gemelas de manga, y `episodeCount` en vez de `chapterCount` |
 
 Los modelos de anime (`AnimeTrack`, `AnimeTrackSearch`) son un árbol paralelo con nombres
 honestos —`last_episode_seen`, no un campo neutro—, que es justo lo que evita confundirlos con
@@ -239,6 +240,50 @@ los de manga en la llamada.
 valor por defecto. Un campo nulable *sin* default sigue siendo obligatorio para
 kotlinx.serialization, que es exactamente lo que rompió la tienda de extensiones con el
 `repo.json` de Aniyomi.
+
+### Kitsu (2026-09-15)
+
+Tampoco es un porte: el Kitsu de Aniyomi habla la API JSON:API vieja, y Mihon ya migró a
+GraphQL. Lo que hay aquí sale del Kitsu de manga de Mihon y del esquema real de Kitsu,
+comprobado contra `kitsu.app/api/graphql` antes de escribir nada — `MediaTypeEnum` es
+`{ANIME, MANGA}` y `LibraryEntryStatusEnum` es el mismo para ambos.
+
+De ahí sale lo que más ahorra: **Kitsu no tiene estados de anime aparte**. Los cinco de manga
+valen tal cual, así que `WATCHING` y `PLAN_TO_WATCH` son alias de `READING` y `PLAN_TO_READ`,
+y solo cambian las palabras que ve el usuario. Tampoco hay estado de *rewatching*: Kitsu marca
+una repetición con un booleano `reconsuming` en la entrada, que el lado de manga de Mihon
+tampoco expone.
+
+Diferencias deliberadas frente al lado de manga:
+
+- **Las tres mutaciones comparten el manejo de errores.** Kitsu contesta con el mismo sobre
+  tanto si creó, actualizó o borró la entrada — solo cambia el nombre del campo bajo
+  `libraryEntry` —, así que un único `KitsuLibraryEntryMutationResult` cubre los tres y la
+  escalera de errores vive en un `mutateLibraryEntry()`. El lado de manga heredó de Mihon tres
+  DTO casi idénticos y la escalera escrita tres veces; no se toca, pero no se copia.
+- **`titles` y `posterImage` se reutilizan, no se duplican.** Son los mismos tipos del esquema
+  de Kitsu que pide la consulta de manga, así que los DTO de Mihon sirven; lo que de verdad
+  cambia es `episodeCount`.
+- **No se piden los `staff`.** Un `AnimeTrackSearch` no tiene dónde poner autores ni artistas,
+  y traer cinco personas para tirarlas es pedirle trabajo al servidor por nada.
+- **`TV`, `OVA` y `ONA` no se capitalizan.** Son siglas; pasarlas por el
+  *title-case* del lado de manga imprimiría «Ova». `MOVIE`, `SPECIAL` y `MUSIC` sí.
+- **Un estado `CURRENT` se dice «Airing»**, no «Publishing».
+
+Verificado de punta a punta contra una cuenta real el 2026-09-15, primero enviando a la API las
+consultas extraídas **del propio fuente** —para probar lo que se envía, no una copia a mano— y
+después conduciendo la app en el emulador y comprobando el resultado en los servidores de Kitsu.
+
+**Y ahí salió un fallo que no se veía de otra forma.** Borrar una entrada que ya no está
+devuelve 500 con `{"error":{"message":"Couldn't find LibraryEntry…"},"data":{}}`. Fíjate en que
+`data` es un objeto **vacío**, no `null`: con `libraryEntry` declarado no nulable,
+kotlinx.serialization lanzaba `MissingFieldException` **antes** de que se llegara a mirar el
+error, así que el perdón para ese caso era código muerto. Es exactamente la trampa que ya está
+anotada más arriba para `MALAnimeListItemStatus`, y solo aparece si de verdad se llama al
+servicio. `libraryEntry` es nulable ahora.
+
+(El lado de manga de Mihon tiene la misma forma en `KitsuDeleteMangaData` y por tanto el mismo
+fallo latente. No se toca —regla 1— pero queda dicho.)
 
 ## El player pasa a Activity propia
 

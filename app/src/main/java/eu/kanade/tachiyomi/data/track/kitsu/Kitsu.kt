@@ -3,19 +3,23 @@ package eu.kanade.tachiyomi.data.track.kitsu
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.database.models.Track
+import eu.kanade.tachiyomi.data.database.models.anime.AnimeTrack
+import eu.kanade.tachiyomi.data.track.AnimeTracker
 import eu.kanade.tachiyomi.data.track.BaseTracker
 import eu.kanade.tachiyomi.data.track.DeletableTracker
 import eu.kanade.tachiyomi.data.track.kitsu.dto.KitsuOAuth
+import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
 import kotlinx.serialization.json.Json
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import uy.kohesive.injekt.injectLazy
 import java.text.DecimalFormat
 import tachiyomi.domain.track.model.Track as DomainTrack
 
-class Kitsu(id: Long) : BaseTracker(id, "Kitsu"), DeletableTracker {
+class Kitsu(id: Long) : BaseTracker(id, "Kitsu"), DeletableTracker, AnimeTracker {
 
     private data class RatingSystem(
         val name: String,
@@ -29,6 +33,14 @@ class Kitsu(id: Long) : BaseTracker(id, "Kitsu"), DeletableTracker {
         const val ON_HOLD = 3L
         const val DROPPED = 4L
         const val PLAN_TO_READ = 5L
+
+        /**
+         * Kitsu's five list statuses are shared by anime and manga, so watching and
+         * reading are the same value. The aliases exist so anime code need not say
+         * "READING" about an episode.
+         */
+        const val WATCHING = READING
+        const val PLAN_TO_WATCH = PLAN_TO_READ
 
         const val RATING_SIMPLE = "simple"
         const val RATING_REGULAR = "regular"
@@ -178,6 +190,93 @@ class Kitsu(id: Long) : BaseTracker(id, "Kitsu"), DeletableTracker {
         track.copyPersonalFrom(remoteTrack)
         track.total_chapters = remoteTrack.total_chapters
         return track
+    }
+
+    // ---- Anime ------------------------------------------------------------------------
+
+    /**
+     * Kitsu keeps one list for both media types, so these are the manga numbers and only the
+     * words change: status 1 reads "Reading" over a manga and "Watching" over an anime. There
+     * is no rewatching entry because Kitsu has none — it marks a repeat with a `reconsuming`
+     * flag on the entry, which Mihon's side does not surface either.
+     */
+    override fun getStatusListAnime(): List<Long> =
+        listOf(WATCHING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_WATCH)
+
+    override fun getStatusForAnime(status: Long): StringResource? = when (status) {
+        WATCHING -> ANMR.strings.watching
+        PLAN_TO_WATCH -> ANMR.strings.plan_to_watch
+        COMPLETED -> MR.strings.completed
+        ON_HOLD -> MR.strings.on_hold
+        DROPPED -> MR.strings.dropped
+        else -> null
+    }
+
+    override fun getWatchingStatus(): Long = WATCHING
+
+    override fun getCompletionStatusAnime(): Long = COMPLETED
+
+    override suspend fun searchAnime(query: String): List<AnimeTrackSearch> {
+        if (query.startsWith(SEARCH_ID_PREFIX)) {
+            query.substringAfter(SEARCH_ID_PREFIX).trim().let { id ->
+                return api.getAnimeDetails(id)?.let { listOf(it) } ?: emptyList()
+            }
+        }
+
+        return api.searchAnime(query)
+    }
+
+    override suspend fun bindAnime(track: AnimeTrack, hasSeenEpisodes: Boolean): AnimeTrack {
+        val remoteTrack = api.findLibAnime(track)
+        return if (remoteTrack != null) {
+            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
+            track.remote_id = remoteTrack.remote_id
+            track.library_id = remoteTrack.library_id
+
+            if (track.status != COMPLETED) {
+                track.status = if (hasSeenEpisodes) WATCHING else track.status
+            }
+
+            updateAnime(track)
+        } else {
+            track.status = if (hasSeenEpisodes) WATCHING else PLAN_TO_WATCH
+            track.score = 0.0
+            api.addLibAnime(track)
+        }
+    }
+
+    override suspend fun updateAnime(track: AnimeTrack, didWatchEpisode: Boolean): AnimeTrack {
+        if (track.status != COMPLETED && didWatchEpisode) {
+            if (track.last_episode_seen.toLong() == track.total_episodes && track.total_episodes > 0) {
+                track.status = COMPLETED
+                track.finished_watching_date = System.currentTimeMillis()
+            } else {
+                track.status = WATCHING
+                if (track.last_episode_seen == 1.0) {
+                    track.started_watching_date = System.currentTimeMillis()
+                }
+            }
+        }
+
+        return api.updateLibAnime(track)
+    }
+
+    override suspend fun refreshAnime(track: AnimeTrack): AnimeTrack {
+        val remoteTrack = api.findLibAnime(track) ?: throw Exception("Could not find anime")
+        track.copyPersonalFrom(remoteTrack)
+        track.total_episodes = remoteTrack.total_episodes
+        return track
+    }
+
+    /**
+     * The library id is what Kitsu deletes by, and a row restored from a backup can be without
+     * one, so it is looked up before giving up on the remote entry.
+     */
+    override suspend fun deleteAnime(track: AnimeTrack) {
+        val libraryId = track.library_id
+            ?: api.findLibAnime(track)?.library_id
+            ?: return
+        api.removeLibAnime(libraryId)
     }
 
     override suspend fun login(username: String, password: String) {

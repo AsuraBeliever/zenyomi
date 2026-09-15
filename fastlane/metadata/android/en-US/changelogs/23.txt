@@ -1,0 +1,7 @@
+Added: Kitsu tracks anime. It was the odd one out — always in the list, but picking it for an anime offered nothing. Searching, linking, pushing progress, scoring, private entries and unlinking all work, using Kitsu's own score scale: smileys if that is what your account is set to.
+
+Fixed: the tracking sheet said "Reading" over an anime. It says Watching, and the status list offers Watching, Plan to watch and Rewatching.
+
+Fixed: the progress picker was headed "Chapters". It is headed Episodes.
+
+Fixed: the status and progress pickers drew straight over the card behind them, with both sets of text on top of each other.
