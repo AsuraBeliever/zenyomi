@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-14
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.11.1, tag en `main`
+**Última release:** v0.12.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,8 +18,8 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x – 0.11.1 | ✅ | hasta `v0.11.1`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
-| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.11.1, 2026-09-14 |
+| Releases 0.5.x – 0.12.0 | ✅ | hasta `v0.12.0`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.12.0, 2026-09-14 |
 | Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
 | Trackers de anime (código) | ✅ | MyAnimeList y AniList |
 | PiP del player | ✅ | Activity propia |
@@ -74,6 +74,7 @@
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ⚠️ | MyAnimeList y AniList: buscar, vincular, desvincular y empujar progreso; sin verificar con cuenta real (ver abajo) |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
+| Aspecto de los subtítulos | ✅ | paridad con Aniyomi: fuente, tamaño, colores, borde, sombra, posición, retardo y velocidad, en el reproductor y en Ajustes |
 | Estadísticas de anime | ✅ | contadores verificados uno a uno contra la BD |
 | Backup de anime | ✅ | mismo fichero .tachibk que el manga; verificado backup → borrado → restauración |
 | "All read entries" para anime | ✅ | un anime visto y fuera de la biblioteca entra en el backup y vuelve **sin** entrar en la biblioteca |
@@ -158,6 +159,9 @@ Explorar con fuentes y extensiones, ficha con episodios, ajustes, player, histor
 estadísticas y backup. El módulo `i18n-anime` existe y está poblado.
 
 ## Incidencias resueltas
+
+- **2026-09-14 — la v0.11.1 pasó el CI y el `Release` a la primera.** Sin rastro del
+  fallo de JitPack de la tanda anterior, que era suyo y no nuestro.
 
 - **2026-09-14 — JitPack tumbó el job FOSS de la v0.11.0.** Tercera vez, misma firma:
   `Could not find flexible-adapter:c8013533`. Se comprobó que JitPack servía el `.pom`

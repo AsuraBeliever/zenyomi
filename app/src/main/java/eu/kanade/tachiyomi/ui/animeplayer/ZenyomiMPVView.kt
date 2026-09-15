@@ -180,6 +180,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         subtitleLanguages: String = "",
         speedPercent: Int = 100,
         httpHeaders: List<String> = emptyList(),
+        subtitleStyle: SubtitleStyle = SubtitleStyle(),
     ) {
         if (initialised) return
         initialised = true
@@ -187,6 +188,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         preferredSubtitles = TrackLanguage.ofList(subtitleLanguages).split(',').filter { it.isNotBlank() }
         configDir.mkdirs()
         copyAssets(configDir)
+        val fontsDir = prepareFonts(configDir)
         holder.addCallback(this)
         requestAudioFocus()
 
@@ -218,6 +220,10 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             // reports "failed to find any fallback with glyph" and draws nothing at all, so a
             // correctly selected subtitle track was still an episode with no subtitles.
             MPVLib.setOptionString("sub-font-provider", "none")
+            // With the provider off, this folder is the whole world of fonts libass has. It
+            // is what makes the font setting mean anything: before it there was one face in
+            // the config dir and every choice rendered identically.
+            setOptionChecked("sub-fonts-dir", fontsDir.path)
             // mpv sizes and places subtitles against the *window* by default, which is right
             // on a desktop where the window is the video. Here the window is a whole portrait
             // phone screen and the video a band across the middle of it, so the defaults drew
@@ -226,6 +232,12 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             MPVLib.setOptionString("sub-scale-by-window", "no")
             MPVLib.setOptionString("sub-use-margins", "no")
             MPVLib.setOptionString("sub-ass-force-margins", "no")
+            // How the viewer wants them to look. Set here as well as live so the very first
+            // subtitle of an episode is already styled — applying them only afterwards makes
+            // the text visibly change size a second into every episode.
+            subtitleStyle.toMpvOptions().forEach { (name, value) ->
+                setOptionChecked(name, value)
+            }
             // Android ships no CA bundle mpv can read, so without this its TLS is unverified.
             MPVLib.setOptionString("tls-verify", "yes")
             MPVLib.setOptionString("tls-ca-file", File(configDir, CA_BUNDLE).path)
@@ -348,6 +360,47 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
                 logcat(LogPriority.WARN, it) { "Could not unpack $name for mpv" }
             }
         }
+    }
+
+    /**
+     * Fills the folder libass reads faces from, and answers with it.
+     *
+     * The aar ships exactly one font — Droid Sans Fallback — which is why the subtitle font
+     * setting had nothing to choose between: whatever it was set to, there was only ever one
+     * face to fall back on. Android carries a couple of hundred more in `/system/fonts`, but
+     * pointing libass at all of them means indexing two hundred files before the first
+     * subtitle draws, most of them scripts nobody watching this is reading. So a handful are
+     * copied in instead, each one a family a person might actually pick.
+     *
+     * The bundled fallback stays, and stays the default, because it is the only one of them
+     * that covers CJK: choose Roboto for an English track and a Japanese sign in the same file
+     * still has something to render with.
+     */
+    private fun prepareFonts(configDir: File): File {
+        val fontsDir = File(configDir, "fonts")
+        fontsDir.mkdirs()
+        val bundled = File(fontsDir, SUBTITLE_FONT)
+        if (!bundled.exists() || bundled.length() == 0L) {
+            runCatching {
+                context.assets.open(SUBTITLE_FONT).use { source ->
+                    bundled.outputStream().use { source.copyTo(it) }
+                }
+            }.onFailure { logcat(LogPriority.WARN, it) { "Could not unpack the fallback font" } }
+        }
+        SYSTEM_FONT_FILES.forEach { name ->
+            val target = File(fontsDir, name)
+            if (target.exists() && target.length() > 0) return@forEach
+            val source = File(SYSTEM_FONTS_DIR, name)
+            // Missing is normal, not a failure: which faces a build of Android ships is its
+            // own business, and the picker only offers what made it across.
+            if (!source.isFile) return@forEach
+            runCatching { source.copyTo(target, overwrite = true) }
+                .onFailure { logcat(LogPriority.WARN, it) { "Could not copy $name" } }
+        }
+        logcat(LogPriority.INFO) {
+            "subtitle fonts: ${fontsDir.list()?.joinToString().orEmpty()}"
+        }
+        return fontsDir
     }
 
     fun addObserver(observer: MPVLib.EventObserver) {
@@ -743,6 +796,34 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         applySubtitle(trackId)
     }
 
+    /**
+     * Restyles the subtitles of the episode already playing.
+     *
+     * Properties rather than options, because options are read while a file is being opened
+     * and changing one afterwards does nothing until the next episode. Off the main thread
+     * like every other call into mpv: each of these waits on mpv's event loop, and eighteen of
+     * them on the thread that draws the screen is a dropped frame every time a slider moves.
+     */
+    fun applySubtitleStyle(style: SubtitleStyle) = postToMpv {
+        // MPVLib's property setter reports nothing, so a name mpv does not know is silent
+        // here. The option pass at startup does return a code, and it covers the same names —
+        // so if one of these is wrong, that is where it says so.
+        style.toMpvOptions().forEach { (name, value) -> MPVLib.setPropertyString(name, value) }
+    }
+
+    /**
+     * Sets an option and says so when mpv will not have it.
+     *
+     * mpv reports a rejected option in a return code and nowhere else — no log line, no
+     * exception — so an option this build of libmpv does not know is indistinguishable from
+     * one that worked. That is a whole class of setting that silently does nothing, which is
+     * worse than one that visibly fails.
+     */
+    private fun setOptionChecked(name: String, value: String) {
+        val code = MPVLib.setOptionString(name, value)
+        if (code < 0) logcat(LogPriority.WARN) { "mpv refused option $name=$value ($code)" }
+    }
+
     private fun applyAudio(trackId: Int?) = postToMpv {
         MPVLib.setPropertyString("aid", trackId?.toString() ?: "no")
     }
@@ -911,9 +992,63 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     }
 
     companion object {
-        /** The name mpv looks for in its config dir; it has no other font on Android. */
+        /** The fallback face that ships with the mpv library. Family: Droid Sans Fallback. */
         private const val SUBTITLE_FONT = "subfont.ttf"
         private const val CA_BUNDLE = "cacert.pem"
+
+        private const val SYSTEM_FONTS_DIR = "/system/fonts"
+
+        /**
+         * The faces copied out of Android for subtitles to be set in.
+         *
+         * The bold and italic files earn their place: without a real one, libass slants and
+         * thickens the regular face itself, and a synthesised italic at subtitle size is
+         * noticeably worse than a drawn one.
+         *
+         * `DroidSans.ttf` is not here despite the name: Android ships it with Roboto's family
+         * name inside, so offering it would have been the same font twice under two labels.
+         */
+        private val SYSTEM_FONT_FILES = listOf(
+            "Roboto-Regular.ttf",
+            "NotoSerif-Regular.ttf",
+            "NotoSerif-Bold.ttf",
+            "NotoSerif-Italic.ttf",
+            "NotoSerif-BoldItalic.ttf",
+            "DroidSansMono.ttf",
+            "CutiveMono.ttf",
+            "ComingSoon.ttf",
+        )
+
+        /**
+         * The families the picker can offer.
+         *
+         * Asks `/system/fonts` rather than the folder [prepareFonts] fills, because the
+         * picker is drawn before any of that has run: the player copies its fonts when it
+         * initialises mpv, and the settings screen never initialises one at all. What is in
+         * the source directory is what will be in the destination, so it answers the same
+         * question a step earlier.
+         */
+        fun availableSubtitleFonts(): List<String> = SUBTITLE_FONT_FAMILIES
+            .filter { (_, file) -> file == null || File(SYSTEM_FONTS_DIR, file).isFile }
+            .keys
+            .toList()
+
+        /**
+         * Family name as libass knows it, against the file it needs — null for the bundled
+         * one, which is always there.
+         *
+         * The names are the fonts' own, read out of their `name` table, not guesses: asking
+         * for a family that does not exist is not an error libass reports, it just quietly
+         * draws in something else, which looks exactly like a setting that does nothing.
+         */
+        val SUBTITLE_FONT_FAMILIES: Map<String, String?> = linkedMapOf(
+            "Droid Sans Fallback" to null,
+            "Roboto" to "Roboto-Regular.ttf",
+            "Noto Serif" to "NotoSerif-Regular.ttf",
+            "Droid Sans Mono" to "DroidSansMono.ttf",
+            "Cutive Mono" to "CutiveMono.ttf",
+            "Coming Soon" to "ComingSoon.ttf",
+        )
 
         /** 64 MB, matching what Aniyomi settled on for phones. */
         private const val DEMUXER_CACHE_BYTES = 64L * 1024 * 1024

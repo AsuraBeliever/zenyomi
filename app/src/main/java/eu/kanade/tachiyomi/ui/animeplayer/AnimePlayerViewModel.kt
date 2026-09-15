@@ -11,6 +11,7 @@ import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
 import eu.kanade.tachiyomi.ui.animeplayer.setting.PlayerPreferences
+import eu.kanade.tachiyomi.ui.animeplayer.setting.SubtitlePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,7 @@ class AnimePlayerViewModel(
     private val upsertAnimeHistory: UpsertAnimeHistory,
     private val trackEpisode: TrackEpisode,
     private val playerPreferences: PlayerPreferences,
+    private val subtitlePreferences: SubtitlePreferences,
 ) : ViewModel() {
 
     /**
@@ -103,4 +105,7 @@ class AnimePlayerViewModel(
 
     /** Exposed so the player can apply them to mpv when a file opens. */
     val preferences: PlayerPreferences get() = playerPreferences
+
+    /** Exposed so the player can style the subtitles, and the in-player panel can change them. */
+    val subtitles: SubtitlePreferences get() = subtitlePreferences
 }

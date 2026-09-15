@@ -10,6 +10,18 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.12.0] - 2026-09-14
+### Added
+- **Subtitles can be set to look how you want them.** Nothing about them was adjustable before: they were drawn with mpv's defaults and that was the whole of it. Font, size, scale, bold, italic, alignment, text/border/background colour, border style and size, shadow, vertical position, delay and speed — all of it now, in two places over one set of values. There is a panel in the player, on the new subtitles button, where a change lands on the picture behind it as the slider moves, because "is this big enough over this scene" cannot be answered anywhere else; and the same settings sit in Settings → Player for setting up once. The colours stay in the player only, since four sliders with no picture behind them tell you nothing.
+- **The font setting has fonts to choose from.** The mpv library ships exactly one face, so whatever the font was set to, that is what rendered. Six more are taken from the phone's own — Roboto, Noto Serif, Droid Sans Mono, Cutive Mono, Coming Soon — with the bundled one staying the default, because it is the only one of them that covers Japanese.
+
+### Fixed
+- **A long episode name no longer prints over the track buttons.** The top of the player was two rows pinned to opposite corners, so nothing told the title where Audio, Subtitles and picture-in-picture began: a name longer than the gap simply carried on across them. It is one row now — the buttons take the room they need, the title takes what is left and truncates there. In landscape, where there is more room, a title that used to be cut short now fits whole.
+- **The seek bar no longer sits on top of the subtitles.** In landscape the picture reaches the bottom edge of the screen, which is where the bar is, so bringing up the controls covered the line being read. The subtitles lift clear while the controls are showing and drop back when they go. Portrait is untouched: there the picture is a band across the middle and the bar never reaches it.
+
+### Other
+- mpv reports a rejected option in a return code and nowhere else, so an option it does not know looks exactly like one that worked. The player now says so in its log.
+
 ## [0.11.1] - 2026-09-14
 ### Fixed
 - **The player's controls get out of the way.** The title, the track buttons, the seek bar and the clock sat on top of the episode for its whole runtime, and the only thing a tap on the picture did was pause — so the one gesture anyone would try to dismiss them with stopped the video instead, and they stayed. They now fade out after five seconds without a touch, and a tap on the picture toggles them rather than pausing; pausing is what the button in the middle is for. They stay while the episode is paused, while a finger is on the seek bar and while a track list is open, since in all three you are mid-something and looking straight at them. Pressing any control restarts the five seconds, and a double tap to jump brings them back, because where the episode landed is worth seeing.

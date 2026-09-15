@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +60,7 @@ import mihon.icons.materialsymbols.rounded.FlipToBack
 import mihon.icons.materialsymbols.rounded.KeyboardArrowLeft
 import mihon.icons.materialsymbols.rounded.KeyboardArrowRight
 import mihon.icons.materialsymbols.rounded.Pause
+import mihon.icons.materialsymbols.rounded.Subtitles
 import mihon.icons.materialsymbols.roundedfilled.Pause
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.i18n.MR
@@ -121,6 +123,9 @@ fun AnimePlayerContent(
     // countdown below can see it. A list that vanished mid-choice would be worse than one
     // that overstays.
     var openPicker by remember { mutableStateOf<TrackKind?>(null) }
+    // The subtitle panel, held here for the same reason: while it is open the controls have to
+    // stay, or adjusting the size would dismiss the thing being adjusted.
+    var subtitlePanelOpen by remember { mutableStateOf(false) }
     // Bumped by anything the viewer does to a control, to start the countdown over. It is the
     // change that matters, not the value: a button press has to restart a timer that is
     // already running, and only a new key does that.
@@ -133,8 +138,18 @@ fun AnimePlayerContent(
 
     // They stay while the episode is paused, while a finger is on the seek bar and while a
     // track list is open: in all three the viewer is mid-something and looking right at them.
-    LaunchedEffect(controlsVisible, interaction, paused, scrubbing != null, openPicker, loading) {
-        if (!controlsVisible || paused || scrubbing != null || openPicker != null || loading) {
+    LaunchedEffect(
+        controlsVisible,
+        interaction,
+        paused,
+        scrubbing != null,
+        openPicker,
+        subtitlePanelOpen,
+        loading,
+    ) {
+        if (!controlsVisible || paused || scrubbing != null || openPicker != null ||
+            subtitlePanelOpen || loading
+        ) {
             return@LaunchedEffect
         }
         delay(CONTROLS_TIMEOUT_MS)
@@ -153,6 +168,34 @@ fun AnimePlayerContent(
         create(episodeId = episodeId)
     }
     val playerState by viewModel.state.collectAsStateWithLifecycle()
+
+    val subtitleStyle = viewModel.subtitles.collectStyleAsState()
+    // Read once: a directory listing whose answer cannot change while an episode plays.
+    val availableFonts = remember { ZenyomiMPVView.availableSubtitleFonts() }
+
+    // Whether the picture reaches the bottom edge, which is where the seek bar is. A video
+    // narrower than the screen is fitted to the height and touches both edges; a wider one is
+    // fitted to the width and sits in a band with black above and below it. Comparing the two
+    // shapes says which, without having to ask mpv where it put anything.
+    val configuration = LocalConfiguration.current
+    val screenAspect = configuration.screenWidthDp.toFloat() / configuration.screenHeightDp
+    val chromeOverlapsVideo = videoAspect <= screenAspect
+
+    // In landscape the video fills the screen, so the bottom of the picture and the bottom of
+    // the phone are the same edge — and the seek bar sits on top of the subtitles whenever the
+    // controls are up. They are lifted clear for as long as the controls are showing and drop
+    // back the moment they go. In portrait the video is a band in the middle with black either
+    // side and the bar never reaches it, so there is nothing to lift: doing it anyway would
+    // move the subtitles for no reason the viewer could see.
+    val subtitlesUnderControls = chromeOverlapsVideo && controlsVisible
+    val effectiveStyle = remember(subtitleStyle, subtitlesUnderControls) {
+        if (subtitlesUnderControls) {
+            subtitleStyle.copy(position = (subtitleStyle.position - CONTROLS_SUBTITLE_LIFT).coerceAtLeast(0))
+        } else {
+            subtitleStyle
+        }
+    }
+    LaunchedEffect(effectiveStyle) { view.applySubtitleStyle(effectiveStyle) }
 
     DisposableEffect(playerState.loaded) {
         if (playerState.loaded) {
@@ -189,6 +232,9 @@ fun AnimePlayerContent(
                 // Dropping these is what made a resolved video open to a black screen: the
                 // host answers mpv's bare request with 403 and mpv has nothing to play.
                 httpHeaders = request.headers.map { (name, value) -> "$name: $value" },
+                // Set before the file opens so its first subtitle is already styled. Applying
+                // them afterwards makes the text visibly resize a second into every episode.
+                subtitleStyle = subtitleStyle,
             )
             view.playFile(
                 request.url,
@@ -451,50 +497,50 @@ fun AnimePlayerContent(
         // furniture, and a picture with half of it still on it is not a clear picture.
         val chromeVisible = controlsVisible && !inPictureInPicture
 
+        // One row across the top, not two anchored to opposite corners. As two, nothing told
+        // the title where the track buttons began: a long episode name simply kept going and
+        // ran underneath Audio, Subtitles and the picture-in-picture button. It is the
+        // buttons that get the room they need now, and the title takes what is left — which
+        // is also why this is a layout rule rather than a cap on characters. How much room
+        // there is depends on what is beside it: an episode with no separate audio track
+        // does not draw the Audio button at all, and the title is free to be longer.
         AnimatedVisibility(
             visible = chromeVisible,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopStart),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .systemBarsPadding()
-                    .padding(16.dp),
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = MaterialSymbols.Rounded.Close,
-                        contentDescription = stringResource(MR.strings.action_close),
-                        tint = Color.White,
-                    )
-                }
-                Text(
-                    text = title,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
-        }
-
-        AnimatedVisibility(
-            visible = chromeVisible,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopEnd),
+            modifier = Modifier.align(Alignment.TopCenter),
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier
+                    .fillMaxWidth()
                     // The player draws edge to edge, so without this the track buttons sit
                     // under the status bar and the system swallows taps meant for them.
                     .systemBarsPadding()
                     .padding(16.dp),
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Close,
+                            contentDescription = stringResource(MR.strings.action_close),
+                            tint = Color.White,
+                        )
+                    }
+                    Text(
+                        text = title,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(start = 8.dp),
+                    )
+                }
                 TrackPicker(
                     label = stringResource(ANMR.strings.player_track_audio),
                     tracks = tracks.filter { it.isAudio },
@@ -509,6 +555,19 @@ fun AnimePlayerContent(
                     onExpandedChange = { open -> openPicker = if (open) TrackKind.Subtitle else null },
                     onSelect = view::selectSubtitle,
                 )
+                IconButton(
+                    onClick = {
+                        subtitlePanelOpen = !subtitlePanelOpen
+                        openPicker = null
+                        interaction++
+                    },
+                ) {
+                    Icon(
+                        imageVector = MaterialSymbols.Rounded.Subtitles,
+                        contentDescription = stringResource(ANMR.strings.player_subtitle_settings),
+                        tint = Color.White,
+                    )
+                }
                 IconButton(onClick = { onEnterPictureInPicture(videoAspect) }) {
                     Icon(
                         imageVector = MaterialSymbols.Rounded.FlipToBack,
@@ -562,6 +621,24 @@ fun AnimePlayerContent(
                 Text(formatTime(duration), color = Color.White, style = MaterialTheme.typography.labelMedium)
             }
         }
+
+        // Last, so it is on top of everything: in portrait it sits where the seek bar is, and
+        // a seek bar drawn over the panel would put a slider you cannot use across a slider
+        // you can.
+        AnimatedVisibility(
+            visible = subtitlePanelOpen && !inPictureInPicture,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(
+                if (chromeOverlapsVideo) Alignment.CenterEnd else Alignment.BottomCenter,
+            ),
+        ) {
+            SubtitleSettingsPanel(
+                preferences = viewModel.subtitles,
+                availableFonts = availableFonts,
+                onDismiss = { subtitlePanelOpen = false },
+            )
+        }
     }
 }
 
@@ -575,6 +652,15 @@ private const val DEFAULT_ASPECT = 16f / 9f
  * that they are gone before the scene they are sitting on top of matters.
  */
 private const val CONTROLS_TIMEOUT_MS = 5_000L
+
+/**
+ * How far the subtitles move up while the controls are on screen, in mpv's `sub-pos` units —
+ * hundredths of the video's height, so ten is a tenth of the picture.
+ *
+ * Enough to clear the seek bar and its clock on a video that reaches the bottom edge, and no
+ * more: every unit of it is picture the text is covering instead.
+ */
+private const val CONTROLS_SUBTITLE_LIFT = 10
 
 /** Which of the two track lists is open. Only one is, and often neither. */
 private enum class TrackKind { Audio, Subtitle }
