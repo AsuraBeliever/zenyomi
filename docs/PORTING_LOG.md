@@ -270,11 +270,20 @@ Diferencias deliberadas frente al lado de manga:
   *title-case* del lado de manga imprimiría «Ova». `MOVIE`, `SPECIAL` y `MUSIC` sí.
 - **Un estado `CURRENT` se dice «Airing»**, no «Publishing».
 
-Verificado contra la API real antes de dar nada por bueno: las cuatro consultas de lectura
-(`searchAnimeByTitle`, `findAnimeById`, `findAnimeBySlug` y la de entrada de biblioteca) se
-enviaron tal cual las construye la app y las cuatro responden sin errores de esquema, y los
-DTO decodifican esas respuestas de verdad. **Las mutaciones no**: escribir en una biblioteca
-pide una cuenta de Kitsu, que aquí no hay. Ver `KNOWN_ISSUES.md`.
+Verificado de punta a punta contra una cuenta real el 2026-09-15, primero enviando a la API las
+consultas extraídas **del propio fuente** —para probar lo que se envía, no una copia a mano— y
+después conduciendo la app en el emulador y comprobando el resultado en los servidores de Kitsu.
+
+**Y ahí salió un fallo que no se veía de otra forma.** Borrar una entrada que ya no está
+devuelve 500 con `{"error":{"message":"Couldn't find LibraryEntry…"},"data":{}}`. Fíjate en que
+`data` es un objeto **vacío**, no `null`: con `libraryEntry` declarado no nulable,
+kotlinx.serialization lanzaba `MissingFieldException` **antes** de que se llegara a mirar el
+error, así que el perdón para ese caso era código muerto. Es exactamente la trampa que ya está
+anotada más arriba para `MALAnimeListItemStatus`, y solo aparece si de verdad se llama al
+servicio. `libraryEntry` es nulable ahora.
+
+(El lado de manga de Mihon tiene la misma forma en `KitsuDeleteMangaData` y por tanto el mismo
+fallo latente. No se toca —regla 1— pero queda dicho.)
 
 ## El player pasa a Activity propia
 

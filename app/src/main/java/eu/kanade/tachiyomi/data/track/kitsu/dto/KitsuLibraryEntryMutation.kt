@@ -19,9 +19,15 @@ data class KitsuLibraryEntryMutationResult(
     val error: KitsuErrorMessage?,
 )
 
+/**
+ * `libraryEntry` is nullable because a failed mutation still answers with a `data` object:
+ * deleting an entry that is already gone returns 500 with `{"error": …, "data": {}}`, and a
+ * non-nullable field here would throw on the missing key before the error is ever read — which
+ * is exactly how the forgiveness for that case turned into dead code the first time round.
+ */
 @Serializable
 data class KitsuLibraryEntryMutationData(
-    val libraryEntry: KitsuLibraryEntryMutations,
+    val libraryEntry: KitsuLibraryEntryMutations?,
 )
 
 @Serializable
