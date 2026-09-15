@@ -8,7 +8,10 @@ data class ALSearchItem(
     val title: ALItemTitle,
     val coverImage: ItemCover,
     val description: String?,
-    val format: String,
+    // Nullable, and this is not theoretical: AniList entry 171630, "THE ONE PIECE", comes
+    // back with format null, and a non-nullable field here failed the whole search rather
+    // than the one entry — searching "one piece" for an anime simply said "Search failed".
+    val format: String? = null,
     val status: String?,
     val startDate: ALFuzzyDate,
     // Both default to null so one DTO can parse a manga response (which carries chapters) and
@@ -25,10 +28,10 @@ data class ALSearchItem(
         title = title.userPreferred,
         imageUrl = coverImage.large,
         description = description,
-        format = if (format != "MANGA") {
-            format.replace("_", "-")
-        } else {
-            when (countryOfOrigin) {
+        format = when {
+            format == null -> ""
+            format != "MANGA" -> format.replace("_", "-")
+            else -> when (countryOfOrigin) {
                 "KR" -> "Manhwa"
                 "CN", "TW" -> "Manhua"
                 else -> "Manga"
@@ -46,7 +49,7 @@ data class ALSearchItem(
         title = title.userPreferred,
         imageUrl = coverImage.large,
         description = description,
-        format = format.replace("_", "-"),
+        format = format?.replace("_", "-").orEmpty(),
         publishingStatus = status ?: "",
         startDateFuzzy = startDate.toEpochMilli(),
         totalEpisodes = episodes ?: 0,
