@@ -20,7 +20,7 @@
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | Releases 0.5.x – 0.12.0 | ✅ | hasta `v0.12.0`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.12.0, 2026-09-14 |
-| Fase 3 completa | ✅ | entregada; queda pendiente verificar los trackers con una cuenta real |
+| Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList y AniList |
 | PiP del player | ✅ | Activity propia |
 | BD anime | ✅ | 10 tablas + 8 vistas, conectada al grafo de dependencias |
@@ -72,7 +72,7 @@
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
 | Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
-| Trackers de anime | ⚠️ | MyAnimeList y AniList: buscar, vincular, desvincular y empujar progreso; sin verificar con cuenta real (ver abajo) |
+| Trackers de anime | ✅ | MyAnimeList y AniList verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación y progreso, comprobado en los servidores de cada servicio |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
 | Aspecto de los subtítulos | ✅ | paridad con Aniyomi: fuente, tamaño, colores, borde, sombra, posición, retardo y velocidad, en el reproductor y en Ajustes |
 | Estadísticas de anime | ✅ | contadores verificados uno a uno contra la BD |
@@ -86,6 +86,11 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 Ninguno.
 
 ## Pendiente menor
+
+- **Las pantallas de OAuth dicen «Mihon».** Al conceder acceso, MyAnimeList y AniList muestran
+  el nombre y la web de Mihon, porque los identificadores de cliente son los suyos, heredados
+  del fork. Funciona, pero es el nombre de otro proyecto. Arreglarlo pide registrar apps
+  propias en ambos servicios; decisión del cliente.
 
 - **El contador de extensiones de anime no cuenta las no confiadas.** En una instalación
   limpia la cabecera dice «Anime extensions 0» mientras debajo hay veintiuna esperando

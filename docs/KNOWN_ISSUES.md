@@ -27,24 +27,35 @@ El toque simple (pausa) **sí** está verificado: no necesita ventana temporal.
 
 ---
 
-## 2. Vincular un tracker a una cuenta real
+## 2. Vincular un tracker a una cuenta real — ✅ VERIFICADO (2026-09-15)
 
-**Estado:** implementado para MyAnimeList y AniList, sin verificar de punta a punta.
-**Cómo probarlo:** *Ajustes → Tracking → MyAnimeList*, iniciar sesión. Luego, en un anime de
-la biblioteca, el icono de tracking (arriba a la derecha) → buscar → elegir. Al ver un
-episodio, el progreso debería subir a la cuenta.
+Ya no es una incógnita. El cliente facilitó una cuenta de pruebas y se probó de punta a punta
+contra los servicios reales, comprobando el resultado **en sus servidores**, no en la app:
 
-**Por qué no se puede aquí.** No hay credenciales de MAL ni de AniList en el entorno, y crear
-una cuenta a nombre del cliente no es algo que deba hacerse por su cuenta.
+| Paso | MyAnimeList | AniList |
+|---|---|---|
+| Iniciar sesión (OAuth) | ✅ | ✅ |
+| Buscar un anime | ✅ | ✅ |
+| Vincular la entrada | ✅ | ✅ |
+| Empujar progreso | ✅ | ✅ |
 
-**Lo que sí está comprobado contra el servicio real:** los nombres de campo del modelo de MAL
-coinciden exactamente con lo que devuelve hoy `api.myanimelist.net/v2/anime` — ni falta ni
-sobra ninguno. Es la parte que más suele romperse.
+Comprobación independiente, consultando cada servicio desde fuera de la app:
 
-**AniList está caída, y no es cosa nuestra.** `graphql.anilist.co` responde `403 - The AniList
-API has been temporarily disabled due to severe stability issues` incluso a una consulta
-trivial sin autenticar. Afecta igual al tracking de manga de Mihon. Por eso se añadió
-MyAnimeList en la misma tanda.
+```
+MyAnimeList  num_watched_episodes: 1   status: 1 (watching)
+AniList      progress: 2               status: CURRENT
+```
+
+Salieron tres defectos de la prueba, los tres ya corregidos: la hoja decía «Reading» en vez de
+«Watching», el selector de progreso se titulaba «Chapters» en vez de «Episodes», y los dos
+selectores se dibujaban sin superficie encima de la tarjeta de detrás.
+
+**Nota de identidad, pendiente de decisión del cliente.** Las pantallas de autorización de
+MyAnimeList y de AniList dicen «**Mihon** is requesting permission». Los identificadores de
+cliente OAuth son los de Mihon, heredados del fork. Funciona, pero un usuario ve el nombre de
+otro proyecto al conceder acceso a su cuenta. Corregirlo es registrar aplicaciones propias en
+ambos servicios, lo cual requiere que el cliente cree esas apps. Mientras tanto queda anotado
+aquí para que no se descubra por sorpresa.
 
 ---
 
