@@ -3,10 +3,9 @@
     android:height="108dp"
     android:viewportWidth="432"
     android:viewportHeight="432">
+  <!-- Negro plano, y a proposito: la figura no esta pintada encima de la manzana, esta
+       recortada del primer plano, asi que es este fondo el que se ve a traves de ella. -->
   <path
       android:pathData="M0,0h432v432h-432z"
-      android:fillColor="#241B4D"/>
-  <path
-      android:pathData="M216,84C288.9,84 348,143.1 348,216C348,288.9 288.9,348 216,348C143.1,348 84,288.9 84,216C84,143.1 143.1,84 216,84Z"
-      android:fillColor="#2E2463"/>
+      android:fillColor="#0B0B0B"/>
 </vector>

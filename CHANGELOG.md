@@ -10,6 +10,16 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.13.1] - 2026-09-15
+### Changed
+- **New app icon**, on the launcher and the splash screen both.
+
+### Fixed
+- **Searching an anime on AniList works again.** Searching for "one piece" answered "Search failed" — and would have done so for any search whose results happened to include one particular entry. AniList's "THE ONE PIECE" comes back without a type, and one entry missing one field was taking down the whole page of forty rather than itself. Manga was never affected, by luck rather than design: the same code would have failed the same way on a manga with no type.
+- **Pressing Tracking on an anime opens what pressing it on a manga opens.** They were two different things: a manga raises a sheet over the entry you are looking at, an anime pushed a whole separate screen with its own toolbar and a back arrow. Same button, same row, two behaviours depending on what it sat on. It is the same sheet for both now.
+- **"Open in browser" on a tracker opens your browser**, rather than a web page inside the app.
+- **A one-episode result says "1 episode".** The tracker search rows said "1 episodes" for a film or a special.
+
 ## [0.13.0] - 2026-09-15
 ### Added
 - **Kitsu tracks anime.** The third service to do so, after MyAnimeList and AniList, and it was the odd one out: Kitsu has always been in the list, but picking it for an anime offered nothing. Searching, linking, pushing what you have watched, scoring, marking an entry private and unlinking all work now, and Kitsu's own scale is used for the score — if your account is set to smileys you get smileys, not a number. Kitsu signs in with an email and a password, so unlike the other two there is no authorisation screen carrying somebody else's name.

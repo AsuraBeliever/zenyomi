@@ -30,7 +30,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,6 +49,7 @@ import eu.kanade.presentation.anime.components.AnimeInfoBox
 import eu.kanade.presentation.anime.components.AnimeToolbar
 import eu.kanade.presentation.anime.components.EpisodeHeader
 import eu.kanade.presentation.anime.components.EpisodeSettingsDialog
+import eu.kanade.presentation.components.NavigatorAdaptiveSheet
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ExpandableMangaDescription
@@ -103,6 +106,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
 
         val snackbarHostState = remember { SnackbarHostState() }
         val episodeListState = rememberLazyListState()
+        var showTrackSheet by remember { mutableStateOf(false) }
 
         state.categoryDialog?.let { dialog ->
             AnimeCategoryDialog(
@@ -114,6 +118,16 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                     viewModel.dismissCategoryDialog()
                     navigator.push(AnimeCategoryScreen())
                 },
+            )
+        }
+
+        // The same sheet the manga screen opens for tracking, and the same component, so the
+        // Tracking button behaves identically whichever of the two you pressed it on.
+        if (showTrackSheet && anime != null) {
+            NavigatorAdaptiveSheet(
+                screen = AnimeTrackScreen(anime.id),
+                enableSwipeDismiss = { it.lastItem is AnimeTrackScreen },
+                onDismissRequest = { showTrackSheet = false },
             )
         }
 
@@ -268,7 +282,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                             }
                         },
                         onWebViewLongClicked = null,
-                        onTrackingClicked = { navigator.push(AnimeTrackScreen(anime.id)) },
+                        onTrackingClicked = { showTrackSheet = true },
                         // Anime has no per-entry update interval of its own yet, so the
                         // countdown is shown but not editable.
                         onEditIntervalClicked = null,

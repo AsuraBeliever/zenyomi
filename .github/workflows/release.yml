@@ -44,7 +44,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       - name: Build
-        run: ./gradlew assembleRelease -Penable-updater
+        run: .github/scripts/gradle-with-retry.sh assembleRelease -Penable-updater
         env:
           storeFileBase64: ${{ secrets.SIGNING_KEY }}
           storePassword: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -88,13 +88,16 @@ jobs:
           java-version-file: .github/.java-version
           distribution: temurin
 
+      # The dependency cache stays on, unlike upstream Mihon's workflow. Disabled, this job
+      # resolved all eleven JitPack dependencies from scratch on every run, and it was the
+      # only job that ever failed on them — `Build`, which caches, has never failed once.
+      # A tag is not the default branch, so setup-gradle makes the cache read-only here and
+      # there is no write race with the `Build` job running alongside.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-        with:
-          cache-disabled: true
 
       - name: Build
-        run: ./gradlew assembleFoss -Penable-updater
+        run: .github/scripts/gradle-with-retry.sh assembleFoss -Penable-updater
         env:
           storeFileBase64: ${{ secrets.SIGNING_KEY }}
           storePassword: ${{ secrets.KEY_STORE_PASSWORD }}

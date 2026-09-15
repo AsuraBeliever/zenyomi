@@ -73,6 +73,47 @@ El build local pasa aunque JitPack esté caído porque la dependencia ya está e
 `~/.gradle/caches`; el CI corre con `cache-disabled: true` y resuelve de cero cada vez.
 Esa diferencia es la que hace que parezca un fallo nuestro sin serlo.
 
+**Actualización 2026-09-15 (v0.13.0): hicieron falta cuatro intentos.** El
+`Could not find flexible-adapter-<rev>.jar` volvió, y relanzar una vez no bastó. El
+tercer intento dio además un síntoma distinto —`Could not find
+com.github.arkon.FlexibleAdapter:flexible-adapter:c8013533`, el módulo entero— lo que
+confirma que es JitPack sirviendo mal y no un POM concreto: mientras tanto,
+`curl` desde aquí devolvía 200 para el `.pom` **y** el `.aar`, y el `.pom` traía su
+`<packaging>aar</packaging>`.
+
+Antes de relanzar por tercera vez se comprobó que la culpa era de fuera, que es lo
+que dice el apartado de arriba: `./gradlew :app:mergeFossNativeLibs
+--refresh-dependencies` pasa en local. `--refresh-dependencies` re-descarga los
+metadatos, así que la prueba no se apoya en el POM que ya estuviera en caché.
+
+**Solo le pega al job FOSS**, y no es casualidad: es el único con
+`cache-disabled: true`, así que resuelve de cero cada vez. `Build` compiló a la
+primera en las cuatro tentativas. Si vuelve a pasar: relanzar, y darle unos minutos
+entre intentos.
+
+**Desde el 2026-09-15 esto se arregla solo, y hay dos cambios detrás.**
+
+1. **El job FOSS vuelve a usar la caché de dependencias.** El `cache-disabled: true` venía
+   de Mihon, no era una decisión nuestra, y era justo lo que hacía que ese job resolviera
+   las once dependencias de JitPack de cero en cada ejecución. Es el único job que ha
+   fallado nunca por esto: `Build`, que sí cachea, no ha fallado una sola vez. Un tag no es
+   la rama por defecto, así que `setup-gradle` deja la caché en solo lectura y no hay
+   carrera de escritura con el `Build` que corre en paralelo.
+
+2. **Las dos compilaciones reintentan solas**, vía `.github/scripts/gradle-with-retry.sh`:
+   tres intentos con un minuto de espera. El reintento está **condicionado al propio error
+   de resolución** (`Could not find/resolve/GET/HEAD`, `Failed to transform`); cualquier
+   otro fallo sale a la primera. Reintentar un error de compilación tres veces convertiría
+   un rojo de dos minutos en uno de diez y enseñaría a todo el mundo a ignorarlo.
+
+Lo que queda para la persona: si aun así agota los tres intentos, el propio log lo dice y
+apunta a JitPack. Entonces sí, esperar y relanzar.
+
+> Nota honesta: la lógica de reintento está probada —éxito, fallo de resolución
+> persistente, error de compilación y fallo-que-se-recupera— pero **el arreglo entero no se
+> habrá demostrado hasta la siguiente release de verdad**, porque JitPack no se puede
+> romper a voluntad.
+
 ## Verificar una release antes de anunciarla
 
 Sobre el APK **que publicó el CI**, no sobre el que compilaste tú. Son binarios
@@ -106,6 +147,7 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.1.0 | 1 | debug (desechable) | Línea base, sin publicar |
 | 0.1.1 | 2 | debug (desechable) | Retirada la marca de Mihon; sin publicar |
 | 0.1.2 | 3 | **clave del proyecto** | Primera release publicada |
+| 0.13.0 | 23 | **clave del proyecto** | Kitsu con anime. Cuatro intentos por JitPack |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es
