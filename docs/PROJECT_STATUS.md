@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-15
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.13.1, tag en `main`
+**Última release:** v0.14.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,7 +18,7 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x – 0.13.1 | ✅ | hasta `v0.13.1`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Releases 0.5.x – 0.14.0 | ✅ | hasta `v0.14.0`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.13.1, 2026-09-15 |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
@@ -43,7 +43,7 @@
 | Baseline profile | ✅ | el generador cubre ahora las pantallas de anime; 13 → 1418 reglas de anime |
 | Ajustes de fuente de anime | ✅ | aloja el `setupPreferenceScreen()` de la propia extensión |
 | Ficha de anime y episodios | ✅ | mismo diseño que la de manga: fondo difuminado, autor y estado, fila de acciones, sinopsis con géneros, filtro/orden, descarga por lotes y botón de continuar |
-| Paridad visual manga ↔ anime | ✅ | se reutilizan los componentes de Mihon que van con primitivas; solo se duplica lo que estaba atado al tipo `Manga` |
+| Paridad manga ↔ anime | ✅ | auditada punto por punto en `ANIME_PARITY_GAPS.md` y cerrada en la v0.14.0: selección de episodios y de biblioteca, notas, intervalo, portada, deslizamiento, dos paneles. Se reutilizan los componentes de Mihon; la copia `AnimeToolbar` desapareció |
 | Tienda de extensiones de anime | ✅ | añadir repos e instalar desde la app; verificado con el índice oficial de Aniyomi |
 | Errores de fuente legibles | ✅ | `AnimeSourceError`: nunca se enseña la excepción cruda; el mensaje propio de una extensión sí |
 | Estado medido de las extensiones | ✅ | arnés en debug + `anime-source-health.json`; ver `docs/EXTENSIONS_STATUS.md` |

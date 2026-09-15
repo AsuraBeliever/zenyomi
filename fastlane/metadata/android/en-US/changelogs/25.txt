@@ -1,0 +1,11 @@
+Added: episodes can be selected like chapters. Hold one to start, hold another further down to take everything in between, then mark seen or unseen, bookmark, download, delete, or mark everything before it as seen.
+
+Added: the same selection in the anime library — set categories, mark seen, download, remove, migrate.
+
+Added: notes on an anime, a full-screen cover with share and save, sharing an anime, pull-to-refresh, and swiping an episode row to mark it seen or bookmark it.
+
+Added: the update interval is yours to set, and the library update now skips anime that are not due yet.
+
+Added: on a tablet, an anime entry splits into two panes like a manga does.
+
+Fixed: a part-watched episode shows where you left off, where a chapter shows the page.
