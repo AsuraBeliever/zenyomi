@@ -3,10 +3,8 @@
     android:height="108dp"
     android:viewportWidth="432"
     android:viewportHeight="432">
+  <!-- La de debug se distingue por el fondo, no por el dibujo: azul pizarra en vez de negro. -->
   <path
       android:pathData="M0,0h432v432h-432z"
-      android:fillColor="#2E3943"/>
-  <path
-      android:pathData="M216,84C288.9,84 348,143.1 348,216C348,288.9 288.9,348 216,348C143.1,348 84,288.9 84,216C84,143.1 143.1,84 216,84Z"
-      android:fillColor="#3A4855"/>
+      android:fillColor="#16283A"/>
 </vector>
