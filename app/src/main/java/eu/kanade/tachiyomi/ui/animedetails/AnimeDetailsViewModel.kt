@@ -128,8 +128,20 @@ class AnimeDetailsViewModel(
                     refreshDownloaded(anime, episodes)
                     describeSource(anime)
                     recomputeVisible(anime, episodes, _state.value.downloadedEpisodeIds)
-                    if (!episodesFetched) {
+                    // Solo se le pide a la fuente cuando hace falta de verdad, que es lo que
+                    // hace la ficha de manga: si la entrada ya esta rellena y sus episodios ya
+                    // estan guardados, lo que hay en la base de datos vale y volver a entrar es
+                    // instantaneo. Antes se pedia en cada apertura porque la bandera vivia en el
+                    // ViewModel, y al salir y volver habia un ViewModel nuevo: una entrada ya
+                    // vista costaba otra vuelta a la red para acabar enseñando lo mismo.
+                    //
+                    // Para forzar una recarga esta el gesto de tirar hacia abajo, que es donde
+                    // el usuario lo pide a proposito.
+                    val needsDetails = !anime.initialized
+                    val needsEpisodes = episodes.isEmpty()
+                    if (!episodesFetched && (needsDetails || needsEpisodes)) {
                         episodesFetched = true
+                        _state.update { it.copy(isRefreshingData = true) }
                         sourceManager.get(anime.source)?.let { source ->
                             fetchDetails(anime, source)
                             runCatching { syncEpisodesWithSource.await(anime, source) }
@@ -143,6 +155,7 @@ class AnimeDetailsViewModel(
                                     _state.update { state -> state.copy(episodeError = null) }
                                 }
                         }
+                        _state.update { it.copy(isRefreshingData = false) }
                     }
                 }
         }
