@@ -8,6 +8,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibraryDisplayMode
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibraryPreferences
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibrarySort
@@ -18,12 +19,19 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.anime.interactor.GetLibraryAnime
+import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.category.anime.interactor.GetAnimeCategories
+import tachiyomi.domain.category.anime.interactor.SetAnimeCategories
 import tachiyomi.domain.category.anime.model.AnimeCategory
+import tachiyomi.domain.episode.interactor.GetEpisodesByAnimeId
+import tachiyomi.domain.episode.interactor.UpdateEpisode
+import tachiyomi.domain.episode.model.EpisodeUpdate
 import tachiyomi.domain.library.anime.LibraryAnime
 import tachiyomi.domain.library.service.LibraryPreferences
+import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import kotlin.random.Random
 
 /**
@@ -45,6 +53,13 @@ class AnimeLibraryViewModel(
     private val getAnimeCategories: GetAnimeCategories,
     private val preferences: AnimeLibraryPreferences,
     private val libraryPreferences: LibraryPreferences,
+    private val getAnime: GetAnime,
+    private val getEpisodesByAnimeId: GetEpisodesByAnimeId,
+    private val updateEpisode: UpdateEpisode,
+    private val updateAnime: UpdateAnime,
+    private val setAnimeCategories: SetAnimeCategories,
+    private val sourceManager: AnimeSourceManager,
+    private val downloadManager: AnimeDownloadManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -233,6 +248,102 @@ class AnimeLibraryViewModel(
         val categoryTabs: Boolean,
     )
 
+    // ---- Seleccion ----------------------------------------------------------------------
+    //
+    // Misma forma que en la biblioteca de manga: mantener pulsado entra en modo seleccion, y
+    // a partir de ahi tocar suma o quita. Se guardan ids y no objetos porque la lista se
+    // recalcula con cada filtro, busqueda o cambio de pestaña, y un objeto viejo dejaria de
+    // coincidir con el de la lista nueva.
+
+    fun toggleSelection(anime: LibraryAnime) {
+        _state.update { state ->
+            val ids = state.selection.toMutableSet()
+            if (!ids.add(anime.id)) ids.remove(anime.id)
+            state.copy(selection = ids)
+        }
+    }
+
+    fun selectAll() = _state.update { it.copy(selection = it.library.map { a -> a.id }.toSet()) }
+
+    fun invertSelection() = _state.update { state ->
+        state.copy(selection = state.library.map { it.id }.filterNot { it in state.selection }.toSet())
+    }
+
+    fun clearSelection() = _state.update { it.copy(selection = emptySet()) }
+
+    // ---- Acciones en lote ---------------------------------------------------------------
+
+    /** Marca visto o no visto todo lo elegido, episodio por episodio. */
+    fun markSelectedSeen(seen: Boolean) {
+        val chosen = state.value.selectedAnime
+        clearSelection()
+        viewModelScope.launchIO {
+            chosen.forEach { libraryAnime ->
+                val episodes = getEpisodesByAnimeId.await(libraryAnime.id)
+                updateEpisode.awaitAll(
+                    episodes.map {
+                        EpisodeUpdate(id = it.id, seen = seen, lastSecondSeen = if (seen) it.lastSecondSeen else 0L)
+                    },
+                )
+            }
+        }
+    }
+
+    /** Encola lo que falte por descargar de cada anime elegido. */
+    fun downloadSelected() {
+        val chosen = state.value.selectedAnime
+        clearSelection()
+        viewModelScope.launchIO {
+            chosen.forEach { libraryAnime ->
+                val anime = getAnime.await(libraryAnime.id) ?: return@forEach
+                val source = sourceManager.get(anime.source) ?: return@forEach
+                val episodes = getEpisodesByAnimeId.await(anime.id).filterNot { it.seen }
+                val already = downloadManager.downloadedEpisodeIds(anime, source, episodes)
+                val wanted = episodes.filterNot { it.id in already }
+                if (wanted.isNotEmpty()) downloadManager.enqueue(anime, wanted)
+            }
+        }
+    }
+
+    /** Las saca de la biblioteca. Los ficheros descargados no se tocan aqui, como en Mihon. */
+    fun removeSelectedFromLibrary() {
+        val chosen = state.value.selectedAnime
+        clearSelection()
+        viewModelScope.launchIO {
+            chosen.forEach { updateAnime.awaitUpdateFavorite(it.id, false) }
+        }
+    }
+
+    /** Las categorias que hay y las que comparten las elegidas, para el dialogo. */
+    fun openChangeCategoryDialog() {
+        viewModelScope.launchIO {
+            val chosen = state.value.selectedAnime
+            if (chosen.isEmpty()) return@launchIO
+            val categories = getAnimeCategories.await()
+            val common = chosen
+                .map { getAnimeCategories.await(it.id).map { c -> c.id }.toSet() }
+                .reduceOrNull { acc, ids -> acc intersect ids }
+                .orEmpty()
+            _state.update { it.copy(changeCategoryDialog = ChangeCategoryDialog(categories, common)) }
+        }
+    }
+
+    fun dismissChangeCategoryDialog() = _state.update { it.copy(changeCategoryDialog = null) }
+
+    fun setCategoriesForSelection(categoryIds: List<Long>) {
+        val chosen = state.value.selectedAnime
+        dismissChangeCategoryDialog()
+        clearSelection()
+        viewModelScope.launchIO {
+            chosen.forEach { setAnimeCategories.await(it.id, categoryIds) }
+        }
+    }
+
+    data class ChangeCategoryDialog(
+        val categories: List<AnimeCategory>,
+        val selected: Set<Long>,
+    )
+
     data class State(
         val isLoading: Boolean = true,
         val library: List<LibraryAnime> = emptyList(),
@@ -255,7 +366,13 @@ class AnimeLibraryViewModel(
          * anime filed in two categories is counted once here and twice there.
          */
         val totalCount: Int = 0,
+        /** Los anime marcados ahora mismo. Vacio = no hay modo seleccion. */
+        val selection: Set<Long> = emptySet(),
+        val changeCategoryDialog: ChangeCategoryDialog? = null,
     ) {
+        val selectionMode: Boolean get() = selection.isNotEmpty()
+        val selectedAnime: List<LibraryAnime> get() = library.filter { it.id in selection }
+
         val isEmpty: Boolean get() = library.isEmpty()
 
         /** No results for a search is a different situation from an empty library. */

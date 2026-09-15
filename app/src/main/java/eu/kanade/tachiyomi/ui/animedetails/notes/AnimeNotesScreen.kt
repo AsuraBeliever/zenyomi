@@ -1,7 +1,6 @@
-package eu.kanade.tachiyomi.ui.manga.notes
+package eu.kanade.tachiyomi.ui.animedetails.notes
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
@@ -16,28 +15,34 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
-import eu.kanade.presentation.manga.MangaNotesScreen
 import eu.kanade.presentation.util.Screen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import tachiyomi.core.common.util.lang.launchNonCancellable
-import tachiyomi.domain.manga.interactor.UpdateMangaNotes
-import tachiyomi.domain.manga.model.Manga
+import tachiyomi.domain.anime.interactor.UpdateAnimeNotes
+import tachiyomi.domain.anime.model.Anime
+import eu.kanade.presentation.manga.MangaNotesScreen as NotesContent
 
-class MangaNotesScreen(
-    private val manga: Manga,
+/**
+ * Notas de un anime.
+ *
+ * La pantalla en si es la de Mihon: ahora pide un titulo y un texto en vez de un `Manga`, asi
+ * que aqui no hay interfaz que duplicar, solo el modelo que guarda en la tabla de anime.
+ */
+class AnimeNotesScreen(
+    private val anime: Anime,
 ) : Screen() {
+
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val viewModel = assistedMetroViewModel<Model, Model.Factory> { create(anime = anime) }
+        val notes by viewModel.notes.collectAsState()
 
-        val viewModel = assistedMetroViewModel<Model, Model.Factory> { create(manga = manga) }
-        val state by viewModel.state.collectAsState()
-
-        MangaNotesScreen(
-            title = state.manga.title,
-            notes = state.notes,
+        NotesContent(
+            title = anime.title,
+            notes = notes,
             navigateUp = navigator::pop,
             onUpdate = viewModel::updateNotes,
         )
@@ -45,36 +50,27 @@ class MangaNotesScreen(
 
     @AssistedInject
     class Model(
-        @Assisted private val manga: Manga,
-        private val updateMangaNotes: UpdateMangaNotes,
+        @Assisted private val anime: Anime,
+        private val updateAnimeNotes: UpdateAnimeNotes,
     ) : ViewModel() {
 
-        val state: StateFlow<State>
-            field = MutableStateFlow<State>(State(manga, manga.notes))
+        private val _notes = MutableStateFlow(anime.notes)
+        val notes: StateFlow<String> = _notes
 
         @AssistedFactory
         @ManualViewModelAssistedFactoryKey
         @ContributesIntoMap(AppScope::class)
         interface Factory : ManualViewModelAssistedFactory {
-            fun create(manga: Manga): Model
+            fun create(anime: Anime): Model
         }
 
         fun updateNotes(content: String) {
-            if (content == state.value.notes) return
-
-            state.update {
-                it.copy(notes = content)
-            }
-
+            if (content == _notes.value) return
+            _notes.update { content }
+            // Sin cancelar: salir de la pantalla no debe perder lo ultimo escrito.
             viewModelScope.launchNonCancellable {
-                updateMangaNotes(manga.id, content)
+                updateAnimeNotes(anime.id, content)
             }
         }
     }
-
-    @Immutable
-    data class State(
-        val manga: Manga,
-        val notes: String,
-    )
 }

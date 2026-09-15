@@ -224,6 +224,7 @@ class AnimeRepositoryImpl(
                     seasonNumber = value.seasonNumber,
                     seasonSourceOrder = value.seasonSourceOrder,
                     memo = value.memo?.let(MemoColumnAdapter::encode),
+                    notes = value.notes,
                 )
             }
         }

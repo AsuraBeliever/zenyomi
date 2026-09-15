@@ -45,6 +45,7 @@ data class Anime(
     val seasonNumber: Double,
     val seasonSourceOrder: Long,
     val memo: JsonObject,
+    val notes: String,
 ) : Serializable {
 
     val expectedNextUpdate: Instant?
@@ -344,6 +345,7 @@ data class Anime(
             seasonNumber = -1.0,
             seasonSourceOrder = 0L,
             memo = JsonObject.EMPTY,
+            notes = "",
         )
     }
 }

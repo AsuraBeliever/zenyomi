@@ -7,12 +7,18 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.anime.interactor.EpisodeFetchInterval
 import tachiyomi.domain.anime.interactor.GetAnimeFavorites
+import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.model.Episode
+import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
+import kotlin.time.Clock
 
 /**
  * Refetches episodes for every anime in the library.
@@ -29,6 +35,9 @@ class RefreshAnimeLibrary(
     private val getAnimeFavorites: GetAnimeFavorites,
     private val syncEpisodesWithSource: SyncEpisodesWithSource,
     private val sourceManager: AnimeSourceManager,
+    private val updateAnime: UpdateAnime,
+    private val fetchInterval: EpisodeFetchInterval,
+    private val libraryPreferences: LibraryPreferences,
 ) {
 
     /**
@@ -39,7 +48,16 @@ class RefreshAnimeLibrary(
     suspend fun await(
         onProgress: (current: Int, total: Int, title: String?) -> Unit = { _, _, _ -> },
     ): Result = coroutineScope {
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val window = fetchInterval.getWindow(now.date, TimeZone.currentSystemDefault())
+        val skipOutsideReleasePeriod = LibraryPreferences.MANGA_OUTSIDE_RELEASE_PERIOD in
+            libraryPreferences.autoUpdateMangaRestrictions.get()
+
+        // Una serie que no toca todavia no se consulta, que es de lo que sirve el intervalo.
+        // La misma restriccion que el lado de manga, y la misma preferencia: el usuario la
+        // configura una vez y vale para los dos.
         val favorites = getAnimeFavorites.await()
+            .filterNot { skipOutsideReleasePeriod && it.nextUpdate > window.second }
         val semaphore = Semaphore(CONCURRENCY)
         val progressLock = Mutex()
         var completed = 0
@@ -54,6 +72,11 @@ class RefreshAnimeLibrary(
                         runCatching { syncEpisodesWithSource.await(anime, source) }
                             .onFailure { logcat(LogPriority.WARN, it) { "Refresh failed for ${anime.title}" } }
                             .getOrNull()
+                    }
+                    // Recalcular el intervalo despues de mirar: es lo que hace que una serie
+                    // parada se consulte cada vez menos y una activa siga mirandose semanal.
+                    if (newEpisodes != null) {
+                        runCatching { updateAnime.awaitUpdateFetchInterval(anime, now, window) }
                     }
                     progressLock.withLock {
                         completed++

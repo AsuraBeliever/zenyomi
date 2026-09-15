@@ -45,6 +45,9 @@ fun AnimeLibraryContent(
     searchQuery: String?,
     onAnimeClick: (Long) -> Unit,
     onGlobalSearchClicked: () -> Unit,
+    /** Ids marcados ahora mismo; vacio = no hay modo seleccion. */
+    selection: Set<Long>,
+    onAnimeLongClick: (LibraryAnime) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (displayMode) {
@@ -67,11 +70,11 @@ fun AnimeLibraryContent(
                 contentType = { "anime_library_list_item" },
             ) { item ->
                 MangaListItem(
-                    isSelected = false,
+                    isSelected = item.id in selection,
                     title = item.anime.title,
                     coverData = item.anime.asAnimeCover(),
                     badge = { UnreadBadge(count = item.unseenCount) },
-                    onLongClick = {},
+                    onLongClick = { onAnimeLongClick(item) },
                     onClick = { onAnimeClick(item.id) },
                     onClickContinueReading = null,
                 )
@@ -90,14 +93,14 @@ fun AnimeLibraryContent(
                 contentType = { "anime_library_comfortable_grid_item" },
             ) { item ->
                 MangaComfortableGridItem(
-                    isSelected = false,
+                    isSelected = item.id in selection,
                     title = item.anime.title,
                     coverData = item.anime.asAnimeCover(),
                     coverBadgeStart = {
                         DownloadsBadge(count = 0)
                         UnreadBadge(count = item.unseenCount)
                     },
-                    onLongClick = {},
+                    onLongClick = { onAnimeLongClick(item) },
                     onClick = { onAnimeClick(item.id) },
                     onClickContinueReading = null,
                 )
@@ -116,14 +119,14 @@ fun AnimeLibraryContent(
                 contentType = { "anime_library_compact_grid_item" },
             ) { item ->
                 MangaCompactGridItem(
-                    isSelected = false,
+                    isSelected = item.id in selection,
                     title = item.anime.title,
                     coverData = item.anime.asAnimeCover(),
                     coverBadgeStart = {
                         DownloadsBadge(count = 0)
                         UnreadBadge(count = item.unseenCount)
                     },
-                    onLongClick = {},
+                    onLongClick = { onAnimeLongClick(item) },
                     onClick = { onAnimeClick(item.id) },
                     onClickContinueReading = null,
                 )
@@ -142,7 +145,7 @@ fun AnimeLibraryContent(
                 contentType = { "anime_library_cover_only_grid_item" },
             ) { item ->
                 MangaCompactGridItem(
-                    isSelected = false,
+                    isSelected = item.id in selection,
                     // Cover only: the title is what tells this mode from the compact grid.
                     title = null,
                     coverData = item.anime.asAnimeCover(),
@@ -150,7 +153,7 @@ fun AnimeLibraryContent(
                         DownloadsBadge(count = 0)
                         UnreadBadge(count = item.unseenCount)
                     },
-                    onLongClick = {},
+                    onLongClick = { onAnimeLongClick(item) },
                     onClick = { onAnimeClick(item.id) },
                     onClickContinueReading = null,
                 )

@@ -43,6 +43,7 @@ object AnimeMapper {
         backgroundUrl: String?,
         backgroundLastModified: Long,
         memo: JsonObject,
+        notes: String,
     ): Anime = Anime(
         id = id,
         source = source,
@@ -75,6 +76,7 @@ object AnimeMapper {
         seasonNumber = seasonNumber,
         seasonSourceOrder = seasonSourceOrder,
         memo = memo,
+        notes = notes,
     )
 
     fun mapLibraryAnime(
@@ -110,6 +112,7 @@ object AnimeMapper {
         backgroundUrl: String?,
         backgroundLastModified: Long,
         memo: JsonObject,
+        notes: String,
         totalCount: Long,
         seenCount: Double,
         latestUpload: Long,
@@ -152,6 +155,7 @@ object AnimeMapper {
             backgroundUrl,
             backgroundLastModified,
             memo,
+            notes,
         ),
         category = category,
         totalCount = totalCount,
@@ -196,6 +200,7 @@ object AnimeMapper {
         backgroundUrl: String?,
         backgroundLastModified: Long,
         memo: JsonObject,
+        notes: String,
         totalCount: Long,
         seenCount: Double,
         latestUpload: Long,
@@ -237,6 +242,7 @@ object AnimeMapper {
             backgroundUrl,
             backgroundLastModified,
             memo,
+            notes,
         ),
         totalCount = totalCount,
         seenCount = seenCount.toLong(),
@@ -280,6 +286,7 @@ object AnimeMapper {
         backgroundUrl: String?,
         backgroundLastModified: Long,
         memo: JsonObject,
+        notes: String,
         name: String,
     ): Pair<String, Anime> = name to mapAnime(
         id,
@@ -314,6 +321,7 @@ object AnimeMapper {
         backgroundUrl,
         backgroundLastModified,
         memo,
+        notes,
     )
 
     fun mapDeletableAnime(

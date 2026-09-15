@@ -10,6 +10,21 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.14.0] - 2026-09-15
+### Added
+- **Episodes can be picked out, the way chapters can.** Hold one to start selecting, hold another further down and everything between the two comes with it — which is how you mark a run of episodes seen without tapping each one. The bar that appears is the same one the manga side has: mark seen or unseen, bookmark, download, delete, and **mark everything before this one as seen**. Select all and invert are in the top bar, and back leaves the selection rather than the screen.
+- **The same in the anime library.** Hold an entry to select, then set categories, mark seen or unseen, download, remove from the library, or migrate.
+- **Notes on an anime.** The same notes screen manga has, in the top bar's menu.
+- **The update interval is yours to set.** An anime that updates weekly no longer gets asked as often as one that updates daily, and you can override what the app worked out. It is not a dial connected to nothing: the library update now skips entries that are not due yet.
+- **The cover opens full screen**, with share and save.
+- **Swiping an episode row** marks it seen or bookmarks it, using the setting the manga side already has rather than a second one to configure.
+- **Pull down on an anime to re-ask the source** for its episodes.
+- **Share an anime** from the top bar's menu.
+- **On a tablet, an anime splits into two panes** — the entry on the left, the episodes on the right — as a manga already did.
+
+### Fixed
+- **A part-watched episode shows where you left off** — "12:34" — where a chapter shows the page. The app already knew; it just never said.
+
 ## [0.13.1] - 2026-09-15
 ### Changed
 - **New app icon**, on the launcher and the splash screen both.

@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animelibrary
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
@@ -37,12 +38,14 @@ import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.components.SearchToolbar
+import eu.kanade.presentation.manga.components.LibraryBottomActionMenu
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.animelibrary.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.ui.animebrowse.AnimeBrowseScreen
 import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
+import eu.kanade.tachiyomi.ui.animedetails.AnimeCategoryDialog
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
 import eu.kanade.tachiyomi.ui.animestats.AnimeStatsScreen
@@ -109,6 +112,22 @@ data object AnimeLibraryTab : Tab {
                     ),
                 )
             }
+        }
+
+        BackHandler(enabled = state.selectionMode, onBack = viewModel::clearSelection)
+
+        state.changeCategoryDialog?.let { dialog ->
+            // El mismo dialogo que la ficha, no una copia.
+            AnimeCategoryDialog(
+                categories = dialog.categories,
+                initiallySelected = dialog.selected,
+                onDismiss = viewModel::dismissChangeCategoryDialog,
+                onConfirm = viewModel::setCategoriesForSelection,
+                onEditCategories = {
+                    viewModel.dismissChangeCategoryDialog()
+                    navigator.push(AnimeCategoryScreen())
+                },
+            )
         }
 
         Scaffold(
@@ -195,6 +214,26 @@ data object AnimeLibraryTab : Tab {
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
+            bottomBar = {
+                // La misma barra de la biblioteca de manga: solo toma lambdas.
+                LibraryBottomActionMenu(
+                    visible = state.selectionMode,
+                    onChangeCategoryClicked = viewModel::openChangeCategoryDialog,
+                    onMarkAsReadClicked = { viewModel.markSelectedSeen(true) },
+                    onMarkAsUnreadClicked = { viewModel.markSelectedSeen(false) },
+                    onDownloadClicked = { viewModel.downloadSelected() },
+                    onDeleteClicked = viewModel::removeSelectedFromLibrary,
+                    onMigrateClicked = {
+                        val first = state.selectedAnime.firstOrNull()
+                        viewModel.clearSelection()
+                        if (first != null) {
+                            navigator.push(
+                                AnimeGlobalSearchScreen(initialQuery = first.anime.title, migrateFromId = first.id),
+                            )
+                        }
+                    },
+                )
+            },
         ) { contentPadding ->
             Column(Modifier.padding(top = contentPadding.calculateTopPadding())) {
                 // Only once something has actually been filed: a single tab reading "All"
@@ -248,10 +287,20 @@ data object AnimeLibraryTab : Tab {
                         columns = viewModel.columnsFor(LocalConfiguration.current.orientation),
                         contentPadding = innerPadding,
                         searchQuery = state.searchQuery,
-                        onAnimeClick = { navigator.push(AnimeDetailsScreen(it)) },
+                        onAnimeClick = { id ->
+                            // Con algo elegido, tocar suma o quita en vez de abrir la ficha,
+                            // igual que en la biblioteca de manga.
+                            if (state.selectionMode) {
+                                state.library.firstOrNull { it.id == id }?.let(viewModel::toggleSelection)
+                            } else {
+                                navigator.push(AnimeDetailsScreen(id))
+                            }
+                        },
                         onGlobalSearchClicked = {
                             navigator.push(AnimeGlobalSearchScreen(initialQuery = state.searchQuery.orEmpty()))
                         },
+                        selection = state.selection,
+                        onAnimeLongClick = viewModel::toggleSelection,
                     )
                 }
             }
