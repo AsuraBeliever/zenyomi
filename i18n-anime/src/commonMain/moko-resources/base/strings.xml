@@ -661,7 +661,6 @@
     <string name="anime_track_no_account">Sign in to MyAnimeList or AniList from Settings to track anime</string>
     <string name="anime_track_not_bound">Not tracked</string>
     <string name="anime_track_search_failed">Search failed</string>
-    <string name="anime_track_episode_count">%1$d episodes</string>
     <string name="player_picture_in_picture">Picture in picture</string>
     <string name="pref_category_player">Player</string>
     <string name="pref_player_summary">Seek step, playback speed, preferred languages</string>
