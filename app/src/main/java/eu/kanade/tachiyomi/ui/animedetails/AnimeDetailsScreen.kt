@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.animedetails
 
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -7,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,10 +38,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -54,6 +59,7 @@ import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ExpandableMangaDescription
 import eu.kanade.presentation.manga.components.MangaActionRow
+import eu.kanade.presentation.manga.components.MangaBottomActionMenu
 import eu.kanade.presentation.manga.components.MangaChapterListItem
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.data.download.model.Download
@@ -63,13 +69,17 @@ import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
 import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
 import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackScreen
 import eu.kanade.tachiyomi.ui.webview.WebViewScreen
+import eu.kanade.tachiyomi.util.system.toShareIntent
+import eu.kanade.tachiyomi.util.system.toast
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Close
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
+import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
+import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
@@ -107,6 +117,12 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
         val snackbarHostState = remember { SnackbarHostState() }
         val episodeListState = rememberLazyListState()
         var showTrackSheet by remember { mutableStateOf(false) }
+        val haptic = LocalHapticFeedback.current
+        val episodeSwipeStartAction = viewModel.episodeSwipeStartAction
+        val episodeSwipeEndAction = viewModel.episodeSwipeEndAction
+
+        // Salir de la seleccion con Atras antes que de la pantalla, igual que en la de manga.
+        BackHandler(enabled = state.selectedEpisodeIds.isNotEmpty(), onBack = viewModel::clearSelection)
 
         state.categoryDialog?.let { dialog ->
             AnimeCategoryDialog(
@@ -204,12 +220,50 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                             ),
                         )
                     }.takeIf { anime?.favorite == true },
-                    onClickShare = null,
+                    onClickShare = {
+                        shareAnime(context, anime, state.webViewUrl)
+                    }.takeIf { state.webViewUrl != null },
+                    actionModeCounter = state.selectedEpisodeIds.size,
+                    onCancelActionMode = viewModel::clearSelection,
+                    onSelectAll = { viewModel.toggleAllSelection(true) },
+                    onInvertSelection = viewModel::invertSelection,
                     titleAlphaProvider = { titleAlpha },
                     backgroundAlphaProvider = { backgroundAlpha },
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
+            bottomBar = {
+                // La misma barra de Mihon. Solo toma lambdas, asi que es la de verdad y no una
+                // copia: las mismas reglas de cuando aparece cada accion que usa la de manga.
+                val chosen = state.selectedEpisodes
+                MangaBottomActionMenu(
+                    visible = chosen.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                    onBookmarkClicked = {
+                        viewModel.bookmarkEpisodes(chosen, true)
+                    }.takeIf { chosen.any { !it.bookmark } },
+                    onRemoveBookmarkClicked = {
+                        viewModel.bookmarkEpisodes(chosen, false)
+                    }.takeIf { chosen.all { it.bookmark } },
+                    onMarkAsReadClicked = {
+                        viewModel.markEpisodesSeen(chosen, true)
+                    }.takeIf { chosen.any { !it.seen } },
+                    onMarkAsUnreadClicked = {
+                        viewModel.markEpisodesSeen(chosen, false)
+                    }.takeIf { chosen.any { it.seen || it.lastSecondSeen > 0L } },
+                    // "Marcar anteriores como vistos": solo con uno elegido, porque es lo que
+                    // significa — de este para atras.
+                    onMarkPreviousAsReadClicked = {
+                        viewModel.markPreviousAsSeen(chosen.first())
+                    }.takeIf { chosen.size == 1 },
+                    onDownloadClicked = {
+                        viewModel.enqueueDownloads(chosen)
+                    }.takeIf { state.canDownload && chosen.any { it.id !in state.downloadedEpisodeIds } },
+                    onDeleteClicked = {
+                        viewModel.deleteEpisodeDownloads(chosen)
+                    }.takeIf { chosen.any { it.id in state.downloadedEpisodeIds } },
+                )
+            },
             floatingActionButton = {
                 val episodes = state.visibleEpisodes
                 val isWatching = remember(episodes) { episodes.any { it.seen } }
@@ -243,132 +297,151 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                 return@Scaffold
             }
 
-            val topPadding = contentPadding.calculateTopPadding()
-            LazyColumn(
-                modifier = Modifier.fillMaxHeight(),
-                state = episodeListState,
-                // The info box draws behind the bar, so the top padding belongs to it rather
-                // than to the list.
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    bottom = contentPadding.calculateBottomPadding(),
-                ),
+            // Tirar hacia abajo vuelve a pedirle los episodios a la fuente, igual que en la
+            // ficha de manga, y se desactiva con algo seleccionado para no pelearse con el gesto.
+            PullRefresh(
+                refreshing = state.isRefreshingData,
+                onRefresh = viewModel::refreshFromSource,
+                enabled = state.selectedEpisodeIds.isEmpty(),
+                indicatorPadding = PaddingValues(top = contentPadding.calculateTopPadding()),
             ) {
-                item(key = "info-box", contentType = "info-box") {
-                    AnimeInfoBox(
-                        appBarPadding = topPadding,
-                        anime = anime,
-                        sourceName = state.sourceName,
-                        isStubSource = state.isStubSource,
-                        onCoverClick = {},
-                        doSearch = { query, _ ->
-                            navigator.push(AnimeGlobalSearchScreen(initialQuery = query))
-                        },
-                    )
-                }
-
-                item(key = "action-row", contentType = "action-row") {
-                    MangaActionRow(
-                        favorite = anime.favorite,
-                        trackingCount = state.trackingCount,
-                        nextUpdate = anime.expectedNextUpdate
-                            ?.let { Instant.fromEpochMilliseconds(it.toEpochMilli()) },
-                        isUserIntervalMode = anime.fetchInterval < 0,
-                        onAddToLibraryClicked = viewModel::toggleFavorite,
-                        onWebViewClicked = state.webViewUrl?.let { url ->
-                            {
-                                navigator.push(
-                                    WebViewScreen(url = url, initialTitle = anime.title, sourceId = anime.source),
-                                )
-                            }
-                        },
-                        onWebViewLongClicked = null,
-                        onTrackingClicked = { showTrackSheet = true },
-                        // Anime has no per-entry update interval of its own yet, so the
-                        // countdown is shown but not editable.
-                        onEditIntervalClicked = null,
-                        onEditCategory = viewModel::showCategoryDialog.takeIf { anime.favorite },
-                    )
-                }
-
-                item(key = "description", contentType = "description") {
-                    ExpandableMangaDescription(
-                        defaultExpandState = !anime.favorite,
-                        description = anime.description,
-                        tagsProvider = { anime.genre },
-                        notes = "",
-                        onTagSearch = { tag ->
-                            navigator.push(AnimeGlobalSearchScreen(initialQuery = tag))
-                        },
-                        onCopyTagToClipboard = {},
-                        onEditNotes = {},
-                    )
-                }
-
-                item(key = "episode-header", contentType = "episode-header") {
-                    EpisodeHeader(
-                        enabled = true,
-                        episodeCount = state.visibleEpisodes.size,
-                        onClick = viewModel::showEpisodeSettings,
-                    )
-                    // An empty list and a source that refused to answer look the same
-                    // otherwise, and only one of them is worth retrying.
-                    state.episodeError?.let { error ->
-                        Text(
-                            text = animeSourceErrorText(error),
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                val topPadding = contentPadding.calculateTopPadding()
+                LazyColumn(
+                    modifier = Modifier.fillMaxHeight(),
+                    state = episodeListState,
+                    // The info box draws behind the bar, so the top padding belongs to it rather
+                    // than to the list.
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        bottom = contentPadding.calculateBottomPadding(),
+                    ),
+                ) {
+                    item(key = "info-box", contentType = "info-box") {
+                        AnimeInfoBox(
+                            appBarPadding = topPadding,
+                            anime = anime,
+                            sourceName = state.sourceName,
+                            isStubSource = state.isStubSource,
+                            onCoverClick = {},
+                            doSearch = { query, _ ->
+                                navigator.push(AnimeGlobalSearchScreen(initialQuery = query))
+                            },
                         )
                     }
-                }
 
-                items(
-                    items = state.visibleEpisodes,
-                    key = { "episode-${it.id}" },
-                    contentType = { "episode" },
-                ) { episode ->
-                    val downloaded = episode.id in state.downloadedEpisodeIds
-                    val progress = downloadProgress[episode.id]
-                    val queued = downloadQueue.any { it.episodeId == episode.id }
-                    val downloadState = when {
-                        downloaded -> Download.State.DOWNLOADED
-                        progress != null -> Download.State.DOWNLOADING
-                        queued -> Download.State.QUEUE
-                        else -> Download.State.NOT_DOWNLOADED
+                    item(key = "action-row", contentType = "action-row") {
+                        MangaActionRow(
+                            favorite = anime.favorite,
+                            trackingCount = state.trackingCount,
+                            nextUpdate = anime.expectedNextUpdate
+                                ?.let { Instant.fromEpochMilliseconds(it.toEpochMilli()) },
+                            isUserIntervalMode = anime.fetchInterval < 0,
+                            onAddToLibraryClicked = viewModel::toggleFavorite,
+                            onWebViewClicked = state.webViewUrl?.let { url ->
+                                {
+                                    navigator.push(
+                                        WebViewScreen(url = url, initialTitle = anime.title, sourceId = anime.source),
+                                    )
+                                }
+                            },
+                            onWebViewLongClicked = null,
+                            onTrackingClicked = { showTrackSheet = true },
+                            // Anime has no per-entry update interval of its own yet, so the
+                            // countdown is shown but not editable.
+                            onEditIntervalClicked = null,
+                            onEditCategory = viewModel::showCategoryDialog.takeIf { anime.favorite },
+                        )
                     }
-                    MangaChapterListItem(
-                        title = episode.name,
-                        date = relativeDateText(episode.dateUpload),
-                        readProgress = null,
-                        scanlator = episode.scanlator?.takeIf { it.isNotBlank() },
-                        read = episode.seen,
-                        bookmark = episode.bookmark,
-                        selected = false,
-                        downloadIndicatorEnabled = state.canDownload,
-                        downloadStateProvider = { downloadState },
-                        downloadProgressProvider = { progress ?: 0 },
-                        // Swiping a row is a manga-side shortcut for marking read and
-                        // bookmarking, neither of which the anime list offers yet.
-                        chapterSwipeStartAction = LibraryPreferences.ChapterSwipeAction.Disabled,
-                        chapterSwipeEndAction = LibraryPreferences.ChapterSwipeAction.Disabled,
-                        onLongClick = {},
-                        onClick = {
-                            viewModel.resolveVideo(episode) { request ->
-                                openPlayer(request, episode.name, episode.id)
-                            }
-                        },
-                        onDownloadClick = { action ->
-                            when (action) {
-                                ChapterDownloadAction.START,
-                                ChapterDownloadAction.START_NOW,
-                                -> viewModel.downloadEpisode(episode)
-                                ChapterDownloadAction.CANCEL,
-                                ChapterDownloadAction.DELETE,
-                                -> viewModel.deleteDownload(episode)
-                            }
-                        },
-                        onChapterSwipe = {},
-                    )
+
+                    item(key = "description", contentType = "description") {
+                        ExpandableMangaDescription(
+                            defaultExpandState = !anime.favorite,
+                            description = anime.description,
+                            tagsProvider = { anime.genre },
+                            notes = "",
+                            onTagSearch = { tag ->
+                                navigator.push(AnimeGlobalSearchScreen(initialQuery = tag))
+                            },
+                            onCopyTagToClipboard = {},
+                            onEditNotes = {},
+                        )
+                    }
+
+                    item(key = "episode-header", contentType = "episode-header") {
+                        EpisodeHeader(
+                            enabled = true,
+                            episodeCount = state.visibleEpisodes.size,
+                            onClick = viewModel::showEpisodeSettings,
+                        )
+                        // An empty list and a source that refused to answer look the same
+                        // otherwise, and only one of them is worth retrying.
+                        state.episodeError?.let { error ->
+                            Text(
+                                text = animeSourceErrorText(error),
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+
+                    items(
+                        items = state.visibleEpisodes,
+                        key = { "episode-${it.id}" },
+                        contentType = { "episode" },
+                    ) { episode ->
+                        val downloaded = episode.id in state.downloadedEpisodeIds
+                        val progress = downloadProgress[episode.id]
+                        val queued = downloadQueue.any { it.episodeId == episode.id }
+                        val downloadState = when {
+                            downloaded -> Download.State.DOWNLOADED
+                            progress != null -> Download.State.DOWNLOADING
+                            queued -> Download.State.QUEUE
+                            else -> Download.State.NOT_DOWNLOADED
+                        }
+                        MangaChapterListItem(
+                            title = episode.name,
+                            date = relativeDateText(episode.dateUpload),
+                            // "12:34" en un episodio a medias, como el manga dice "Pagina 12".
+                            readProgress = episode.takeIf { !it.seen && it.lastSecondSeen > 0 }
+                                ?.let { formatEpisodePosition(it.lastSecondSeen) },
+                            scanlator = episode.scanlator?.takeIf { it.isNotBlank() },
+                            read = episode.seen,
+                            bookmark = episode.bookmark,
+                            selected = episode.id in state.selectedEpisodeIds,
+                            downloadIndicatorEnabled = state.canDownload,
+                            downloadStateProvider = { downloadState },
+                            downloadProgressProvider = { progress ?: 0 },
+                            chapterSwipeStartAction = episodeSwipeStartAction,
+                            chapterSwipeEndAction = episodeSwipeEndAction,
+                            onLongClick = {
+                                viewModel.toggleSelection(episode, !(episode.id in state.selectedEpisodeIds), true)
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            },
+                            onClick = {
+                                // Con algo ya seleccionado, tocar suma o quita en vez de reproducir:
+                                // es lo que hace la lista de capitulos, y sin ello el primer toque
+                                // despues de seleccionar abriria el reproductor.
+                                if (state.selectedEpisodeIds.isNotEmpty()) {
+                                    viewModel.toggleSelection(episode, episode.id !in state.selectedEpisodeIds)
+                                } else {
+                                    viewModel.resolveVideo(episode) { request ->
+                                        openPlayer(request, episode.name, episode.id)
+                                    }
+                                }
+                            },
+                            onDownloadClick = { action ->
+                                when (action) {
+                                    ChapterDownloadAction.START,
+                                    ChapterDownloadAction.START_NOW,
+                                    -> viewModel.downloadEpisode(episode)
+                                    ChapterDownloadAction.CANCEL,
+                                    ChapterDownloadAction.DELETE,
+                                    -> viewModel.deleteDownload(episode)
+                                }
+                            },
+                            onChapterSwipe = { action -> viewModel.swipeEpisode(episode, action) },
+                        )
+                    }
                 }
             }
         }
@@ -383,7 +456,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
  * dialog: offering nothing but Cancel would be a dead end.
  */
 @Composable
-private fun AnimeCategoryDialog(
+internal fun AnimeCategoryDialog(
     categories: List<AnimeCategory>,
     initiallySelected: Set<Long>,
     onDismiss: () -> Unit,
@@ -485,5 +558,24 @@ private fun EpisodeLoadingOverlay(onCancel: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+/** "12:34", o "1:02:03" si pasa de la hora. El mismo sitio donde el manga dice "Pagina 12". */
+private fun formatEpisodePosition(seconds: Long): String {
+    val total = seconds / 1000
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val sec = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+}
+
+/** Comparte el enlace del anime en la fuente, igual que la ficha de manga comparte el suyo. */
+private fun shareAnime(context: Context, anime: Anime?, url: String?) {
+    if (anime == null || url == null) return
+    try {
+        context.startActivity(url.toUri().toShareIntent(context, type = "text/plain"))
+    } catch (e: Exception) {
+        context.toast(e.message)
     }
 }

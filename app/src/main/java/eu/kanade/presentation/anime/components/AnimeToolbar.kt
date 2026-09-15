@@ -19,6 +19,8 @@ import eu.kanade.presentation.manga.DownloadAction
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Download
 import mihon.icons.materialsymbols.rounded.FilterList
+import mihon.icons.materialsymbols.rounded.FlipToBack
+import mihon.icons.materialsymbols.rounded.SelectAll
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.theme.active
@@ -43,19 +45,31 @@ fun AnimeToolbar(
     onClickEditCategory: (() -> Unit)?,
     onClickMigrate: (() -> Unit)?,
     onClickShare: (() -> Unit)?,
+
+    // Modo seleccion, igual que en la de manga
+    actionModeCounter: Int,
+    onCancelActionMode: () -> Unit,
+    onSelectAll: () -> Unit,
+    onInvertSelection: () -> Unit,
+
     titleAlphaProvider: () -> Float,
     backgroundAlphaProvider: () -> Float,
     modifier: Modifier = Modifier,
 ) {
+    val isActionMode = actionModeCounter > 0
     AppBar(
         titleContent = {
-            AppBarTitle(title, modifier = Modifier.alpha(titleAlphaProvider()))
+            if (isActionMode) {
+                AppBarTitle(actionModeCounter.toString())
+            } else {
+                AppBarTitle(title, modifier = Modifier.alpha(titleAlphaProvider()))
+            }
         },
         modifier = modifier,
         backgroundColor = MaterialTheme.colorScheme
             .surfaceColorAtElevation(3.dp)
-            .copy(alpha = backgroundAlphaProvider()),
-        navigateUp = navigateUp,
+            .copy(alpha = if (isActionMode) 1f else backgroundAlphaProvider()),
+        navigateUp = if (isActionMode) onCancelActionMode else navigateUp,
         actions = {
             var downloadExpanded by remember { mutableStateOf(false) }
             if (onClickDownload != null) {
@@ -69,6 +83,23 @@ fun AnimeToolbar(
             val filterTint = if (hasFilters) MaterialTheme.colorScheme.active else LocalContentColor.current
             AppBarActions(
                 actions = buildList {
+                    if (isActionMode) {
+                        add(
+                            AppBar.Action(
+                                title = stringResource(MR.strings.action_select_all),
+                                icon = MaterialSymbols.Rounded.SelectAll,
+                                onClick = onSelectAll,
+                            ),
+                        )
+                        add(
+                            AppBar.Action(
+                                title = stringResource(MR.strings.action_select_inverse),
+                                icon = MaterialSymbols.Rounded.FlipToBack,
+                                onClick = onInvertSelection,
+                            ),
+                        )
+                        return@buildList
+                    }
                     if (onClickDownload != null) {
                         add(
                             AppBar.Action(
