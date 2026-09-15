@@ -114,6 +114,14 @@ apunta a JitPack. Entonces sí, esperar y relanzar.
 > habrá demostrado hasta la siguiente release de verdad**, porque JitPack no se puede
 > romper a voluntad.
 
+**Comprobado en la v0.13.1.** Primera release con el arreglo puesto, y salió a la primera:
+el log del job FOSS dice `Entries: 9 restored (1481Mb), 0 saved` y `Cache is read-only`,
+que es exactamente el mecanismo descrito arriba — las dependencias salieron de la caché en
+vez de pedírselas a JitPack, y sin carrera de escritura con el `Build` de al lado.
+
+Lo que **sigue sin demostrarse** es el reintento: haría falta que JitPack fallara con la
+caché fría, y eso no se puede provocar.
+
 ## Verificar una release antes de anunciarla
 
 Sobre el APK **que publicó el CI**, no sobre el que compilaste tú. Son binarios
@@ -148,6 +156,7 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.1.1 | 2 | debug (desechable) | Retirada la marca de Mihon; sin publicar |
 | 0.1.2 | 3 | **clave del proyecto** | Primera release publicada |
 | 0.13.0 | 23 | **clave del proyecto** | Kitsu con anime. Cuatro intentos por JitPack |
+| 0.13.1 | 24 | **clave del proyecto** | Icono nuevo. **Un solo intento**: el job FOSS restauró 9 entradas de caché (1481 MB) |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es
