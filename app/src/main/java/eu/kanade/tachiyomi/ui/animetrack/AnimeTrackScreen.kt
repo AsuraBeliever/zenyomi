@@ -33,12 +33,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.anime.components.AnimeTrackInfoDialogHome
-import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.track.TrackChapterSelector
 import eu.kanade.presentation.track.TrackDateSelector
 import eu.kanade.presentation.track.TrackScoreSelector
@@ -46,26 +43,31 @@ import eu.kanade.presentation.track.TrackStatusSelector
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.data.track.AnimeTracker
 import eu.kanade.tachiyomi.data.track.Tracker
-import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import eu.kanade.tachiyomi.util.system.copyToClipboard
+import eu.kanade.tachiyomi.util.system.openInBrowser
 import mihon.app.di.appGraph
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Delete
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
-import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
 
 /**
  * Tracking for one anime: what it is bound to, and a search to bind it to something new.
+ *
+ * Sheet content, not a screen of its own, because that is what pressing Tracking over a manga
+ * gives you and the two had drifted: the manga side opens Mihon's adaptive sheet over the
+ * entry, and this pushed a whole screen with its own toolbar and a back arrow, so the same
+ * button behaved like two different features depending on what you pressed it on. Shown by
+ * [eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen] inside `NavigatorAdaptiveSheet`,
+ * the very component the manga side uses.
  */
 class AnimeTrackScreen(private val animeId: Long) : Screen() {
 
     @Composable
     override fun Content() {
-        val navigator = LocalNavigator.currentOrThrow
         val viewModel = assistedMetroViewModel<AnimeTrackViewModel, AnimeTrackViewModel.Factory> {
             create(animeId)
         }
@@ -76,57 +78,50 @@ class AnimeTrackScreen(private val animeId: Long) : Screen() {
         val context = LocalContext.current
         val dateFormat = remember { UiPreferences.dateFormat(context.appGraph.uiPreferences.dateFormat.get()) }
 
-        Scaffold(
-            topBar = { scrollBehavior ->
-                AppBar(
-                    title = stringResource(MR.strings.manga_tracking_tab),
-                    navigateUp = navigator::pop,
-                    scrollBehavior = scrollBehavior,
+        when {
+            state.loading -> LoadingScreen(Modifier.padding(vertical = 64.dp))
+            state.loggedIn.isEmpty() -> EmptyScreen(
+                stringRes = ANMR.strings.anime_track_no_account,
+                modifier = Modifier.padding(vertical = 32.dp),
+            )
+            // Mihon's own rows, fed by the anime adapter: status, progress, score,
+            // dates and the overflow, instead of the name-and-bin list this used to be.
+            else -> Box {
+                AnimeTrackInfoDialogHome(
+                    trackItems = state.items,
+                    dateFormat = dateFormat,
+                    onStatusClick = { editing = Editing.Status(it) },
+                    onEpisodeClick = { editing = Editing.Episodes(it) },
+                    onScoreClick = { editing = Editing.Score(it) },
+                    onStartDateEdit = { editing = Editing.StartDate(it) },
+                    onEndDateEdit = { editing = Editing.FinishDate(it) },
+                    onNewSearch = { searchingWith = it.tracker as Tracker },
+                    // The browser, not a WebView pushed onto the navigator: that is what
+                    // Mihon does from its tracking sheet, and inside a sheet a pushed
+                    // WebView would render the whole page in the bottom of the screen.
+                    onOpenInBrowser = { item ->
+                        item.track?.remoteUrl?.takeIf { it.isNotBlank() }?.let(context::openInBrowser)
+                    },
+                    onRemoved = { item -> item.track?.let(viewModel::unbind) },
+                    onCopyLink = { item ->
+                        item.track?.remoteUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                            context.copyToClipboard(url, url)
+                        }
+                    },
+                    onTogglePrivate = viewModel::togglePrivate,
                 )
-            },
-        ) { contentPadding ->
-            when {
-                state.loading -> LoadingScreen(Modifier.padding(contentPadding))
-                state.loggedIn.isEmpty() -> EmptyScreen(
-                    stringRes = ANMR.strings.anime_track_no_account,
-                    modifier = Modifier.padding(contentPadding),
-                )
-                // Mihon's own rows, fed by the anime adapter: status, progress, score,
-                // dates and the overflow, instead of the name-and-bin list this used to be.
-                else -> Box(modifier = Modifier.padding(contentPadding)) {
-                    AnimeTrackInfoDialogHome(
-                        trackItems = state.items,
-                        dateFormat = dateFormat,
-                        onStatusClick = { editing = Editing.Status(it) },
-                        onEpisodeClick = { editing = Editing.Episodes(it) },
-                        onScoreClick = { editing = Editing.Score(it) },
-                        onStartDateEdit = { editing = Editing.StartDate(it) },
-                        onEndDateEdit = { editing = Editing.FinishDate(it) },
-                        onNewSearch = { searchingWith = it.tracker as Tracker },
-                        onOpenInBrowser = { item ->
-                            item.track?.remoteUrl?.takeIf { it.isNotBlank() }?.let { url ->
-                                navigator.push(WebViewScreen(url = url, initialTitle = item.track.title))
-                            }
-                        },
-                        onRemoved = { item -> item.track?.let(viewModel::unbind) },
-                        onCopyLink = { item ->
-                            item.track?.remoteUrl?.takeIf { it.isNotBlank() }?.let { url ->
-                                context.copyToClipboard(url, url)
-                            }
-                        },
-                        onTogglePrivate = viewModel::togglePrivate,
-                    )
-                }
             }
         }
 
         // The same four selectors Mihon opens from those rows, reused outright: they take
         // a selection, a range and two callbacks, and nothing about them is manga-shaped.
         //
-        // Wrapped in a Dialog, because what they return is dialog *content*. Mihon pushes each
-        // one as its own screen on the navigator inside its tracking dialog; this screen is not
-        // one, so drawn bare they had no surface behind them — the picker rendered straight on
-        // top of the card above it with both sets of text overlapping and neither readable.
+        // Wrapped in a Dialog, because what they return is dialog *content* — drawn bare they
+        // have no surface behind them and render straight over the card above, both sets of
+        // text legible and neither readable. Mihon instead pushes each one onto the navigator
+        // inside its own tracking sheet, so the sheet morphs into the picker. That is the one
+        // difference left between the two, and it is a presentation detail rather than the
+        // screen-versus-sheet split this used to have.
         if (editing != null) {
             Dialog(onDismissRequest = { editing = null }) {
                 // And on a surface, which is the other half of what the dialog host gives
