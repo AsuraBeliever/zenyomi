@@ -3,9 +3,10 @@
     android:height="256dp"
     android:viewportWidth="432"
     android:viewportHeight="432">
-  <!-- Hoja de manga con triangulo de reproduccion calado -->
+  <!-- Manzana con el triangulo de reproduccion calado. Una sola tinta: la barra de
+       estado tine el icono de notificacion de blanco y descarta el color. -->
   <path
       android:fillType="evenOdd"
       android:fillColor="#FFFFFFFF"
-      android:pathData="M160,126L272,126A24,24 0 0,1 296,150L296,282A24,24 0 0,1 272,306L160,306A24,24 0 0,1 136,282L136,150A24,24 0 0,1 160,126ZM206,178L206,254L266,216Z"/>
+      android:pathData="M216,190C202,166 176,158 154,168C126,180 114,212 120,250C126,294 160,336 216,336C258,336 286,314 302,284A30,30 0 0,1 300,208C296,186 284,170 268,168C248,166 228,174 216,190ZM222,166C226,142 246,124 274,120C276,148 256,168 222,166ZM190,222L190,292L248,257Z"/>
 </vector>

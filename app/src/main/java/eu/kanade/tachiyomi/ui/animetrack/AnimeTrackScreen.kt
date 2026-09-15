@@ -50,6 +50,7 @@ import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Delete
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
+import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
@@ -282,10 +283,15 @@ private fun TrackSearchDialog(
                                 headlineContent = { Text(result.title) },
                                 supportingContent = {
                                     if (result.total_episodes > 0) {
+                                        // The plural the rest of the app already uses. This row
+                                        // had its own non-plural string, so a film or a special
+                                        // read "1 episodes".
+                                        val count = result.total_episodes.toInt()
                                         Text(
-                                            stringResource(
-                                                ANMR.strings.anime_track_episode_count,
-                                                result.total_episodes.toInt(),
+                                            pluralStringResource(
+                                                ANMR.plurals.anime_num_episodes,
+                                                count = count,
+                                                count,
                                             ),
                                             style = MaterialTheme.typography.bodySmall,
                                         )

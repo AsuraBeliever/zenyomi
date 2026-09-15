@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-15
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.13.0, tag en `main`
+**Última release:** v0.13.1, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,7 +18,7 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x – 0.13.0 | ✅ | hasta `v0.13.0`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Releases 0.5.x – 0.13.1 | ✅ | hasta `v0.13.1`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.13.0, 2026-09-15 — además se vinculó un anime en Kitsu desde ese mismo binario, para probar el tracker nuevo con R8 puesto |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
@@ -97,13 +97,6 @@ Ninguno.
   a que se confíen; la de manga sí cuenta la suya. Solo es el número: la lista y el
   botón *Trust* funcionan. Mihon es la referencia, así que el número debería incluirlas.
   Visto al verificar la v0.11.0.
-
-- **«1 episodes» en los resultados de búsqueda del tracker.** La fila de resultados usa una
-  cadena normal (`anime_track_episode_count`) donde ya existe un plural
-  (`anime_num_episodes`) usado en el resto de la app. Se ve con cualquier película o especial
-  de un solo episodio. Es de antes de esta release —viene de cuando se hizo la hoja de
-  tracking—, así que no es una regresión, y se encontró en la prueba de humo de la v0.13.0.
-  Arreglo de una línea, pendiente para el próximo ciclo.
 
 ## Aviso: v0.3.0 y v0.4.0 tienen el player roto
 

@@ -6,13 +6,13 @@ cumplimiento y se revisa **antes de cada release**.
 ## Checklist que pide Mihon
 
 Mihon publica sus requisitos para forks en su `CONTRIBUTING.md`, sección *Forks*.
-Estado a 2026-09-15 (revisado antes de la v0.13.0):
+Estado a 2026-09-15 (revisado antes de la v0.13.0 y de la v0.13.1):
 
 | Requisito de Mihon | Estado | Cómo se cumple |
 |---|---|---|
 | Respetar la LICENSE | ✅ | Apache-2.0 conservada íntegra + `NOTICE` con atribución |
 | Cambiar el nombre de la app | ✅ | `app_name` = Zenyomi |
-| Cambiar el icono de la app | ✅ | Icono de lanzador **y de splash** originales (índigo, página + play) |
+| Cambiar el icono de la app | ⚠️ | Propio hasta la v0.13.0 (índigo, página + play). Desde la v0.13.1 es una ilustración de terceros por decisión del cliente — ver abajo |
 | Cambiar o desactivar el comprobador de actualizaciones | ✅ | `AppUpdateChecker` apunta a `AsuraBeliever/zenyomi` |
 | Cambiar el `applicationId` | ✅ | `app.zenyomi` (`.dev` en debug) |
 | Usar tu propio proyecto de Firebase | ✅ | `google-services.json` de Mihon eliminado; telemetría desactivada en CI |
@@ -69,6 +69,36 @@ consentimiento; la credencial sigue siendo suya.
 Corregirlo pide registrar aplicaciones propias en cada servicio, lo cual requiere que
 el cliente las cree. Anotado aquí para que cada auditoría lo encuentre ya discutido en
 vez de volver a descubrirlo.
+
+## Riesgo asumido: el icono de la v0.13.1 es material de terceros
+
+**Decisión del cliente, 2026-09-15.** El icono de lanzador y la pantalla de arranque usan una
+ilustración de **Ryuk**, personaje de *Death Note*, tomada de wallpapers.com. Es obra con
+derechos de sus titulares (Tsugumi Ohba / Takeshi Obata / Shueisha / Madhouse), y wallpapers.com
+no es una fuente con licencia: es un redistribuidor.
+
+Esto **contradice la regla de la sección «Cómo auditar»** de este mismo documento —«un icono,
+logo o captura ajenos» sería un incumplimiento—, así que queda anotado aquí en vez de dejar que
+una auditoría futura lo encuentre y no sepa si fue un descuido. No lo fue.
+
+Lo que se le explicó al cliente antes de decidir, y que sigue siendo cierto:
+
+- Ser open source y no tener ánimo de lucro **no exime**. La infracción no depende del lucro, y
+  el uso legítimo es un análisis de varios factores donde lo no comercial suma pero usar la
+  imagen entera como identidad de la app no transforma nada.
+- El riesgo realista no es una demanda: es una **retirada por DMCA** de la release o del repo, y
+  un aviso en GitHub va contra la cuenta, no solo contra el proyecto. Shueisha es de las
+  editoriales más activas justo con aplicaciones de manga.
+- Cierra la puerta a F-Droid o cualquier tienda, que rechazan material de terceros.
+- Contrapeso honesto: hay muchos forks de hobby que hacen exactamente esto y no les pasa nada.
+
+El cliente lo asumió con conocimiento de causa. Si algún día hay que revertirlo, el icono
+original que se diseñó como alternativa —manzana con el triángulo de reproducción calado— está
+en el historial, en el commit anterior a este.
+
+**El resto de la auditoría sigue limpia**: nombre, `applicationId`, comprobador de
+actualizaciones, Firebase, `LICENSE` y `NOTICE` intactos, y ningún activo de Mihon ni de Aniyomi
+en el repo. Lo de arriba es lo único ajeno, y es deliberado.
 
 ## Incidencias corregidas
 
