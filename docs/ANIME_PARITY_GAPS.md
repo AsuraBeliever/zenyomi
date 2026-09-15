@@ -1,5 +1,9 @@
 # Lo que el anime todavía no hace como el manga
 
+> **Cerrado el 2026-09-15.** Los trece puntos están hechos y comprobados en el dispositivo.
+> Se conserva como registro de qué faltaba, por qué, y cómo se cerró — y como recordatorio de
+> que el patrón (componentes de Mihon alimentados con valores inertes) puede repetirse.
+
 **Auditoría del 2026-09-15.** El documento hermano, [`MIHON_PARITY.md`](MIHON_PARITY.md),
 comprueba lo contrario: que no hayamos *roto* nada de Mihon. Este mide lo que al lado de anime
 le falta para llegar a donde ya está el de manga.

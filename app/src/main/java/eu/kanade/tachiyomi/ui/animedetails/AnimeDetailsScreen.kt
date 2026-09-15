@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,6 +67,7 @@ import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.manga.components.MangaToolbar
 import eu.kanade.presentation.manga.components.SetIntervalDialog
 import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
@@ -83,6 +87,7 @@ import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
+import tachiyomi.presentation.core.components.TwoPanelBox
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
@@ -338,16 +343,13 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                 indicatorPadding = PaddingValues(top = contentPadding.calculateTopPadding()),
             ) {
                 val topPadding = contentPadding.calculateTopPadding()
-                LazyColumn(
-                    modifier = Modifier.fillMaxHeight(),
-                    state = episodeListState,
-                    // The info box draws behind the bar, so the top padding belongs to it rather
-                    // than to the list.
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        bottom = contentPadding.calculateBottomPadding(),
-                    ),
-                ) {
-                    item(key = "info-box", contentType = "info-box") {
+                val bottom = PaddingValues(bottom = contentPadding.calculateBottomPadding())
+
+                // Las cuatro piezas de cabecera en un solo sitio: en telefono son el primer
+                // elemento de la lista y en tablet ocupan el panel izquierdo. Escribirlas dos
+                // veces es como se desincronizan dos disenos de la misma pantalla.
+                val header: @Composable () -> Unit = {
+                    Column {
                         AnimeInfoBox(
                             appBarPadding = topPadding,
                             anime = anime,
@@ -358,9 +360,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                                 navigator.push(AnimeGlobalSearchScreen(initialQuery = query))
                             },
                         )
-                    }
 
-                    item(key = "action-row", contentType = "action-row") {
                         MangaActionRow(
                             favorite = anime.favorite,
                             trackingCount = state.trackingCount,
@@ -383,9 +383,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                                 .takeIf { anime.favorite },
                             onEditCategory = viewModel::showCategoryDialog.takeIf { anime.favorite },
                         )
-                    }
 
-                    item(key = "description", contentType = "description") {
                         ExpandableMangaDescription(
                             defaultExpandState = !anime.favorite,
                             description = anime.description,
@@ -398,7 +396,9 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                             onEditNotes = {},
                         )
                     }
+                }
 
+                val episodeItems: LazyListScope.() -> Unit = {
                     item(key = "episode-header", contentType = "episode-header") {
                         EpisodeHeader(
                             enabled = true,
@@ -474,6 +474,47 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                             },
                             onChapterSwipe = { action -> viewModel.swipeEpisode(episode, action) },
                         )
+                    }
+                }
+
+                if (isTabletUi()) {
+                    // Ficha a la izquierda y episodios a la derecha, con el mismo TwoPanelBox
+                    // que usa la ficha de manga en una pantalla ancha.
+                    TwoPanelBox(
+                        startContent = {
+                            Column(
+                                modifier = Modifier
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(bottom),
+                            ) {
+                                header()
+                            }
+                        },
+                        endContent = {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxHeight(),
+                                state = episodeListState,
+                                // En dos paneles la lista no pasa por debajo de la barra, asi
+                                // que el hueco de arriba es suyo. En telefono lo lleva la
+                                // cabecera, que si se dibuja por detras.
+                                contentPadding = PaddingValues(
+                                    top = topPadding,
+                                    bottom = contentPadding.calculateBottomPadding(),
+                                ),
+                                content = episodeItems,
+                            )
+                        },
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxHeight(),
+                        state = episodeListState,
+                        // La cabecera se dibuja por detras de la barra, asi que ese hueco es
+                        // suyo y no de la lista.
+                        contentPadding = bottom,
+                    ) {
+                        item(key = "header", contentType = "header") { header() }
+                        episodeItems()
                     }
                 }
             }
