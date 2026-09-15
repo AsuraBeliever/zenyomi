@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.track.TrackInfoItem
 import eu.kanade.presentation.track.TrackInfoItemEmpty
+import eu.kanade.tachiyomi.data.track.AnimeTracker
 import eu.kanade.tachiyomi.data.track.Tracker
 import eu.kanade.tachiyomi.ui.animetrack.AnimeTrackItem
 import eu.kanade.tachiyomi.util.lang.toLocalDate
@@ -67,7 +68,8 @@ fun AnimeTrackInfoDialogHome(
                 TrackInfoItem(
                     title = track.title,
                     tracker = tracker,
-                    status = tracker.getStatus(track.status),
+                    // The anime labels, not the manga ones: status 1 is "Watching" here.
+                    status = (item.tracker as AnimeTracker).getStatusForAnime(track.status),
                     onStatusClick = { onStatusClick(item) },
                     chapters = "${track.lastEpisodeSeen.toInt()}".let {
                         if (track.totalEpisodes > 0) "$it / ${track.totalEpisodes}" else it

@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.data.track
 
+import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.data.database.models.anime.AnimeTrack
 import eu.kanade.tachiyomi.data.track.model.AnimeTrackSearch
 
@@ -27,4 +28,16 @@ interface AnimeTracker {
     fun getWatchingStatus(): Long
 
     fun getCompletionStatusAnime(): Long
+
+    /**
+     * The statuses to offer for an anime, and what to call each one.
+     *
+     * Separate from [Tracker.getStatusList] and [Tracker.getStatus] because the same numbers
+     * mean different words: status 1 on MyAnimeList is "Reading" for a manga and "Watching"
+     * for an anime, and the sheet was showing the manga word over an anime. Every service here
+     * reuses its manga status numbers for anime, so only the labels differ.
+     */
+    fun getStatusListAnime(): List<Long>
+
+    fun getStatusForAnime(status: Long): StringResource?
 }

@@ -96,9 +96,13 @@ fun TrackChapterSelector(
     range: Iterable<Int>,
     onConfirm: () -> Unit,
     onDismissRequest: () -> Unit,
+    // Additive, and the only thing the anime side needed from this file: the wheel counts
+    // episodes there, and a picker headed "Chapters" over an anime is simply wrong. Manga
+    // callers pass nothing and get what they always got.
+    title: String = stringResource(MR.strings.chapters),
 ) {
     BaseSelector(
-        title = stringResource(MR.strings.chapters),
+        title = title,
         content = {
             WheelNumberPicker(
                 items = range.toList(),

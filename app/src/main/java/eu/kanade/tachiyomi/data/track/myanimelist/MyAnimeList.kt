@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.data.track.model.TrackSearch
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALOAuth
 import kotlinx.serialization.json.Json
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import uy.kohesive.injekt.injectLazy
 import tachiyomi.domain.track.model.Track as DomainTrack
 
@@ -31,6 +32,7 @@ class MyAnimeList(id: Long) : BaseTracker(id, "MyAnimeList"), DeletableTracker, 
          */
         const val WATCHING = READING
         const val PLAN_TO_WATCH = PLAN_TO_READ
+        const val REWATCHING = REREADING
 
         private const val SEARCH_ID_PREFIX = "id:"
         private const val SEARCH_LIST_PREFIX = "my:"
@@ -141,6 +143,24 @@ class MyAnimeList(id: Long) : BaseTracker(id, "MyAnimeList"), DeletableTracker, 
     }
 
     // ---- Anime ------------------------------------------------------------------------
+
+    /**
+     * Same numbers as the manga statuses, different words: on both services status 1 is
+     * "Reading" for a manga and "Watching" for an anime, and the sheet was saying the former
+     * over an anime.
+     */
+    override fun getStatusListAnime(): List<Long> =
+        listOf(WATCHING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_WATCH, REWATCHING)
+
+    override fun getStatusForAnime(status: Long): StringResource? = when (status) {
+        WATCHING -> ANMR.strings.watching
+        PLAN_TO_WATCH -> ANMR.strings.plan_to_watch
+        COMPLETED -> MR.strings.completed
+        ON_HOLD -> MR.strings.on_hold
+        DROPPED -> MR.strings.dropped
+        REWATCHING -> ANMR.strings.rewatching
+        else -> null
+    }
 
     override fun getWatchingStatus(): Long = WATCHING
 
