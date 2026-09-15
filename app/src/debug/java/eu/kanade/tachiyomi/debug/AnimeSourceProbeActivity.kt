@@ -275,24 +275,50 @@ class AnimeSourceProbeActivity : Activity() {
         val anime = popular.value?.animes?.firstOrNull()
         if (popular.value == null || anime == null) {
             val detail = popular.failure ?: "returned an empty catalogue"
-            return row(id, name, lang, "CATALOGUE", "0", detail)
+            return row(id, name, lang, "CATALOGUE", "0", detail, "-", "-")
         }
 
         val episodes = step { withTimeout(STEP_TIMEOUT) { source.episodesOf(anime) } }
         val episode = episodes.value?.firstOrNull()
         if (episode == null) {
             val detail = episodes.failure ?: "the entry lists no episodes"
-            return row(id, name, lang, "EPISODES", popular.value.animes.size.toString(), detail)
+            return row(id, name, lang, "EPISODES", popular.value.animes.size.toString(), detail, "-", "-")
         }
 
         val videos = step { withTimeout(STEP_TIMEOUT) { source.videosOf(episode) } }
         val count = videos.value?.size ?: 0
         if (count == 0) {
             val detail = videos.failure ?: "the episode resolves to no video"
-            return row(id, name, lang, "VIDEO", popular.value.animes.size.toString(), detail)
+            return row(id, name, lang, "VIDEO", popular.value.animes.size.toString(), detail, "-", "-")
         }
 
-        return row(id, name, lang, "OK", popular.value.animes.size.toString(), "$count video(s)")
+        // Los idiomas de los subtitulos, no solo cuantos hay. "Tiene 18 subtitulos" no responde
+        // a "¿esta en español?", que es lo que decide si una fuente sirve o no a quien la usa.
+        // Se miran todos los videos del episodio porque una fuente puede ofrecer el mismo
+        // episodio en varios servidores y solo algunos traer subtitulos.
+        // videosOf devuelve List<Any> porque una fuente puede dar hosters o videos sueltos.
+        val resolved = videos.value.orEmpty().filterIsInstance<Video>()
+        val subLangs = resolved
+            .flatMap { it.subtitleTracks }
+            .map { it.lang.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+        val audioLangs = resolved
+            .flatMap { it.audioTracks }
+            .map { it.lang.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+
+        return row(
+            id,
+            name,
+            lang,
+            "OK",
+            popular.value.animes.size.toString(),
+            "$count video(s)",
+            subLangs.joinToString(", ").ifEmpty { "-" },
+            audioLangs.joinToString(", ").ifEmpty { "-" },
+        )
     }
 
     /**
@@ -361,7 +387,7 @@ class AnimeSourceProbeActivity : Activity() {
     companion object {
         private const val TAG = "AnimeSourceProbe"
         private const val STEP_TIMEOUT = 45_000L
-        private val HEADER = listOf("id", "source", "lang", "stage", "catalogue", "detail")
+        private val HEADER = listOf("id", "source", "lang", "stage", "catalogue", "detail", "subs", "audio")
             .joinToString("\t")
     }
 }

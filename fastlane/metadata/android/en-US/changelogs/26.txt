@@ -1,0 +1,3 @@
+Fixed: leaving an anime and coming straight back no longer reloads it. Everything was already stored; it went to the source anyway to show you what it already had. Pull down when you do want it re-checked.
+
+Other: the measured state of every anime extension is up to date, and now records which subtitle and audio languages each source actually provides.

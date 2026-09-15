@@ -10,6 +10,13 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.14.1] - 2026-09-15
+### Fixed
+- **Leaving an anime and coming straight back no longer reloads it.** Everything it needed was already stored by then; it went back to the source anyway and made you wait to be shown what it already had. Reopening is now immediate, and pulling down is still there for when you actually want it re-checked. The manga side never had this.
+
+### Other
+- **The measured state of every anime extension is up to date**, and it now records which subtitle and audio languages each source actually hands over, not just how many. AnimeLatinoHD is no longer flagged as broken: it answers with a Cloudflare challenge rather than a dead endpoint, and those come back. See `docs/EXTENSIONS_STATUS.md`.
+
 ## [0.14.0] - 2026-09-15
 ### Added
 - **Episodes can be picked out, the way chapters can.** Hold one to start selecting, hold another further down and everything between the two comes with it — which is how you mark a run of episodes seen without tapping each one. The bar that appears is the same one the manga side has: mark seen or unseen, bookmark, download, delete, and **mark everything before this one as seen**. Select all and invert are in the top bar, and back leaves the selection rather than the screen.
