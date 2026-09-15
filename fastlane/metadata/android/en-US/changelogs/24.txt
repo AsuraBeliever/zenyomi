@@ -1,0 +1,9 @@
+Changed: new app icon, on the launcher and the splash screen.
+
+Fixed: searching an anime on AniList works again. "one piece" answered "Search failed" — one AniList entry comes back with no type, and it was taking down the whole page of results rather than itself.
+
+Fixed: pressing Tracking on an anime now opens the same sheet pressing it on a manga does, instead of a separate screen with its own toolbar.
+
+Fixed: "Open in browser" on a tracker opens your browser rather than a web page inside the app.
+
+Fixed: a one-episode result says "1 episode", not "1 episodes".
