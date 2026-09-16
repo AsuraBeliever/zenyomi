@@ -47,6 +47,8 @@ fun MangaToolbar(
     titleAlphaProvider: () -> Float,
     backgroundAlphaProvider: () -> Float,
     modifier: Modifier = Modifier,
+    /** La ficha de anime usa esta misma barra; solo cambia como se llaman las cosas. */
+    episodes: Boolean = false,
 ) {
     val isActionMode = actionModeCounter > 0
     AppBar(
@@ -70,6 +72,7 @@ fun MangaToolbar(
                     expanded = downloadExpanded,
                     onDismissRequest = onDismissRequest,
                     onDownloadClicked = onClickDownload,
+                    episodes = episodes,
                 )
             }
 

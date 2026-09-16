@@ -221,7 +221,7 @@ data object AnimeLibraryTab : Tab {
                     onChangeCategoryClicked = viewModel::openChangeCategoryDialog,
                     onMarkAsReadClicked = { viewModel.markSelectedSeen(true) },
                     onMarkAsUnreadClicked = { viewModel.markSelectedSeen(false) },
-                    onDownloadClicked = { viewModel.downloadSelected() },
+                    onDownloadClicked = viewModel::downloadSelected,
                     onDeleteClicked = viewModel::removeSelectedFromLibrary,
                     onMigrateClicked = {
                         val first = state.selectedAnime.firstOrNull()
@@ -232,6 +232,7 @@ data object AnimeLibraryTab : Tab {
                             )
                         }
                     },
+                    episodes = true,
                 )
             },
         ) { contentPadding ->

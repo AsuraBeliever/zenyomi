@@ -8,6 +8,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
+import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibraryDisplayMode
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibraryPreferences
@@ -29,6 +30,7 @@ import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.episode.interactor.GetEpisodesByAnimeId
 import tachiyomi.domain.episode.interactor.UpdateEpisode
 import tachiyomi.domain.episode.model.EpisodeUpdate
+import tachiyomi.domain.episode.service.getEpisodeSort
 import tachiyomi.domain.library.anime.LibraryAnime
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
@@ -289,17 +291,42 @@ class AnimeLibraryViewModel(
         }
     }
 
-    /** Encola lo que falte por descargar de cada anime elegido. */
-    fun downloadSelected() {
+    /**
+     * Descarga lo elegido en el menu de descargas, que ofrece las mismas opciones que el de
+     * manga: los N siguientes, todos los pendientes, o los marcados.
+     *
+     * "Siguientes" cuenta hacia delante desde el primer episodio sin ver, con el orden de la
+     * ficha forzado a ascendente — igual que
+     * [tachiyomi.domain.history.anime.interactor.GetNextEpisodes]. Antes esta funcion ignoraba
+     * la opcion elegida y encolaba todos los pendientes de cada entrada, asi que pedir "el
+     * siguiente" bajaba la temporada entera.
+     */
+    fun downloadSelected(action: DownloadAction) {
         val chosen = state.value.selectedAnime
         clearSelection()
         viewModelScope.launchIO {
             chosen.forEach { libraryAnime ->
                 val anime = getAnime.await(libraryAnime.id) ?: return@forEach
                 val source = sourceManager.get(anime.source) ?: return@forEach
-                val episodes = getEpisodesByAnimeId.await(anime.id).filterNot { it.seen }
-                val already = downloadManager.downloadedEpisodeIds(anime, source, episodes)
-                val wanted = episodes.filterNot { it.id in already }
+                val episodes = getEpisodesByAnimeId.await(anime.id)
+                val candidates = when (action) {
+                    DownloadAction.BOOKMARKED_CHAPTERS -> episodes.filter { it.bookmark }
+                    else ->
+                        episodes
+                            .filterNot { it.seen }
+                            .sortedWith(getEpisodeSort(anime, sortDescending = false))
+                            .let { pending ->
+                                when (action) {
+                                    DownloadAction.NEXT_1_CHAPTER -> pending.take(1)
+                                    DownloadAction.NEXT_5_CHAPTERS -> pending.take(5)
+                                    DownloadAction.NEXT_10_CHAPTERS -> pending.take(10)
+                                    DownloadAction.NEXT_25_CHAPTERS -> pending.take(25)
+                                    else -> pending
+                                }
+                            }
+                }
+                val already = downloadManager.downloadedEpisodeIds(anime, source, candidates)
+                val wanted = candidates.filterNot { it.id in already }
                 if (wanted.isNotEmpty()) downloadManager.enqueue(anime, wanted)
             }
         }
