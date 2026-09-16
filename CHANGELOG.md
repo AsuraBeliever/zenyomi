@@ -11,6 +11,12 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Other` - for technical stuff.
 
 ## [Unreleased]
+### Fixed
+- **Downloaded anime actually downloads the anime.** Sources do not serve a video file, they serve an m3u8 playlist — a few kilobytes of text naming a few hundred segments that are still on the internet. The downloader fetched that url the way it would fetch an mp4, so it wrote the *playlist* to the downloads folder: it finished in a second, showed the downloaded tick, and left nothing of the episode on the device. It only looked downloaded until the network went away, and then playback failed with "the host is probably down or the link has expired". Episodes are now written with ffmpeg, which fetches what the playlist names and puts it on disk.
+- **Downloaded episodes keep their audio and subtitles.** Sources hand those over separately from the picture — two audio tracks and eight subtitle languages on the episode this was found with — and only the picture was being saved. All of it now travels into one Matroska file, tracks named, so a download offers the same choices the stream did.
+- **A download in flight no longer reads as a finished one.** The file exists and has bytes in it for the several minutes a remux takes, which was long enough for the row to show the tick and for tapping it to play however much had arrived. Downloads are written under a temporary name and become the episode only when they are complete.
+- **A failed download says why.** It left an error notification with no reason anywhere, in the log or out of it.
+
 ### Changed
 - **The jump indicator moves to the side the jump came from.** A double tap on the right half, or the forward button, flashes `+10 s` against the right edge; the left half and the back button flash `-10 s` against the left. It used to appear over the middle of the picture whichever way the jump went — on top of the play button, and saying nothing about which side had been tapped.
 

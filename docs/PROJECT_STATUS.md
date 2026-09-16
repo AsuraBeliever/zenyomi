@@ -70,7 +70,7 @@
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
 | Novedades de anime | ✅ | pantalla propia desde la biblioteca: episodios nuevos por día, reproducir, marcar visto y descargar |
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
-| Descargas de anime | ✅ | cola persistente, worker en primer plano, notificaciones y borrado; el cliente confirma descargas reales que terminan (2026-09-16) |
+| Descargas de anime | ✅ | cola persistente, worker en primer plano, notificaciones y borrado. **Guardaban la lista m3u8 en vez del vídeo**: corregido con ffmpeg el 2026-09-16 y verificado en el dispositivo — 360 MB, 2 audios, 8 subtítulos, reproducido sin red |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ✅ | MyAnimeList, AniList y **Kitsu** verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación, progreso, puntuación, privado y desvincular, comprobado en los servidores de cada servicio. En Kitsu además se comprobó que la entrada cae en la biblioteca de anime y no en la de manga |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
@@ -124,8 +124,17 @@ en el Galaxy S25 Ultra que **el doble toque del player salta**, que **las descar
 terminan** y que **leer manga funciona igual que siempre** — que es la que de verdad
 importaba, porque la regla dura del charter es no degradar nada de Mihon.
 
-De ahí salió un cambio de producto, ya hecho: el `+10 s` / `-10 s` salía en el centro de la
-imagen, y ahora sale del lado del que viene el salto.
+De ahí salieron dos cosas, las dos ya hechas.
+
+Un cambio de producto: el `+10 s` / `-10 s` salía en el centro de la imagen, y ahora sale del
+lado del que viene el salto.
+
+Y **un fallo de los gordos**: las descargas de anime no descargaban el anime. Guardaban el
+m3u8 —la lista de trozos, no los trozos— así que el episodio solo existía mientras hubiera
+internet. Corregido con ffmpeg y verificado en el dispositivo; el detalle está en
+[`KNOWN_ISSUES.md`](KNOWN_ISSUES.md). Al arreglarlo aparecieron tres más: el audio y los
+subtítulos no viajaban con el vídeo, una descarga a medias contaba como terminada, y una
+descarga fallida no decía por qué en ningún sitio.
 
 Y una decisión: las pantallas de OAuth que dicen «Mihon» se quedan como están. Al cliente le
 da igual ver el nombre del proyecto del que venimos al conceder acceso, y cambiarlo pedía
