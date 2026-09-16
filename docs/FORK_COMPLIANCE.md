@@ -7,7 +7,7 @@ cumplimiento y se revisa **antes de cada release**.
 
 Mihon publica sus requisitos para forks en su `CONTRIBUTING.md`, sección *Forks*.
 Estado a 2026-09-16 (revisado antes de la v0.13.0, la v0.13.1, la v0.14.0, la v0.14.1, la v0.14.2
-y la v0.14.3):
+la v0.14.3 y la v0.14.4):
 
 | Requisito de Mihon | Estado | Cómo se cumple |
 |---|---|---|

@@ -10,6 +10,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.14.4] - 2026-09-16
+### Fixed
+- **"Download next episode" works when you already have some of them.** Episodes already downloaded were discarded after the count rather than before it, so "the next five" meant "of the next five, whichever I am missing" — and if the very next episode was already on disk, the button did nothing at all. What you already have, or already queued, is now out of the running before counting starts.
+
 ## [0.14.3] - 2026-09-16
 ### Fixed
 - **"Download next episode" downloads the next one.** On an anime the batch download counted from the top of the list as drawn, and that list normally starts at the newest episode — so asking for the next one queued the *last* episode of the series, and asking for the next five queued the last five. It now counts forwards from the earliest episode you have not seen, which is what the same button on the manga side has always done. The same option in the anime library was worse: it ignored what you picked and queued every pending episode of every selected entry.

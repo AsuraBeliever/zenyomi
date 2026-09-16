@@ -160,6 +160,8 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.14.0 | 25 | **clave del proyecto** | Paridad anime↔manga. Primera migración de la BD de anime. Un solo intento |
 | 0.14.1 | 26 | **clave del proyecto** | Reapertura instantánea + datos de extensiones frescos. Un solo intento |
 | 0.14.2 | 27 | **clave del proyecto** | Se elimina una vuelta de red por episodio. Reflexión: verificada contra R8. Un solo intento |
+| 0.14.3 | 28 | **clave del proyecto** | Descarga de anime: «el siguiente» contaba desde el final. Un solo intento. **La verificación del APK publicado encontró un segundo fallo en el mismo arreglo** |
+| 0.14.4 | 29 | **clave del proyecto** | Lo ya descargado sale antes de contar, no después |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es
