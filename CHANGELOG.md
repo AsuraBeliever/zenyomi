@@ -10,6 +10,11 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.14.3] - 2026-09-16
+### Fixed
+- **"Download next episode" downloads the next one.** On an anime the batch download counted from the top of the list as drawn, and that list normally starts at the newest episode — so asking for the next one queued the *last* episode of the series, and asking for the next five queued the last five. It now counts forwards from the earliest episode you have not seen, which is what the same button on the manga side has always done. The same option in the anime library was worse: it ignored what you picked and queued every pending episode of every selected entry.
+- **That menu talks about episodes now**, not chapters: "Next 5 episodes" and "Unseen" instead of "Next 5 chapters" and "Unread".
+
 ## [0.14.2] - 2026-09-15
 ### Improved
 - **Opening an episode no longer fetches a page it is going to throw away.** Anime sources can offer videos by one of two routes, and the app tried the newer one first — which means it downloaded a whole page and only then found out the source does not speak it. Practically no published extension does, so this was paid on every episode, on every source: half a second of network measured on KickAssAnime, for nothing. It now knows which route a source implements before asking.
