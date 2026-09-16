@@ -1,0 +1,3 @@
+Fixed: "download next episode" now downloads the next one. It counted from the top of the episode list, which normally starts at the newest episode, so it queued the last episode of the series instead of the first one you have not seen. The same option in the anime library ignored your choice entirely and queued everything pending.
+
+Fixed: that menu says episodes now, not chapters.

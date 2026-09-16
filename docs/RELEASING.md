@@ -159,6 +159,7 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.13.1 | 24 | **clave del proyecto** | Icono nuevo. **Un solo intento**: el job FOSS restauró 9 entradas de caché (1481 MB) |
 | 0.14.0 | 25 | **clave del proyecto** | Paridad anime↔manga. Primera migración de la BD de anime. Un solo intento |
 | 0.14.1 | 26 | **clave del proyecto** | Reapertura instantánea + datos de extensiones frescos. Un solo intento |
+| 0.14.2 | 27 | **clave del proyecto** | Se elimina una vuelta de red por episodio. Reflexión: verificada contra R8. Un solo intento |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es
