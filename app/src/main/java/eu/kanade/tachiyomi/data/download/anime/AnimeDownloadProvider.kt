@@ -43,12 +43,22 @@ class AnimeDownloadProvider(
             ?.findFile(DiskUtil.buildValidFilename(anime.title))
     }
 
-    fun findEpisodeFile(anime: Anime, source: AnimeSource, episode: Episode): UniFile? {
+    fun findEpisodeFile(anime: Anime, source: AnimeSource, episode: Episode): UniFile? =
+        findAnyEpisodeFile(anime, source, episode)?.takeIf { it.isPlayable() }
+
+    /**
+     * The episode's file whatever it turned out to be, playable or not.
+     *
+     * For deleting, where a leftover playlist has to go the same way a real video does, and
+     * for clearing the way before a download writes. [findEpisodeFile] is the one to ask
+     * whether an episode is downloaded.
+     */
+    fun findAnyEpisodeFile(anime: Anime, source: AnimeSource, episode: Episode): UniFile? {
         val dir = findAnimeDir(anime, source) ?: return null
+        val prefix = episodeFileName(episode) + "."
         return dir.listFiles()
             .orEmpty()
-            .firstOrNull { it.name?.substringBeforeLast('.') == episodeFileName(episode) }
-            ?.takeIf { it.isFile && it.length() > 0 }
+            .firstOrNull { it.isFile && it.name?.startsWith(prefix) == true }
     }
 
     /**
@@ -63,14 +73,53 @@ class AnimeDownloadProvider(
         val dir = findAnimeDir(anime, source) ?: return emptySet()
         return dir.listFiles()
             .orEmpty()
-            .filter { it.isFile && it.length() > 0 }
+            .filter { it.isPlayable() }
             .mapNotNullTo(mutableSetOf()) { it.name?.substringBeforeLast('.') }
     }
 
+    /**
+     * The file a download writes into, which is not yet the file it will end up as.
+     *
+     * It is created with [PARTIAL_SUFFIX] on the end so that nothing reads it as a finished
+     * episode while it is being written. Remuxing a 24-minute episode takes minutes, and for
+     * all of them the file exists and has bytes in it: without this the row shows the
+     * downloaded tick straight away and tapping it plays however much had arrived. Call
+     * [finish] when the download is complete.
+     */
     fun createEpisodeFile(anime: Anime, source: AnimeSource, episode: Episode, extension: String): UniFile? {
         val dir = getAnimeDir(anime, source) ?: return null
-        return dir.createFile(episodeFileName(episode) + "." + extension)
+        return dir.createFile(episodeFileName(episode) + "." + extension + PARTIAL_SUFFIX)
+    }
+
+    /** Turns a finished download into the episode. Returns whether the rename took. */
+    fun finish(file: UniFile): Boolean {
+        val name = file.name ?: return false
+        if (!name.endsWith(PARTIAL_SUFFIX)) return true
+        return file.renameTo(name.removeSuffix(PARTIAL_SUFFIX))
     }
 
     fun episodeFileName(episode: Episode): String = DiskUtil.buildValidFilename(episode.name)
+
+    companion object {
+        /**
+         * Playlists are not episodes.
+         *
+         * Until the downloader learned to remux, an HLS source left an m3u8 here — a few
+         * kilobytes of links to segments still on the internet — and everything downstream
+         * read that as a downloaded episode: the tick appeared, the download button turned
+         * into a delete button, and the episode played only while online. Treating them as
+         * absent puts those entries back within reach of a download that works.
+         */
+        private val PLAYLIST_EXTENSIONS = setOf("m3u", "m3u8")
+
+        /** What a download in flight is called until it finishes. */
+        const val PARTIAL_SUFFIX = ".part"
+
+        private fun UniFile.isPlayable(): Boolean {
+            if (!isFile || length() <= 0) return false
+            val name = this.name ?: return false
+            if (name.endsWith(PARTIAL_SUFFIX)) return false
+            return name.substringAfterLast('.', "").lowercase() !in PLAYLIST_EXTENSIONS
+        }
+    }
 }

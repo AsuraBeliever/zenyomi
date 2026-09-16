@@ -90,6 +90,9 @@ xmlutil = "1.0.2"
 [libraries]
 aniyomi-mpv = { module = "com.github.aniyomiorg:aniyomi-mpv-lib", version.ref = "aniyomi-mpv-lib" }
 ffmpeg-kit = { module = "com.github.jmir1:ffmpeg-kit", version.ref = "ffmpeg-kit" }
+# ffmpeg-kit reaches for this while its config class initialises. The JitPack build ships
+# no pom, so it does not arrive on its own: without it every ffmpeg call dies on a
+# NoClassDefFoundError before running anything.
 arthenica-smartexceptions = { module = "com.arthenica:smart-exception-java", version.ref = "arthenica-smartexceptions" }
 mediasession = { module = "androidx.media:media", version.ref = "androidx-media" }
 seeker = { module = "io.github.2307vivek:seeker", version.ref = "seeker" }

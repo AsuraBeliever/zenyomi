@@ -93,14 +93,30 @@ ejecutaba. Está contado en `PORTING_LOG.md`.
 
 ---
 
-## 3. Una descarga de vídeo HTTP completada — ✅ VERIFICADO POR EL CLIENTE (2026-09-16)
+## 3. Una descarga de vídeo completada — ✅ VERIFICADO EN EL DISPOSITIVO (2026-09-16)
 
-Funciona. Lo que quedaba sin ejercitar era el bucle que copia los bytes hasta el final;
-el cliente descargó episodios en el dispositivo y terminan.
+Verificado de punta a punta en el Galaxy S25 Ultra, y **la prueba encontró que no
+funcionaba**. El cliente reportó que un episodio descargado no abría sin conexión y decía
+«the host is probably down or the link has expired».
 
-Aquí ya estaban verificados encolar, que la cola sobreviva a que Android mate el proceso,
-el worker en primer plano, la notificación de error, el desencolado y el borrado del
-fichero.
+La causa: las fuentes no sirven un fichero de vídeo, sirven un m3u8 — unos kilobytes de
+texto que nombran unos cientos de segmentos que siguen en internet. El descargador pedía esa
+URL como si fuera un mp4, así que guardaba **la lista**. El fichero que había en el móvil del
+cliente eran 27 KB con 284 enlaces. Terminaba en un segundo, ponía la palomita y no dejaba ni
+un byte del episodio.
+
+Corregido con ffmpeg, que ya estaba en el build porque el reproductor enlaza contra él. De
+paso salieron otros tres fallos, todos corregidos y verificados:
+
+| Qué | Cómo se comprobó |
+|---|---|
+| El episodio se descarga entero | 360 MB para un episodio de 23:41, reproducido desde el fichero local |
+| Audio y subtítulos viajan con él | La fuente los entrega aparte; el mkv lleva 2 audios (Japanese, English) y 8 subtítulos, español incluido |
+| No toca la red al reproducir | `mpv [fd] Opening fd://240` y cero peticiones HTTP en el log durante la reproducción |
+| Una descarga a medias no cuenta como terminada | Se escribe como `.part` y se renombra al acabar; visto crecer y renombrarse a 428 MB |
+
+Ya estaban verificados encolar, que la cola sobreviva a que Android mate el proceso, el
+worker en primer plano, la notificación de error, el desencolado y el borrado del fichero.
 
 ---
 
