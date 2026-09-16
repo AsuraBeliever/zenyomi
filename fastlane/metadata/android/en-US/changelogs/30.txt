@@ -1,0 +1,7 @@
+Fixed: downloaded anime now actually downloads the anime. Sources serve a playlist, not a video file, and the downloader was saving the playlist — a few kilobytes of links to segments still on the internet. It looked downloaded until the network went away. Episodes are now written with ffmpeg, and they keep their audio and subtitle tracks.
+
+Fixed: a download in flight no longer shows as finished, and a failed one says why.
+
+Changed: the jump indicator flashes on the side the jump came from instead of over the middle of the picture.
+
+Note: downloads made before this version are not real videos. Download those episodes again.

@@ -10,7 +10,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
-## [Unreleased]
+## [0.15.0] - 2026-09-16
 ### Fixed
 - **Downloaded anime actually downloads the anime.** Sources do not serve a video file, they serve an m3u8 playlist — a few kilobytes of text naming a few hundred segments that are still on the internet. The downloader fetched that url the way it would fetch an mp4, so it wrote the *playlist* to the downloads folder: it finished in a second, showed the downloaded tick, and left nothing of the episode on the device. It only looked downloaded until the network went away, and then playback failed with "the host is probably down or the link has expired". Episodes are now written with ffmpeg, which fetches what the playlist names and puts it on disk.
 - **Downloaded episodes keep their audio and subtitles.** Sources hand those over separately from the picture — two audio tracks and eight subtitle languages on the episode this was found with — and only the picture was being saved. All of it now travels into one Matroska file, tracks named, so a download offers the same choices the stream did.
