@@ -1,0 +1,1 @@
+Improved: opening an episode no longer downloads a page it is going to throw away. The app tried the newer of the two video routes first and found out it was unsupported only after fetching — which practically every extension is, so it cost half a second of network on every episode. It now knows before asking.

@@ -10,6 +10,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.14.2] - 2026-09-15
+### Improved
+- **Opening an episode no longer fetches a page it is going to throw away.** Anime sources can offer videos by one of two routes, and the app tried the newer one first — which means it downloaded a whole page and only then found out the source does not speak it. Practically no published extension does, so this was paid on every episode, on every source: half a second of network measured on KickAssAnime, for nothing. It now knows which route a source implements before asking.
+
 ## [0.14.1] - 2026-09-15
 ### Fixed
 - **Leaving an anime and coming straight back no longer reloads it.** Everything it needed was already stored by then; it went back to the source anyway and made you wait to be shown what it already had. Reopening is now immediate, and pulling down is still there for when you actually want it re-checked. The manga side never had this.
