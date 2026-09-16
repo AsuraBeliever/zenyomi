@@ -59,16 +59,35 @@ capaz de dar una respuesta equivocada con seguridad es peor que no tener arnés.
 
 ### Las que cargan catálogo pero no reproducen
 
-| Fuente | Idioma | Catálogo | Detalle |
+| Fuente | Idioma | Catálogo | Por qué, en concreto |
 |---|---|---|---|
-| Anichi | English | 10/10 | el episodio no resuelve a ningún vídeo |
+| Anichi | English | 10/10 | su host entrega las fuentes cifradas |
 | AniWave (Unoriginal) | English | 10/10 | ídem |
 | AnimeKai (Unoriginal) | English | 10/10 | ídem |
-| AllAnime | English | 10/10 | ídem |
-| AnimeKhor | English | 1/10 | ídem |
+| AllAnime | English | 10/10 | la extensión pega el texto cifrado **dentro del host** de la URL |
+| AnimeKhor | English | 1/10 | su propio parser de vídeos devuelve lista vacía |
 
 **Estas son la trampa**: catálogo enorme, cero vídeos. Buscar en ellas encuentra de todo y
 no sirve para ver nada.
+
+### Se comprobó que no es culpa nuestra, no se supuso
+
+La frase «no resuelve a ningún vídeo» es un síntoma, y la resolución de vídeo
+(`GetEpisodeVideos`, el manejo de hosters) **sí es código nuestro** — ya nos mordió en la
+v0.3.0, cuando R8 se cargó la carga de extensiones y parecía cosa de ellas. Así que las dos
+que no tenían causa diagnosticada se volcaron con `-e only <fuente> -e videos true`:
+
+- **AllAnime** construye `https://anichi.to` + `bDRCaGpzWjh4bDRSWkVJY0t3Szc4N2g2…`, es decir,
+  pega base64 cifrado donde va el nombre del host. Sale un `Invalid URL host`. Es la misma
+  causa que Anichi —mismo backend— y ocurre dentro de la extensión, no en nuestro cliente.
+- **AnimeKhor** lanza `UnsupportedOperationException` en nuestro `hosterListSelector`, lo cual
+  **es lo previsto**: esa función se dejó a propósito sin `abstract` para que una extensión de
+  extensions-lib 14 caiga al camino antiguo en vez de morir con `AbstractMethodError`. El
+  repliegue se ejecutó, llamó a `getVideoList` de la extensión, y **esa** devolvió lista vacía.
+
+De paso queda comprobado que el repliegue de `GetEpisodeVideos` funciona: atrapa cualquier
+fallo del camino de hosters y usa el antiguo. Las seis fuentes que sí reproducen pasan por ese
+mismo código.
 
 ### Las que no responden
 
