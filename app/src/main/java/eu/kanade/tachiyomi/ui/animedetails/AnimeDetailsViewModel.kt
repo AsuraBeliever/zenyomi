@@ -331,8 +331,18 @@ class AnimeDetailsViewModel(
      */
     fun downloadEpisodes(action: DownloadAction) {
         val anime = state.value.anime ?: return
+        // What you already have is out of the running before the count starts, never after.
+        // Counting first and discarding afterwards makes "the next five" mean "of the next
+        // five, the ones I am missing" — and when the next one is already on disk, asking for
+        // it queues nothing at all and the button looks broken. Mihon drops them up front for
+        // this reason; so does this.
+        val missing = { episode: Episode ->
+            episode.id !in state.value.downloadedEpisodeIds &&
+                downloadManager.queue.value.none { it.episodeId == episode.id }
+        }
         val pending = state.value.visibleEpisodes
             .filterNot { it.seen }
+            .filter(missing)
             .sortedWith(getEpisodeSort(anime, sortDescending = false))
         val wanted = when (action) {
             DownloadAction.NEXT_1_CHAPTER -> pending.take(1)
@@ -340,8 +350,11 @@ class AnimeDetailsViewModel(
             DownloadAction.NEXT_10_CHAPTERS -> pending.take(10)
             DownloadAction.NEXT_25_CHAPTERS -> pending.take(25)
             DownloadAction.UNREAD_CHAPTERS -> pending
-            DownloadAction.BOOKMARKED_CHAPTERS -> state.value.visibleEpisodes.filter { it.bookmark }
-        }.filterNot { it.id in state.value.downloadedEpisodeIds }
+            DownloadAction.BOOKMARKED_CHAPTERS ->
+                state.value.visibleEpisodes
+                    .filter { it.bookmark }
+                    .filter(missing)
+        }
         if (wanted.isNotEmpty()) downloadManager.enqueue(anime, wanted)
     }
 
