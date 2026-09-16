@@ -76,6 +76,20 @@ La fase de mayor riesgo: dependencias nativas y ABIs.
 
 ---
 
+## Fase 5 — Fuera del móvil (propuesta, sin decidir)
+
+Escritorio y sincronización entre el móvil y el PC, sin cuentas ni nube. El plan completo,
+con la investigación de cómo lo resuelven otros proyectos y las cuatro preguntas que decide
+el cliente, está en [`DESKTOP_AND_SYNC.md`](DESKTOP_AND_SYNC.md).
+
+- [ ] Prueba de días: ¿corre una extensión de anime en la JVM? Decide el tamaño de todo lo demás
+- [ ] Sync entre dispositivos (servicio propio, clave precompartida) — hace falta pase lo que pase
+- [ ] App de escritorio, en la forma que decida la prueba
+
+Nada de esto empieza hasta que el cliente elija forma, y cuando lo haga se escribe el ADR.
+
+---
+
 ## Mantenimiento continuo
 
 Sincronización periódica con `mihon/main` en ramas `sync/mihon-<version>`.
