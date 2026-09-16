@@ -19,7 +19,7 @@
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | Releases 0.5.x – 0.14.2 | ✅ | hasta `v0.14.2`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
-| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.14.1, 2026-09-15 |
+| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.14.2, 2026-09-15 — esta vez contra una **fuente HTTP real** (AnimeOnsen), no la local, porque el cambio era reflexión y R8 |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
 | PiP del player | ✅ | Activity propia |
