@@ -309,10 +309,15 @@ class AnimeLibraryViewModel(
                 val anime = getAnime.await(libraryAnime.id) ?: return@forEach
                 val source = sourceManager.get(anime.source) ?: return@forEach
                 val episodes = getEpisodesByAnimeId.await(anime.id)
-                val candidates = when (action) {
-                    DownloadAction.BOOKMARKED_CHAPTERS -> episodes.filter { it.bookmark }
+                // Los que ya estan en disco o en la cola salen antes de contar, no despues:
+                // si no, "el siguiente" con el siguiente ya descargado no encola nada.
+                val already = downloadManager.downloadedEpisodeIds(anime, source, episodes)
+                val queued = downloadManager.queue.value.mapTo(mutableSetOf()) { it.episodeId }
+                val missing = episodes.filterNot { it.id in already || it.id in queued }
+                val wanted = when (action) {
+                    DownloadAction.BOOKMARKED_CHAPTERS -> missing.filter { it.bookmark }
                     else ->
-                        episodes
+                        missing
                             .filterNot { it.seen }
                             .sortedWith(getEpisodeSort(anime, sortDescending = false))
                             .let { pending ->
@@ -325,8 +330,6 @@ class AnimeLibraryViewModel(
                                 }
                             }
                 }
-                val already = downloadManager.downloadedEpisodeIds(anime, source, candidates)
-                val wanted = candidates.filterNot { it.id in already }
                 if (wanted.isNotEmpty()) downloadManager.enqueue(anime, wanted)
             }
         }
