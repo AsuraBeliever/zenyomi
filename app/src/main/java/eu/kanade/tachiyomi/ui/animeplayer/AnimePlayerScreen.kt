@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -95,7 +96,7 @@ fun AnimePlayerContent(
     var duration by remember { mutableIntStateOf(0) }
     var paused by remember { mutableStateOf(false) }
     var tracks by remember { mutableStateOf(emptyList<ZenyomiMPVView.Track>()) }
-    var seekFeedback by remember { mutableStateOf<String?>(null) }
+    var seekFeedback by remember { mutableStateOf<SeekFeedback?>(null) }
     var playbackFailure by remember { mutableStateOf<String?>(null) }
     // Starts true: from the tap until mpv shows a frame there is nothing on screen, and on a
     // stream that takes eight seconds to open, a bare black rectangle reads as a player that
@@ -321,7 +322,7 @@ fun AnimePlayerContent(
                                 val forward = offset.x > size.width / 2
                                 val step = viewModel.preferences.seekStep.get()
                                 view.seekBy(if (forward) step else -step)
-                                seekFeedback = if (forward) "+$step s" else "-$step s"
+                                seekFeedback = SeekFeedback(seconds = step, forward = forward)
                                 // Where the episode landed is worth seeing after a jump.
                                 showControls()
                             },
@@ -400,7 +401,7 @@ fun AnimePlayerContent(
                 FilledIconButton(
                     onClick = {
                         view.seekBy(-step)
-                        seekFeedback = "-$step s"
+                        seekFeedback = SeekFeedback(seconds = step, forward = false)
                         interaction++
                     },
                     colors = IconButtonDefaults.filledIconButtonColors(
@@ -441,7 +442,7 @@ fun AnimePlayerContent(
                 FilledIconButton(
                     onClick = {
                         view.seekBy(step)
-                        seekFeedback = "+$step s"
+                        seekFeedback = SeekFeedback(seconds = step, forward = true)
                         interaction++
                     },
                     colors = IconButtonDefaults.filledIconButtonColors(
@@ -484,12 +485,26 @@ fun AnimePlayerContent(
             }
         }
 
-        seekFeedback?.let { text ->
+        // On the side the jump came from, not over the middle of the picture. The half of the
+        // screen that was double tapped is the half the flash belongs on, and it is the same
+        // answer for the buttons: the one on the left reports on the left.
+        //
+        // Held clear of the play button either way. Beside the control row where there is room
+        // for it — the row is [SEEK_FEEDBACK_ROW_HALF_WIDTH] either side of centre — and above
+        // the row where there is not, which on a phone held upright is always. The choice
+        // depends on the width of the screen and not on whether the controls happen to be
+        // showing, so the flash appears in the same place every time rather than moving about.
+        seekFeedback?.let { feedback ->
+            val besideControls = configuration.screenWidthDp.dp / 2 - SEEK_FEEDBACK_ROW_HALF_WIDTH >=
+                SEEK_FEEDBACK_ROOM_NEEDED
             Text(
-                text = text,
+                text = if (feedback.forward) "+${feedback.seconds} s" else "-${feedback.seconds} s",
                 color = Color.White,
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .align(if (feedback.forward) Alignment.CenterEnd else Alignment.CenterStart)
+                    .offset(y = if (besideControls) 0.dp else -SEEK_FEEDBACK_LIFT)
+                    .padding(horizontal = SEEK_FEEDBACK_EDGE_MARGIN),
             )
         }
 
@@ -777,3 +792,26 @@ private fun SeekLabel(icon: ImageVector, seconds: Int, contentDescription: Strin
  * requested second would mean waiting for a report that may never come.
  */
 private const val SEEK_SETTLED_SECONDS = 1
+
+/**
+ * A jump that has just happened: how far it went, and which way.
+ *
+ * The direction is carried rather than folded into a finished string because it decides where
+ * the flash is drawn, not only what it says.
+ */
+private data class SeekFeedback(val seconds: Int, val forward: Boolean)
+
+/**
+ * Half the width of the row of controls in the middle: two 56 dp jump buttons, an 80 dp play
+ * button, and the two 40 dp gaps between them.
+ */
+private val SEEK_FEEDBACK_ROW_HALF_WIDTH = 136.dp
+
+/** Room a `-90 s` needs beside that row before it is worth putting it there. */
+private val SEEK_FEEDBACK_ROOM_NEEDED = 96.dp
+
+/** How far above the row the flash sits when there is no room beside it. */
+private val SEEK_FEEDBACK_LIFT = 72.dp
+
+/** How far in from the edge of the screen the flash sits. */
+private val SEEK_FEEDBACK_EDGE_MARGIN = 24.dp

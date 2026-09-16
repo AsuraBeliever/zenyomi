@@ -50,7 +50,7 @@
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
-| Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque sigue sin poder dispararse por adb, ver TESTING.md |
+| Gestos del player | ✅ | toque simple verificado aquí; el doble toque, verificado por el cliente en el dispositivo (2026-09-16). El aviso del salto sale del lado del que viene |
 | Controles del player | ✅ | play/pausa y saltos en el centro de la imagen, reloj de un segundo, barra que se queda donde se suelta y cubierta de carga con salida. Se ocultan a los 5 s y el toque en la imagen los muestra u oculta en vez de pausar |
 | Arranque de un episodio | ✅ | audio y controles ya no esperan a que se descarguen dieciséis idiomas de subtítulos: de 37 s de vídeo mudo y medio minuto de botones muertos, a 2 s |
 | PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
@@ -70,7 +70,7 @@
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
 | Novedades de anime | ✅ | pantalla propia desde la biblioteca: episodios nuevos por día, reproducir, marcar visto y descargar |
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
-| Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
+| Descargas de anime | ✅ | cola persistente, worker en primer plano, notificaciones y borrado; el cliente confirma descargas reales que terminan (2026-09-16) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ✅ | MyAnimeList, AniList y **Kitsu** verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación, progreso, puntuación, privado y desvincular, comprobado en los servidores de cada servicio. En Kitsu además se comprobó que la entrada cae en la biblioteca de anime y no en la de manga |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
@@ -86,11 +86,6 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 Ninguno.
 
 ## Pendiente menor
-
-- **Las pantallas de OAuth dicen «Mihon».** Al conceder acceso, MyAnimeList y AniList muestran
-  el nombre y la web de Mihon, porque los identificadores de cliente son los suyos, heredados
-  del fork. Funciona, pero es el nombre de otro proyecto. Arreglarlo pide registrar apps
-  propias en ambos servicios; decisión del cliente.
 
 - **El contador de extensiones de anime no cuenta las no confiadas.** En una instalación
   limpia la cabecera dice «Anime extensions 0» mientras debajo hay veintiuna esperando
@@ -122,11 +117,22 @@ reproducir cualquier vídeo mata la app. **Verificado** desempaquetando los APK 
 cero referencias a `eventProperty` en sus `classes*.dex`. Corregido en la v0.5.1; quien tenga
 una de esas dos versiones necesita actualizar.
 
-## Sin verificar en dispositivo
+## Verificado por el cliente en el dispositivo (2026-09-16)
 
-Lo que necesita una persona con el dispositivo delante, o una cuenta que aquí no hay, está
-en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): el doble toque del player, vincular un tracker real
-y una descarga HTTP completada.
+Las tres cosas que este entorno no podía comprobar están comprobadas. El cliente confirma
+en el Galaxy S25 Ultra que **el doble toque del player salta**, que **las descargas de anime
+terminan** y que **leer manga funciona igual que siempre** — que es la que de verdad
+importaba, porque la regla dura del charter es no degradar nada de Mihon.
+
+De ahí salió un cambio de producto, ya hecho: el `+10 s` / `-10 s` salía en el centro de la
+imagen, y ahora sale del lado del que viene el salto.
+
+Y una decisión: las pantallas de OAuth que dicen «Mihon» se quedan como están. Al cliente le
+da igual ver el nombre del proyecto del que venimos al conceder acceso, y cambiarlo pedía
+registrar aplicaciones propias en MyAnimeList y AniList.
+
+Queda sin ejercitar una sola cosa, en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): restaurar un
+backup grande de Mihon, con una biblioteca real de cientos de títulos.
 
 
 ## Aviso conocido: alineación de 16 KB

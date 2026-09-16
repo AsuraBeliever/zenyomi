@@ -8,14 +8,17 @@ algo de aquí falla al usarlo, es información nueva y valiosa, no una sorpresa.
 
 ---
 
-## 1. Gestos del player: el doble toque
+## 1. Gestos del player: el doble toque — ✅ VERIFICADO POR EL CLIENTE (2026-09-16)
 
-**Estado:** implementado, sin verificar.
-**Cómo probarlo:** abrir un episodio y tocar dos veces rápido en la mitad derecha (salta
-adelante) y en la izquierda (salta atrás). El salto por defecto es de 10 s y se cambia en
-*Ajustes → Player → Double tap jump*. Debe aparecer un `+10 s` / `-10 s` en el centro.
+Funciona. El cliente lo probó en el Galaxy S25 Ultra: el doble toque en la mitad derecha
+salta adelante y en la izquierda atrás.
 
-**Por qué no se puede automatizar aquí.** Se intentaron tres vías y las tres fallan:
+De la prueba salió una pega de diseño, ya corregida: el `+10 s` / `-10 s` aparecía en el
+centro de la imagen, encima del botón de reproducir y sin decir por qué lado se había
+tocado. Ahora se dibuja del lado del que viene el salto, y lo mismo hacen los dos botones
+de salto de los controles.
+
+**Por qué siguió sin poder automatizarse aquí.** Se intentaron tres vías y las tres fallan:
 
 | Vía | Por qué falla |
 |---|---|
@@ -23,7 +26,9 @@ adelante) y en la izquierda (salta atrás). El salto por defecto es de 10 s y se
 | Dos `input tap` concurrentes | Igual de lento, y además inyecta eventos inconsistentes (`Invalid DOWN event - pointers already down`) que dejan colgado el dispatcher de entrada del sistema |
 | `sendevent` sobre `/dev/input` | El emulador es una imagen de producción: `adb root` lo rechaza y SELinux bloquea el acceso aunque el usuario `shell` esté en el grupo `input` |
 
-El toque simple (pausa) **sí** está verificado: no necesita ventana temporal.
+El toque simple (pausa) **sí** se verifica por adb: no necesita ventana temporal. Y el
+sitio donde sale el aviso del salto sí se comprueba aquí, porque los botones de los
+controles pasan por el mismo camino que el doble toque.
 
 ---
 
@@ -50,12 +55,12 @@ Salieron tres defectos de la prueba, los tres ya corregidos: la hoja decía «Re
 «Watching», el selector de progreso se titulaba «Chapters» en vez de «Episodes», y los dos
 selectores se dibujaban sin superficie encima de la tarjeta de detrás.
 
-**Nota de identidad, pendiente de decisión del cliente.** Las pantallas de autorización de
-MyAnimeList y de AniList dicen «**Mihon** is requesting permission». Los identificadores de
-cliente OAuth son los de Mihon, heredados del fork. Funciona, pero un usuario ve el nombre de
-otro proyecto al conceder acceso a su cuenta. Corregirlo es registrar aplicaciones propias en
-ambos servicios, lo cual requiere que el cliente cree esas apps. Mientras tanto queda anotado
-aquí para que no se descubra por sorpresa.
+**Nota de identidad — decidido: se queda así (2026-09-16).** Las pantallas de autorización de
+MyAnimeList y de AniList dicen «**Mihon** is requesting permission», porque los identificadores
+de cliente OAuth son los de Mihon, heredados del fork. Funciona; lo único raro es ver el nombre
+de otro proyecto al conceder acceso. El cliente lo ha visto y le da igual, así que no se
+registran aplicaciones propias. Queda anotado para que no se descubra por sorpresa, no como
+trabajo pendiente.
 
 ### Kitsu — ✅ VERIFICADO (2026-09-15)
 
@@ -88,33 +93,30 @@ ejecutaba. Está contado en `PORTING_LOG.md`.
 
 ---
 
-## 3. Una descarga de vídeo HTTP completada
+## 3. Una descarga de vídeo HTTP completada — ✅ VERIFICADO POR EL CLIENTE (2026-09-16)
 
-**Estado:** toda la maquinaria alrededor verificada; el bucle que copia los bytes, no.
-**Cómo probarlo:** instalar una extensión de anime que funcione, abrir un episodio y darle al
-icono de descarga. Debería aparecer una notificación de progreso, y al terminar el icono pasa
-a una marca que sirve de botón de borrado.
+Funciona. Lo que quedaba sin ejercitar era el bucle que copia los bytes hasta el final;
+el cliente descargó episodios en el dispositivo y terminan.
 
-**Qué está verificado:** encolar, que la cola sobreviva a que Android mate el proceso, el
-worker en primer plano, la notificación de error, el desencolado y el borrado del fichero.
-
-**Qué no:** una transferencia que termine.
-
-El motivo que había aquí — "el emulador no tiene ninguna fuente de anime accesible por red" —
-ya no vale: desde el 2026-09-12 hay tres extensiones que resuelven y reproducen en el
-emulador (KickAssAnime, AnimeOnsen, TioAnime). Queda pendiente por tiempo, no por falta de
-material: es cuestión de encolar un episodio de una de ellas y ver terminar la barra.
+Aquí ya estaban verificados encolar, que la cola sobreviva a que Android mate el proceso,
+el worker en primer plano, la notificación de error, el desencolado y el borrado del
+fichero.
 
 ---
 
-## 4. Leer un manga y restaurar un backup grande
+## 4. Leer un manga — ✅ VERIFICADO POR EL CLIENTE (2026-09-16)
 
-**Estado:** el código de Mihon está intacto (diff vacío contra `mihon/main` en lector,
-biblioteca y dominio de manga), pero no se ha ejercitado en el emulador.
-**Por qué no se puede aquí:** no hay manga en la biblioteca del emulador ni fuente
-configurada, y montar una biblioteca real de prueba es más trabajo que valor aporta.
-**Cómo probarlo:** restaurar tu backup de Mihon, abrir un manga y leer un capítulo. La
+El cliente lee manga en el dispositivo sin problemas. Era lo que más importaba de toda
+esta lista: la regla dura del charter es que el anime no degrade nada de Mihon, y el
+lector es la parte de Mihon que más se usa.
+
+Aquí el código sigue estando intacto (diff vacío contra `mihon/main` en lector, biblioteca
+y dominio de manga), y esa es la comprobación que se repite antes de cada release. La
 auditoría completa de paridad está en [`MIHON_PARITY.md`](MIHON_PARITY.md).
+
+Lo que sigue sin ejercitarse es **restaurar un backup grande de Mihon**: el backup y la
+restauración se prueban aquí con entradas de prueba, no con una biblioteca real de cientos
+de títulos.
 
 ---
 

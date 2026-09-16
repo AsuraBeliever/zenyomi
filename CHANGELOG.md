@@ -10,6 +10,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [Unreleased]
+### Changed
+- **The jump indicator moves to the side the jump came from.** A double tap on the right half, or the forward button, flashes `+10 s` against the right edge; the left half and the back button flash `-10 s` against the left. It used to appear over the middle of the picture whichever way the jump went — on top of the play button, and saying nothing about which side had been tapped.
+
 ## [0.14.4] - 2026-09-16
 ### Fixed
 - **"Download next episode" works when you already have some of them.** Episodes already downloaded were discarded after the count rather than before it, so "the next five" meant "of the next five, whichever I am missing" — and if the very next episode was already on disk, the button did nothing at all. What you already have, or already queued, is now out of the running before counting starts.
