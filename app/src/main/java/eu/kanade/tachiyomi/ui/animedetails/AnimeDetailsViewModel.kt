@@ -64,6 +64,7 @@ import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.domain.episode.interactor.UpdateEpisode
 import tachiyomi.domain.episode.model.Episode
 import tachiyomi.domain.episode.model.EpisodeUpdate
+import tachiyomi.domain.episode.service.getEpisodeSort
 import tachiyomi.domain.history.anime.interactor.GetNextEpisodes
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.source.anime.model.StubAnimeSource
@@ -321,18 +322,24 @@ class AnimeDetailsViewModel(
     /**
      * The toolbar's batch download, with the same choices the manga one offers.
      *
-     * "Next" counts from the earliest unseen episode in the order the list is currently shown,
-     * so it means the same thing here as it does over there.
+     * "Next" means the next ones to watch — counted forwards from the earliest unseen episode,
+     * never from whatever happens to be at the top of the screen. That distinction is the whole
+     * point of the option: with the list newest-first, which is how anime is usually read, this
+     * used to take the *last* five episodes of the entry and call them the next five. Mihon
+     * sorts the same way for the same reason ([tachiyomi.domain.episode.service.getEpisodeSort]
+     * with the direction forced, exactly as `getUnreadChaptersSorted` does).
      */
     fun downloadEpisodes(action: DownloadAction) {
         val anime = state.value.anime ?: return
-        val unseen = state.value.visibleEpisodes.filterNot { it.seen }
+        val pending = state.value.visibleEpisodes
+            .filterNot { it.seen }
+            .sortedWith(getEpisodeSort(anime, sortDescending = false))
         val wanted = when (action) {
-            DownloadAction.NEXT_1_CHAPTER -> unseen.take(1)
-            DownloadAction.NEXT_5_CHAPTERS -> unseen.take(5)
-            DownloadAction.NEXT_10_CHAPTERS -> unseen.take(10)
-            DownloadAction.NEXT_25_CHAPTERS -> unseen.take(25)
-            DownloadAction.UNREAD_CHAPTERS -> unseen
+            DownloadAction.NEXT_1_CHAPTER -> pending.take(1)
+            DownloadAction.NEXT_5_CHAPTERS -> pending.take(5)
+            DownloadAction.NEXT_10_CHAPTERS -> pending.take(10)
+            DownloadAction.NEXT_25_CHAPTERS -> pending.take(25)
+            DownloadAction.UNREAD_CHAPTERS -> pending
             DownloadAction.BOOKMARKED_CHAPTERS -> state.value.visibleEpisodes.filter { it.bookmark }
         }.filterNot { it.id in state.value.downloadedEpisodeIds }
         if (wanted.isNotEmpty()) downloadManager.enqueue(anime, wanted)

@@ -266,6 +266,7 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                     onClickEditNotes = { navigator.push(AnimeNotesScreen(anime!!)) },
                     titleAlphaProvider = { titleAlpha },
                     backgroundAlphaProvider = { backgroundAlpha },
+                    episodes = true,
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },

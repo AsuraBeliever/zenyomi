@@ -238,6 +238,8 @@ fun LibraryBottomActionMenu(
     onDeleteClicked: () -> Unit,
     onMigrateClicked: () -> Unit,
     modifier: Modifier = Modifier,
+    /** La biblioteca de anime usa esta misma barra; solo cambia como se llaman las cosas. */
+    episodes: Boolean = false,
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -306,6 +308,7 @@ fun LibraryBottomActionMenu(
                             onDismissRequest = { downloadExpanded = false },
                             onDownloadClicked = onDownloadClicked,
                             offset = BottomBarMenuDpOffset,
+                            episodes = episodes,
                         )
                     }
                 }
