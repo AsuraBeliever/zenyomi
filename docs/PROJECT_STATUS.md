@@ -19,7 +19,7 @@
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | Releases 0.5.x – 0.15.0 | ✅ | hasta `v0.15.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
-| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.14.4, 2026-09-16. La de la v0.14.3 **encontró un fallo** y por eso hay una v0.14.4: ver abajo |
+| Prueba de humo sobre el APK **publicado** | ⚠️ | desde la 0.9.0 no basta el APK local. En la v0.15.0 se comprobó sobre el binario del CI: firma (SHA-256 de la clave del proyecto), identidad (`app.zenyomi`, 30, 0.15.0), cero marca ajena, arranque sin crash, y **que R8 no rompió ffmpeg-kit** — `log`, `statistics` y `nativeFFmpegExecute` conservan su nombre en el dex, que es lo que el nativo llama de vuelta. **Falta ejecutar una descarga desde el binario publicado**: el móvil perdió la depuración inalámbrica |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
 | PiP del player | ✅ | Activity propia |
@@ -83,7 +83,12 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
 ## Bloqueos activos
 
-Ninguno.
+**La v0.15.0 está publicada pero sin rematar la prueba de humo.** Falta ejecutar una descarga
+real desde el APK que publicó el CI. Lo que sí se comprobó sobre ese binario está en la tabla
+de arriba, incluido el riesgo de R8 sobre ffmpeg-kit, que es el que rompió el player en la
+0.3.0. Lo que falta necesita el dispositivo, y el móvil soltó la depuración inalámbrica a
+mitad de la sesión: el puerto responde pero rechaza el handshake, así que hay que volver a
+vincular con código.
 
 ## Pendiente menor
 
