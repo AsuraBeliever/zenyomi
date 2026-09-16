@@ -1,5 +1,5 @@
 {
-  "checkedOn": "2026-09-15",
+  "checkedOn": "2026-09-16",
   "note": "Produced by AnimeSourceProbeActivity (debug builds) and confirmed from a second network. Only failures that are about the source itself are listed: a dead domain, an endpoint the site no longer serves, or a page the extension can no longer parse. Timeouts, refused connections, 5xx and Cloudflare challenges are deliberately left out — they come back, and labelling them would be wrong more often than right.",
   "broken": [
     {
@@ -30,6 +30,21 @@
     {
       "id": 1571236147208399860,
       "name": "AnimeKai (Unoriginal)",
+      "reason": "outdated"
+    },
+    {
+      "id": 4709139914729853090,
+      "name": "AllAnime",
+      "reason": "outdated"
+    },
+    {
+      "id": 2156984402743841841,
+      "name": "AnimeKhor",
+      "reason": "outdated"
+    },
+    {
+      "id": 4467610354363305307,
+      "name": "Miruro.tv",
       "reason": "outdated"
     }
   ]

@@ -33,8 +33,8 @@ android {
     defaultConfig {
         applicationId = "app.zenyomi"
 
-        versionCode = 28
-        versionName = "0.14.3"
+        versionCode = 30
+        versionName = "0.15.0"
 
         buildConfigField("String", "COMMIT_COUNT", "\"${getLatestCommitCount()}\"")
         buildConfigField("String", "COMMIT_SHA", "\"${getLatestCommitSha()}\"")
@@ -217,6 +217,7 @@ dependencies {
     // Reproduccion de video (fase 2). mpv y FFmpeg traen librerias nativas.
     implementation(libs.aniyomi.mpv)
     implementation(libs.ffmpeg.kit)
+    implementation(libs.arthenica.smartexceptions)
     implementation(libs.mediasession)
     implementation(libs.seeker)
     implementation(libs.truetypeparser)

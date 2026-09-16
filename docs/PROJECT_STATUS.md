@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-16
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.14.3, tag en `main`
+**Última release:** v0.15.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,8 +18,8 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x – 0.14.3 | ✅ | hasta `v0.14.3`; cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
-| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.14.2, 2026-09-15 — esta vez contra una **fuente HTTP real** (AnimeOnsen), no la local, porque el cambio era reflexión y R8 |
+| Releases 0.5.x – 0.15.0 | ✅ | hasta `v0.15.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local: se descarga el del CI y se comprueba firma, identidad, marca y reproducción real. Última: v0.14.4, 2026-09-16. La de la v0.14.3 **encontró un fallo** y por eso hay una v0.14.4: ver abajo |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
 | PiP del player | ✅ | Activity propia |
@@ -50,7 +50,7 @@
 | Dependencias nativas del player | ✅ | mpv, FFmpeg, seeker y mediasession resuelven, empaquetan y no rompen el arranque |
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
-| Gestos del player | ⚠️ | toque simple (pausa) verificado; el doble toque sigue sin poder dispararse por adb, ver TESTING.md |
+| Gestos del player | ✅ | toque simple verificado aquí; el doble toque, verificado por el cliente en el dispositivo (2026-09-16). El aviso del salto sale del lado del que viene |
 | Controles del player | ✅ | play/pausa y saltos en el centro de la imagen, reloj de un segundo, barra que se queda donde se suelta y cubierta de carga con salida. Se ocultan a los 5 s y el toque en la imagen los muestra u oculta en vez de pausar |
 | Arranque de un episodio | ✅ | audio y controles ya no esperan a que se descarguen dieciséis idiomas de subtítulos: de 37 s de vídeo mudo y medio minuto de botones muertos, a 2 s |
 | PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
@@ -70,7 +70,7 @@
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
 | Novedades de anime | ✅ | pantalla propia desde la biblioteca: episodios nuevos por día, reproducir, marcar visto y descargar |
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
-| Descargas de anime | ⚠️ | cola persistente, worker en primer plano, notificaciones y borrado; falta verificar una descarga HTTP real (ver abajo) |
+| Descargas de anime | ✅ | cola persistente, worker en primer plano, notificaciones y borrado. **Guardaban la lista m3u8 en vez del vídeo**: corregido con ffmpeg el 2026-09-16 y verificado en el dispositivo — 360 MB, 2 audios, 8 subtítulos, reproducido sin red |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ✅ | MyAnimeList, AniList y **Kitsu** verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación, progreso, puntuación, privado y desvincular, comprobado en los servidores de cada servicio. En Kitsu además se comprobó que la entrada cae en la biblioteca de anime y no en la de manga |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
@@ -87,16 +87,28 @@ Ninguno.
 
 ## Pendiente menor
 
-- **Las pantallas de OAuth dicen «Mihon».** Al conceder acceso, MyAnimeList y AniList muestran
-  el nombre y la web de Mihon, porque los identificadores de cliente son los suyos, heredados
-  del fork. Funciona, pero es el nombre de otro proyecto. Arreglarlo pide registrar apps
-  propias en ambos servicios; decisión del cliente.
-
 - **El contador de extensiones de anime no cuenta las no confiadas.** En una instalación
   limpia la cabecera dice «Anime extensions 0» mientras debajo hay veintiuna esperando
   a que se confíen; la de manga sí cuenta la suya. Solo es el número: la lista y el
   botón *Trust* funcionan. Mihon es la referencia, así que el número debería incluirlas.
   Visto al verificar la v0.11.0.
+
+## La prueba de humo de la v0.14.3 encontró un fallo, y para eso está
+
+La v0.14.3 arreglaba el botón de descarga de anime: «el siguiente» contaba desde
+arriba de la lista, y una lista de anime va del último episodio al primero, así que
+encolaba el último de la serie. Eso quedó arreglado y verificado.
+
+Lo que la verificación del binario **publicado** destapó es un segundo fallo dentro del
+mismo arreglo: los episodios que ya estaban en disco se descartaban *después* de contar,
+no antes. Como la propia comprobación anterior había descargado el episodio 1, el
+siguiente toque en «el siguiente episodio» resolvía a una lista de un elemento que luego
+se vaciaba, y no encolaba nada. Un botón que no hace nada, que es justo lo que el cliente
+había reportado.
+
+No se habría visto probando sobre una entrada limpia, que es como se prueba siempre. Se
+vio porque la prueba se hizo sobre el estado que deja la prueba anterior. Corregido en la
+v0.14.4: lo que ya tienes —o ya está en la cola— sale antes de contar, como hace Mihon.
 
 ## Aviso: v0.3.0 y v0.4.0 tienen el player roto
 
@@ -105,11 +117,31 @@ reproducir cualquier vídeo mata la app. **Verificado** desempaquetando los APK 
 cero referencias a `eventProperty` en sus `classes*.dex`. Corregido en la v0.5.1; quien tenga
 una de esas dos versiones necesita actualizar.
 
-## Sin verificar en dispositivo
+## Verificado por el cliente en el dispositivo (2026-09-16)
 
-Lo que necesita una persona con el dispositivo delante, o una cuenta que aquí no hay, está
-en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): el doble toque del player, vincular un tracker real
-y una descarga HTTP completada.
+Las tres cosas que este entorno no podía comprobar están comprobadas. El cliente confirma
+en el Galaxy S25 Ultra que **el doble toque del player salta**, que **las descargas de anime
+terminan** y que **leer manga funciona igual que siempre** — que es la que de verdad
+importaba, porque la regla dura del charter es no degradar nada de Mihon.
+
+De ahí salieron dos cosas, las dos ya hechas.
+
+Un cambio de producto: el `+10 s` / `-10 s` salía en el centro de la imagen, y ahora sale del
+lado del que viene el salto.
+
+Y **un fallo de los gordos**: las descargas de anime no descargaban el anime. Guardaban el
+m3u8 —la lista de trozos, no los trozos— así que el episodio solo existía mientras hubiera
+internet. Corregido con ffmpeg y verificado en el dispositivo; el detalle está en
+[`KNOWN_ISSUES.md`](KNOWN_ISSUES.md). Al arreglarlo aparecieron tres más: el audio y los
+subtítulos no viajaban con el vídeo, una descarga a medias contaba como terminada, y una
+descarga fallida no decía por qué en ningún sitio.
+
+Y una decisión: las pantallas de OAuth que dicen «Mihon» se quedan como están. Al cliente le
+da igual ver el nombre del proyecto del que venimos al conceder acceso, y cambiarlo pedía
+registrar aplicaciones propias en MyAnimeList y AniList.
+
+Queda sin ejercitar una sola cosa, en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): restaurar un
+backup grande de Mihon, con una biblioteca real de cientos de títulos.
 
 
 ## Aviso conocido: alineación de 16 KB

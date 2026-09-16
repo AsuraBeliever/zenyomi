@@ -1,0 +1,1 @@
+Fixed: "download next episode" works when you already have some of them. Episodes already downloaded were discarded after counting instead of before, so asking for the next one when you already had it did nothing at all.

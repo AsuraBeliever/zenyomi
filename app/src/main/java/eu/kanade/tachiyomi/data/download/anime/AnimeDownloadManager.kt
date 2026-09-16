@@ -86,7 +86,9 @@ class AnimeDownloadManager(
      * can tell "deleted" from "there was nothing there".
      */
     fun deleteEpisode(anime: Anime, source: AnimeSource, episode: Episode): Boolean {
-        val file = provider.findEpisodeFile(anime, source, episode) ?: return false
+        // Any file, not just a playable one: deleting has to be able to sweep a leftover
+        // playlist from before the downloader knew the difference.
+        val file = provider.findAnyEpisodeFile(anime, source, episode) ?: return false
         return file.delete()
     }
 

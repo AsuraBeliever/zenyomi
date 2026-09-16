@@ -76,6 +76,31 @@ La fase de mayor riesgo: dependencias nativas y ABIs.
 
 ---
 
+## Fase 5 — Fuera del móvil
+
+Zenyomi pasa a ser una aplicación Kotlin Multiplatform con dos objetivos, Android y escritorio
+Linux, compartiendo todo hasta la interfaz incluida. Decidido por el cliente el 2026-09-16; el
+plan completo, con el inventario, la costura de plataforma y los riesgos, está en
+[`DESKTOP_AND_SYNC.md`](DESKTOP_AND_SYNC.md).
+
+- [ ] ADR de la decisión de arquitectura
+- [ ] Etapa 0 — ¿corre una extensión de anime en la JVM? Mide lo que cuesta la etapa 5
+- [ ] Etapa 1 — núcleo multiplataforma: `domain`, `presentation-core`, `source-api`, `data`
+- [ ] Etapa 2 — costura de plataforma: preferencias, ficheros, tareas de fondo, notificaciones
+- [ ] Etapa 3 — interfaz a Compose Multiplatform
+- [ ] Etapa 4 — lector de manga reescrito en Compose, y player de escritorio sobre libmpv
+- [ ] Etapa 5 — extensiones en el escritorio
+- [ ] Etapa 6 — empaquetado para Linux y primera entrega
+
+La migración va en `develop`, en sitio, commit a commit: **nunca en una rama larga**, porque la
+app de Android sigue evolucionando normal mientras dura y una rama aparte se volvería
+irreconciliable. Android verde y publicable en cada commit.
+
+El sync entre dispositivos queda para después, pero la sección 9 del plan fija qué hay que
+respetar mientras tanto para no encarecerlo.
+
+---
+
 ## Mantenimiento continuo
 
 Sincronización periódica con `mihon/main` en ramas `sync/mihon-<version>`.
