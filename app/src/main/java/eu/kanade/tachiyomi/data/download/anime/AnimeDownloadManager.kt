@@ -35,13 +35,17 @@ class AnimeDownloadManager(
 
     val progress = downloader.progress
 
-    fun enqueue(anime: Anime, episodes: List<Episode>) {
+    /**
+     * @param quality the vertical resolution to fetch, or null to take the best on offer.
+     * @param estimatedBytes what that quality was measured to weigh, for the progress bar.
+     */
+    fun enqueue(anime: Anime, episodes: List<Episode>, quality: Int? = null, estimatedBytes: Long? = null) {
         if (episodes.isEmpty()) return
         _queue.update { current ->
             val known = current.mapTo(mutableSetOf()) { it.episodeId }
             current + episodes
                 .filter { it.id !in known }
-                .map { AnimeDownloadItem(anime.id, it.id) }
+                .map { AnimeDownloadItem(anime.id, it.id, quality, estimatedBytes) }
         }
         persist()
         AnimeDownloadJob.start(context)

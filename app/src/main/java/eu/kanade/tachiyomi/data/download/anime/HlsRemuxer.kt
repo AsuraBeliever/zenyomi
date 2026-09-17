@@ -44,8 +44,9 @@ class HlsRemuxer(
     /**
      * Writes [videoUrl] and every track that belongs with it into [target].
      *
-     * @param durationSeconds how long the episode is, for progress. Null leaves progress
-     * alone until ffmpeg says how long the stream turned out to be.
+     * @param onBytes called with how many bytes are on disk so far. Bytes rather than a
+     * percentage because ffmpeg is the only thing that knows, and the caller is the only
+     * thing that knows how big the episode was supposed to be.
      * @throws IllegalStateException if ffmpeg fails, carrying its last words.
      */
     suspend fun remux(
@@ -54,28 +55,23 @@ class HlsRemuxer(
         audioTracks: List<Track>,
         subtitleTracks: List<Track>,
         target: UniFile,
-        durationSeconds: Double?,
-        onProgress: (Int) -> Unit,
+        onBytes: (Long) -> Unit,
     ) {
         val output = ffmpegPathFor(target.uri)
 
         try {
-            run(buildArguments(videoUrl, headers, audioTracks, subtitleTracks, output), durationSeconds, onProgress)
+            run(buildArguments(videoUrl, headers, audioTracks, subtitleTracks, output), onBytes)
         } catch (e: IllegalStateException) {
             // One dead subtitle url fails the whole command, and an episode you can watch
             // without subtitles beats an episode you cannot watch. The picture and the sound
             // are not negotiable, so only the subtitles are dropped.
             if (subtitleTracks.isEmpty()) throw e
             logcat(LogPriority.WARN, e) { "Retrying the download without its subtitles" }
-            run(buildArguments(videoUrl, headers, audioTracks, emptyList(), output), durationSeconds, onProgress)
+            run(buildArguments(videoUrl, headers, audioTracks, emptyList(), output), onBytes)
         }
     }
 
-    private suspend fun run(arguments: Array<String>, durationSeconds: Double?, onProgress: (Int) -> Unit) {
-        // Learned from the logs when the caller did not know it, which is the case for a
-        // stream whose playlist carries no durations.
-        var duration = durationSeconds
-
+    private suspend fun run(arguments: Array<String>, onBytes: (Long) -> Unit) {
         suspendCancellableCoroutine { continuation ->
             val session: FFmpegSession = FFmpegKit.executeWithArgumentsAsync(
                 arguments,
@@ -92,11 +88,9 @@ class HlsRemuxer(
                         )
                     }
                 },
-                { log -> duration = duration ?: parseDuration(log.message) },
-                { statistics ->
-                    val total = duration?.takeIf { it > 0 } ?: return@executeWithArgumentsAsync
-                    onProgress(((statistics.time / MILLIS_PER_SECOND / total) * 100).toInt().coerceIn(0, 100))
-                },
+                { },
+                // What ffmpeg has written, which with a straight copy is what it has fetched.
+                { statistics -> onBytes(statistics.size) },
             )
             continuation.invokeOnCancellation { FFmpegKit.cancel(session.sessionId) }
         }
@@ -189,8 +183,6 @@ class HlsRemuxer(
     }
 
     companion object {
-        private const val MILLIS_PER_SECOND = 1000.0
-
         private val PLAYLIST_EXTENSIONS = setOf("m3u", "m3u8")
 
         /**
@@ -206,15 +198,6 @@ class HlsRemuxer(
             .substringAfterLast('/')
             .substringAfterLast('.', "")
             .lowercase() in PLAYLIST_EXTENSIONS
-
-        /** `  Duration: 00:23:40.02, start: ...` */
-        private val DURATION = Regex("""Duration:\s*(\d+):(\d{2}):(\d{2})\.(\d+)""")
-
-        fun parseDuration(log: String?): Double? {
-            val match = log?.let(DURATION::find) ?: return null
-            val (hours, minutes, seconds, fraction) = match.destructured
-            return hours.toDouble() * 3600 + minutes.toDouble() * 60 + seconds.toDouble() + "0.$fraction".toDouble()
-        }
 
         /**
          * The last thing ffmpeg said, rather than all of it.

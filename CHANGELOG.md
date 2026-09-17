@@ -10,6 +10,14 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [Unreleased]
+### Added
+- **Downloads say how fast they are going.** The episode row and the notification now read "180 MB of 420 MB · 1.2 MB/s" instead of a percentage. A percentage answers the wrong question when a download is slow: it does not say whether it is still moving.
+- **You pick the quality, and you see what it costs.** The first time you download anything, Zenyomi asks which quality to use and shows roughly how big each one is — 324 MB, 230 MB, 137 MB — then remembers the answer and stops asking. Change it in Settings → Downloads. If an episode turns out not to have your usual quality, it shows the ones it does have and lets you choose for that episode.
+
+### Fixed
+- **The quality you pick is the quality you get.** Sources split into two kinds: some list the qualities inside one stream, others return a separate video per quality. Only the first kind was being honoured, so on the second — which includes the source this was tested against — picking 360p still downloaded 1080p: a 121 MB episode arriving as 343 MB.
+
 ## [0.15.0] - 2026-09-16
 ### Fixed
 - **Downloaded anime actually downloads the anime.** Sources do not serve a video file, they serve an m3u8 playlist — a few kilobytes of text naming a few hundred segments that are still on the internet. The downloader fetched that url the way it would fetch an mp4, so it wrote the *playlist* to the downloads folder: it finished in a second, showed the downloaded tick, and left nothing of the episode on the device. It only looked downloaded until the network went away, and then playback failed with "the host is probably down or the link has expired". Episodes are now written with ffmpeg, which fetches what the playlist names and puts it on disk.

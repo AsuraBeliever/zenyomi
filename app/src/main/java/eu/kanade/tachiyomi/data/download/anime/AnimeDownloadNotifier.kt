@@ -29,24 +29,28 @@ class AnimeDownloadNotifier(private val context: Context) {
         }
     }
 
-    fun progressNotification(title: String?, percent: Int, remaining: Int) = progressBuilder
+    fun progressNotification(title: String?, progress: AnimeDownloadProgress?, remaining: Int) = progressBuilder
         .setContentTitle(
             title?.chop(40) ?: context.stringResource(ANMR.strings.anime_download_notifier_downloading),
         )
-        .setContentText(
+        // How much has arrived and how fast, which is what somebody watching a slow download
+        // actually wants to know. The queue count moves to the line below rather than being
+        // dropped: both fit.
+        .setContentText(progress?.describe(context))
+        .setSubText(
             if (remaining > 0) {
                 context.stringResource(ANMR.strings.anime_download_notifier_queue, remaining)
             } else {
                 null
             },
         )
-        // A source that does not send a length leaves percent at 0; an indeterminate bar is
-        // honest about that instead of showing a bar that never moves.
-        .setProgress(100, percent, percent <= 0)
+        // A stream that never said how big it is leaves the percentage unknown; an
+        // indeterminate bar is honest about that instead of one that never moves.
+        .setProgress(100, progress?.percent ?: 0, progress?.percent == null)
         .build()
 
-    fun showProgress(title: String?, percent: Int, remaining: Int) {
-        context.notify(Notifications.ID_DOWNLOAD_EPISODE_PROGRESS, progressNotification(title, percent, remaining))
+    fun showProgress(title: String?, progress: AnimeDownloadProgress?, remaining: Int) {
+        context.notify(Notifications.ID_DOWNLOAD_EPISODE_PROGRESS, progressNotification(title, progress, remaining))
     }
 
     fun showError(episodeName: String) {
