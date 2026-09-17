@@ -176,6 +176,10 @@ jobs:
       - name: Upload the APKs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This job never checks the repository out — it only downloads the built APKs — so
+          # gh has no git remote to work the repository out from and fails with
+          # "not a git repository" before it uploads anything.
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.get_tag.outputs.tag }}
         run: |
           set -u
