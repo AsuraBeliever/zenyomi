@@ -12,6 +12,8 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 
 ## [Unreleased]
 ### Fixed
+- **Tapping download starts the download.** It was taking twenty seconds or more first, because the app asked the source what qualities it had and then measured every one of them — some thirty requests — before anything was queued. Once you have chosen a quality it now does no network at all on the tap: it queues in a quarter of a second and works the rest out in the background. The first download ever still asks, which is the one time the wait buys something.
+- **A download no longer reads "200 MB of 160 MB".** The running total counted every stream — the picture and the separate audio tracks that end up in the same file — while the size it was compared against counted only the picture. The size now includes them, and if an estimate still comes in under the truth the app drops the total rather than printing a number it can see is wrong.
 - **The quality question reaches every download, not just the ones started from an entry.** Downloading from Updates or by selecting entries in the library went straight to the queue: it never asked which quality, never applied the one you had chosen, and never knew how big the episode was, so the row showed no total. Those are the two places you actually download from when new episodes appear, which is why it looked as though the feature had not shipped at all.
 
 ### Improved

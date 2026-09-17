@@ -14,12 +14,21 @@ package eu.kanade.tachiyomi.data.download.anime
  */
 data class AnimeDownloadProgress(
     val downloadedBytes: Long,
-    val totalBytes: Long?,
+    private val estimatedTotalBytes: Long?,
     val bytesPerSecond: Long,
 ) {
-    val percent: Int? = totalBytes
-        ?.takeIf { it > 0 }
-        ?.let { ((downloadedBytes * 100) / it).toInt().coerceIn(0, 100) }
+    /**
+     * How big the episode is, as far as anything knows — and null once that stops being
+     * credible.
+     *
+     * The total is an estimate worked out from a handful of sampled segments, so it can come
+     * in under the truth. When it does, saying "200 MB of 160 MB" is worse than admitting the
+     * size is not known: the number the viewer can see with their own eyes is the one that has
+     * already arrived.
+     */
+    val totalBytes: Long? = estimatedTotalBytes?.takeIf { it > 0 && it >= downloadedBytes }
+
+    val percent: Int? = totalBytes?.let { ((downloadedBytes * 100) / it).toInt().coerceIn(0, 100) }
 }
 
 /**

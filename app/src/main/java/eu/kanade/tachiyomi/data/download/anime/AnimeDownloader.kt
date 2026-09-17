@@ -46,6 +46,7 @@ class AnimeDownloader(
     private val networkHelper: NetworkHelper,
     private val remuxer: HlsRemuxer,
     private val prefetcher: HlsPrefetcher,
+    private val sizer: StreamSizer,
 ) {
 
     private val _progress = MutableStateFlow(emptyMap<Long, AnimeDownloadProgress>())
@@ -156,13 +157,17 @@ class AnimeDownloader(
                 val variants = HlsPlaylist.variants(playlist, video.videoUrl)
                 val chosen = variants.pick(quality)
                 val media = chosen?.let { fetchText(it.url, video.headers) } ?: playlist
-                // What was measured when the viewer chose, which is the better number: it
-                // was worked out by weighing segments of this exact stream. The playlist's
-                // own bitrate is the fallback for a download queued without being measured.
-                val estimated = expectedBytes ?: HlsPlaylist.estimatedBytes(
-                    bandwidth = chosen?.bandwidth,
-                    durationSeconds = HlsPlaylist.durationSeconds(media),
-                )
+                // What was measured when the viewer chose, if anything was. A download queued
+                // without a dialog has no number, and it is measured here instead: a handful of
+                // HEAD requests at the start of something that runs for minutes costs nothing,
+                // whereas doing it on the tap is the difference between a button and a wait.
+                // The audio the source keeps apart from the picture is fetched too and lands
+                // in the same file, so it belongs in the total. Leaving it out is what made a
+                // download read "200 MB of 160 MB": the bytes counted every stream and the
+                // total counted one.
+                val estimated = expectedBytes ?: sizer
+                    .sizeOfMedia(chosen?.url ?: video.videoUrl, video.headers, chosen?.bandwidth, media)
+                    ?.plus(video.audioTracks.sumOf { sizer.sizeOfMedia(it.url, video.headers, null) ?: 0L })
 
                 val target = provider.createEpisodeFile(anime, source, episode, REMUXED_EXTENSION)
                     ?: error("Could not create the download file")
@@ -176,7 +181,7 @@ class AnimeDownloader(
                             // An estimate, and the only number available up front: a stream
                             // declares no length. The bar is honest about arriving a little
                             // before or after 100%.
-                            totalBytes = estimated,
+                            estimatedTotalBytes = estimated,
                             bytesPerSecond = rate.sample(bytes),
                         ),
                     )
@@ -302,7 +307,7 @@ class AnimeDownloader(
                         episodeId,
                         AnimeDownloadProgress(
                             downloadedBytes = downloaded,
-                            totalBytes = total.takeIf { size -> size > 0 },
+                            estimatedTotalBytes = total.takeIf { size -> size > 0 },
                             bytesPerSecond = rate.sample(downloaded),
                         ),
                     )

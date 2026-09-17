@@ -48,24 +48,32 @@ class StartAnimeDownload(
      */
     suspend fun await(anime: Anime, episodes: List<Episode>): Outcome {
         if (episodes.isEmpty()) return Outcome.Queued
-        val qualities = runCatching { getDownloadQualities.await(anime.source, episodes.first()) }
+
+        val saved = downloadPreferences.quality.get()
+
+        // Once a quality is settled, tapping download does no network at all: it queues, and
+        // everything else happens in the background where nobody is waiting on it. Asking the
+        // source what it had first meant three or four seconds of a button that looked broken,
+        // on every download, to answer a question whose answer was already known.
+        //
+        // The cost is that an episode which does not have that exact quality is no longer
+        // offered the ones it does have — the download takes the closest below it instead and
+        // says which in the row. There is nobody to ask by then.
+        if (saved != AnimeDownloadPreferences.UNSET) {
+            return queue(anime, episodes, saved.takeIf { it > 0 }, null)
+        }
+
+        // The first download ever is the one time it is worth the wait: the numbers are about
+        // to be read by somebody, and the answer is kept for good.
+        val measured = qualities(anime, episodes, measure = true)
+        if (measured.size <= 1) return queue(anime, episodes, null, measured.firstOrNull()?.estimatedBytes)
+        return Outcome.Choose(episodes, measured, remember = true)
+    }
+
+    private suspend fun qualities(anime: Anime, episodes: List<Episode>, measure: Boolean) =
+        runCatching { getDownloadQualities.await(anime.source, episodes.first(), measure) }
             .getOrNull()
             .orEmpty()
-        val saved = downloadPreferences.quality.get()
-        return when {
-            // Nothing to choose between. Queue it and say nothing: a dialog with one option in
-            // it is a dialog that should not have opened.
-            qualities.size <= 1 -> queue(anime, episodes, null, qualities.firstOrNull()?.estimatedBytes)
-            saved == AnimeDownloadPreferences.UNSET -> Outcome.Choose(episodes, qualities, remember = true)
-            saved == AnimeDownloadPreferences.BEST ->
-                queue(anime, episodes, null, qualities.firstOrNull()?.estimatedBytes)
-            qualities.any { it.height == saved } ->
-                queue(anime, episodes, saved, qualities.first { it.height == saved }.estimatedBytes)
-            // The usual quality is not on offer here, so the viewer sees what is. That choice
-            // is for these episodes only; the default stays as it was.
-            else -> Outcome.Choose(episodes, qualities, remember = false)
-        }
-    }
 
     /** Called once the viewer has picked from an [Outcome.Choose]. */
     fun confirm(anime: Anime, choice: Outcome.Choose, height: Int?) {
