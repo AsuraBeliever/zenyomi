@@ -13,10 +13,12 @@ import androidx.compose.ui.util.fastMap
 import eu.kanade.presentation.category.visualName
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.widget.TriStateListDialog
+import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadPreferences
 import mihon.app.di.appGraph
 import tachiyomi.domain.category.model.Category
 import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
@@ -36,7 +38,20 @@ object SettingsDownloadScreen : SearchableSettings {
         val downloadPreferences = remember { context.appGraph.downloadPreferences }
         val parallelSourceLimit by downloadPreferences.parallelSourceLimit.collectAsState()
         val parallelPageLimit by downloadPreferences.parallelPageLimit.collectAsState()
+        val animeDownloadPreferences = remember { context.appGraph.animeDownloadPreferences }
         return listOf(
+            // El único añadido de Zenyomi en esta pantalla de Mihon, y va primero para que
+            // quede en un solo punto de inserción: cada línea que metamos aquí es un conflicto
+            // en cada merge con upstream.
+            Preference.PreferenceItem.ListPreference(
+                preference = animeDownloadPreferences.quality,
+                entries = buildMap {
+                    put(AnimeDownloadPreferences.UNSET, stringResource(ANMR.strings.anime_download_quality_ask))
+                    put(AnimeDownloadPreferences.BEST, stringResource(ANMR.strings.anime_download_quality_best))
+                    AnimeDownloadPreferences.OFFERED_HEIGHTS.forEach { put(it, "${it}p") }
+                },
+                title = stringResource(ANMR.strings.anime_download_quality_setting),
+            ),
             Preference.PreferenceItem.SwitchPreference(
                 preference = downloadPreferences.downloadOnlyOverWifi,
                 title = stringResource(MR.strings.connected_to_wifi),

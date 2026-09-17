@@ -54,6 +54,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.anime.components.AnimeInfoBox
+import eu.kanade.presentation.anime.components.DownloadQualityDialog
 import eu.kanade.presentation.anime.components.EpisodeHeader
 import eu.kanade.presentation.anime.components.EpisodeSettingsDialog
 import eu.kanade.presentation.components.NavigatorAdaptiveSheet
@@ -68,6 +69,7 @@ import eu.kanade.presentation.manga.components.MangaToolbar
 import eu.kanade.presentation.manga.components.SetIntervalDialog
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
+import eu.kanade.tachiyomi.data.download.anime.describe
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.animebrowse.globalsearch.AnimeGlobalSearchScreen
 import eu.kanade.tachiyomi.ui.animecategory.AnimeCategoryScreen
@@ -132,6 +134,15 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
 
         // Salir de la seleccion con Atras antes que de la pantalla, igual que en la de manga.
         BackHandler(enabled = state.selectedEpisodeIds.isNotEmpty(), onBack = viewModel::clearSelection)
+
+        state.qualityDialog?.let { dialog ->
+            DownloadQualityDialog(
+                qualities = dialog.qualities,
+                firstTime = dialog.firstTime,
+                onConfirm = viewModel::confirmQuality,
+                onDismissRequest = viewModel::dismissQualityDialog,
+            )
+        }
 
         state.categoryDialog?.let { dialog ->
             AnimeCategoryDialog(
@@ -435,16 +446,20 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         MangaChapterListItem(
                             title = episode.name,
                             date = relativeDateText(episode.dateUpload),
-                            // "12:34" en un episodio a medias, como el manga dice "Pagina 12".
-                            readProgress = episode.takeIf { !it.seen && it.lastSecondSeen > 0 }
-                                ?.let { formatEpisodePosition(it.lastSecondSeen) },
+                            // Mientras baja, cuánto lleva y a qué velocidad: es lo que hay
+                            // que saber de una descarga lenta, y un porcentaje no lo dice.
+                            // El resto del tiempo, "12:34" en un episodio a medias, como el
+                            // manga dice "Pagina 12".
+                            readProgress = progress?.describe(context)
+                                ?: episode.takeIf { !it.seen && it.lastSecondSeen > 0 }
+                                    ?.let { formatEpisodePosition(it.lastSecondSeen) },
                             scanlator = episode.scanlator?.takeIf { it.isNotBlank() },
                             read = episode.seen,
                             bookmark = episode.bookmark,
                             selected = episode.id in state.selectedEpisodeIds,
                             downloadIndicatorEnabled = state.canDownload,
                             downloadStateProvider = { downloadState },
-                            downloadProgressProvider = { progress ?: 0 },
+                            downloadProgressProvider = { progress?.percent ?: 0 },
                             chapterSwipeStartAction = episodeSwipeStartAction,
                             chapterSwipeEndAction = episodeSwipeEndAction,
                             onLongClick = {

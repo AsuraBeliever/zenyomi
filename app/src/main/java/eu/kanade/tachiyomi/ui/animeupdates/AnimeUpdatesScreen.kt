@@ -38,6 +38,7 @@ import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.MangaBottomActionMenu
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.data.download.anime.describe
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
@@ -179,7 +180,9 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                                 AnimeUpdatesItem(
                                     modifier = Modifier.animateItem(),
                                     update = update,
-                                    seenProgress = null,
+                                    // Mientras baja, cuánto lleva y a qué velocidad. Es el
+                                    // único hueco de texto de la fila y estaba sin usar.
+                                    seenProgress = progress?.describe(context),
                                     selected = update.episodeId in state.selected,
                                     onLongClick = { viewModel.toggleSelection(update) },
                                     onClick = if (state.selected.isNotEmpty()) {
@@ -218,7 +221,7 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                                         null
                                     },
                                     downloadStateProvider = { downloadState },
-                                    downloadProgressProvider = { progress ?: 0 },
+                                    downloadProgressProvider = { progress?.percent ?: 0 },
                                 )
                             }
                         }

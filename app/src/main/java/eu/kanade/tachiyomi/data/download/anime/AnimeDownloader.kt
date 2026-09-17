@@ -40,10 +40,10 @@ class AnimeDownloader(
     private val remuxer: HlsRemuxer,
 ) {
 
-    private val _progress = MutableStateFlow(emptyMap<Long, Int>())
+    private val _progress = MutableStateFlow(emptyMap<Long, AnimeDownloadProgress>())
 
-    /** Episode id to percentage, for rows that are downloading right now. */
-    val progress: StateFlow<Map<Long, Int>> = _progress.asStateFlow()
+    /** Episode id to how far along it is, for rows that are downloading right now. */
+    val progress: StateFlow<Map<Long, AnimeDownloadProgress>> = _progress.asStateFlow()
 
     /**
      * Whether an episode can be downloaded at all.
@@ -101,6 +101,8 @@ class AnimeDownloader(
         source: AnimeSource,
         episode: Episode,
         video: Video,
+        quality: Int?,
+        expectedBytes: Long?,
     ): Result<Unit> = withIOContext {
         runCatching {
             // Whatever is already there for this episode goes first, including a playlist
@@ -140,22 +142,43 @@ class AnimeDownloader(
 
             if (playlist != null) {
                 // A master playlist names other playlists, one per quality, and ffmpeg left to
-                // choose among them picks for itself. The quality is the viewer's to pick, and
-                // the one they asked for is the best on offer, so it is resolved here.
-                val best = bestVariantOf(playlist, video.videoUrl)
-                val media = best?.let { fetchText(it, video.headers) } ?: playlist
+                // choose among them picks for itself. The quality is the viewer's, so the
+                // variant is resolved here: the one they asked for, or the best on offer when
+                // that request cannot be met.
+                val variants = HlsPlaylist.variants(playlist, video.videoUrl)
+                val chosen = variants.pick(quality)
+                val media = chosen?.let { fetchText(it.url, video.headers) } ?: playlist
+                // What was measured when the viewer chose, which is the better number: it
+                // was worked out by weighing segments of this exact stream. The playlist's
+                // own bitrate is the fallback for a download queued without being measured.
+                val estimated = expectedBytes ?: HlsPlaylist.estimatedBytes(
+                    bandwidth = chosen?.bandwidth,
+                    durationSeconds = HlsPlaylist.durationSeconds(media),
+                )
 
                 val target = provider.createEpisodeFile(anime, source, episode, REMUXED_EXTENSION)
                     ?: error("Could not create the download file")
                 written = target
+                val rate = DownloadRate()
                 remuxer.remux(
-                    videoUrl = best ?: video.videoUrl,
+                    videoUrl = chosen?.url ?: video.videoUrl,
                     headers = video.headers,
                     audioTracks = video.audioTracks,
                     subtitleTracks = video.subtitleTracks,
                     target = target,
-                    durationSeconds = playlistDuration(media),
-                    onProgress = { setProgress(episode.id, it) },
+                    onBytes = { bytes ->
+                        setProgress(
+                            episode.id,
+                            AnimeDownloadProgress(
+                                downloadedBytes = bytes,
+                                // An estimate, and the only number available: a stream
+                                // declares no length. The bar is honest about arriving a
+                                // little before or after 100%.
+                                totalBytes = estimated,
+                                bytesPerSecond = rate.sample(bytes),
+                            ),
+                        )
+                    },
                 )
             }
             // Only now is it an episode rather than a download in flight.
@@ -187,6 +210,7 @@ class AnimeDownloader(
         target: UniFile,
         episodeId: Long,
     ) {
+        val rate = DownloadRate()
         target.openOutputStream().use { output ->
             input.use {
                 output.write(head, 0, headLength)
@@ -197,9 +221,14 @@ class AnimeDownloader(
                     if (read == -1) break
                     output.write(buffer, 0, read)
                     downloaded += read
-                    if (total > 0) {
-                        setProgress(episodeId, ((downloaded * 100) / total).toInt())
-                    }
+                    setProgress(
+                        episodeId,
+                        AnimeDownloadProgress(
+                            downloadedBytes = downloaded,
+                            totalBytes = total.takeIf { size -> size > 0 },
+                            bytesPerSecond = rate.sample(downloaded),
+                        ),
+                    )
                 }
             }
         }
@@ -221,8 +250,8 @@ class AnimeDownloader(
         return filled
     }
 
-    private fun setProgress(episodeId: Long, percent: Int) =
-        _progress.update { it + (episodeId to percent) }
+    private fun setProgress(episodeId: Long, progress: AnimeDownloadProgress) =
+        _progress.update { it + (episodeId to progress) }
 
     private fun clearProgress(episodeId: Long) =
         _progress.update { it - episodeId }
@@ -247,30 +276,6 @@ class AnimeDownloader(
 
         private const val PLAYLIST_MARKER = "#EXTM3U"
 
-        private val EXTINF = Regex("""#EXTINF:\s*([0-9]*\.?[0-9]+)""")
-
-        private val STREAM_INF = Regex("""#EXT-X-STREAM-INF:([^\n]*)\n\s*([^#\s][^\n]*)""")
-
-        private val BANDWIDTH = Regex("""[^-]BANDWIDTH=(\d+)""")
-
-        /**
-         * The best quality a master playlist offers, as an absolute url, or null if this is a
-         * media playlist and there is nothing to choose.
-         *
-         * Bandwidth is the measure because it is the one attribute every variant declares;
-         * RESOLUTION is optional and plenty of streams leave it out.
-         */
-        fun bestVariantOf(playlist: String, playlistUrl: String): String? {
-            val base = playlistUrl.toHttpUrlOrNull() ?: return null
-            return STREAM_INF.findAll(playlist)
-                .mapNotNull { match ->
-                    val bandwidth = BANDWIDTH.find(" " + match.groupValues[1])?.groupValues?.get(1)?.toLongOrNull()
-                    base.resolve(match.groupValues[2].trim())?.let { bandwidth to it.toString() }
-                }
-                .maxByOrNull { it.first ?: 0L }
-                ?.second
-        }
-
         /**
          * Whether the response is a playlist rather than a video.
          *
@@ -280,17 +285,6 @@ class AnimeDownloader(
          */
         fun looksLikePlaylist(head: ByteArray, length: Int): Boolean =
             String(head, 0, length, Charsets.UTF_8).trimStart().startsWith(PLAYLIST_MARKER)
-
-        /**
-         * How long the episode runs, summed from the playlist, or null if it does not say.
-         *
-         * A master playlist names other playlists instead of segments and carries no
-         * durations at all; there the length only becomes known once ffmpeg opens the stream.
-         */
-        fun playlistDuration(playlist: String): Double? {
-            val total = EXTINF.findAll(playlist).sumOf { it.groupValues[1].toDoubleOrNull() ?: 0.0 }
-            return total.takeIf { it > 0 }
-        }
 
         /**
          * The file extension for a progressive download.

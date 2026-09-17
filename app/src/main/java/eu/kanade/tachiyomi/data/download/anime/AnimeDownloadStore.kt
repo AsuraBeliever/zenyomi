@@ -27,7 +27,10 @@ class AnimeDownloadStore(context: Context) {
         preferences.edit {
             clear()
             queue.forEachIndexed { index, item ->
-                putString(index.toString(), "${item.animeId}:${item.episodeId}")
+                putString(
+                    index.toString(),
+                    "${item.animeId}:${item.episodeId}:${item.quality ?: ""}:${item.estimatedBytes ?: ""}",
+                )
             }
         }
     }
@@ -44,7 +47,11 @@ class AnimeDownloadStore(context: Context) {
                 val parts = (value as? String)?.split(':') ?: return@mapNotNull null
                 val animeId = parts.getOrNull(0)?.toLongOrNull() ?: return@mapNotNull null
                 val episodeId = parts.getOrNull(1)?.toLongOrNull() ?: return@mapNotNull null
-                index to AnimeDownloadItem(animeId, episodeId)
+                // Absent in entries written before downloads had a quality to remember, and
+                // absent again whenever the source offers nothing to choose between.
+                val quality = parts.getOrNull(2)?.toIntOrNull()
+                val estimatedBytes = parts.getOrNull(3)?.toLongOrNull()
+                index to AnimeDownloadItem(animeId, episodeId, quality, estimatedBytes)
             }
             .sortedBy { it.first }
             .map { it.second }
@@ -53,4 +60,18 @@ class AnimeDownloadStore(context: Context) {
     fun clear() = preferences.edit { clear() }
 }
 
-data class AnimeDownloadItem(val animeId: Long, val episodeId: Long)
+/**
+ * One episode waiting to be downloaded.
+ *
+ * @param quality the vertical resolution the viewer asked for. Null when the source offered
+ * nothing to choose between, or when the entry was queued by a version that did not ask.
+ * @param estimatedBytes how big it was worked out to be when the viewer chose, carried along
+ * so the progress bar has something to be a fraction of. A stream declares no length, and
+ * measuring it a second time while downloading would be the same requests all over again.
+ */
+data class AnimeDownloadItem(
+    val animeId: Long,
+    val episodeId: Long,
+    val quality: Int? = null,
+    val estimatedBytes: Long? = null,
+)

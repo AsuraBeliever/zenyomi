@@ -656,6 +656,21 @@
     <string name="anime_download_notifier_downloading">Downloading episodes</string>
     <string name="anime_download_notifier_episode_error">Could not download %1$s</string>
     <string name="anime_download_notifier_queue">%1$d in queue</string>
+    <!-- 180 MB of 420 MB, 1.2 MB/s -->
+    <string name="anime_download_progress_of">%1$s of %2$s</string>
+    <string name="anime_download_progress_speed">%1$s/s</string>
+    <!-- Shown while a stream has not said how big it is -->
+    <string name="anime_download_progress_unknown_total">%1$s so far</string>
+    <!-- Asked once, the first time anything is downloaded -->
+    <string name="anime_download_quality_first_title">Download quality</string>
+    <string name="anime_download_quality_first_body">Pick the quality to download at. It is remembered for next time, and you can change it in Settings → Downloads.</string>
+    <!-- Asked when the saved quality is not among the ones this episode offers -->
+    <string name="anime_download_quality_missing_title">Choose a quality</string>
+    <string name="anime_download_quality_missing_body">This episode is not available at your usual quality. These are the ones it does have.</string>
+    <string name="anime_download_quality_estimated_size">about %1$s</string>
+    <string name="anime_download_quality_setting">Download quality</string>
+    <string name="anime_download_quality_best">Best available</string>
+    <string name="anime_download_quality_ask">Ask the first time</string>
     <string name="anime_action_delete_download">Delete download</string>
     <string name="anime_download_queued">Added to the download queue</string>
     <string name="anime_track_no_account">Sign in to MyAnimeList or AniList from Settings to track anime</string>
