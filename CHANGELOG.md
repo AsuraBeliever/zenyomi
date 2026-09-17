@@ -10,7 +10,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
-## [Unreleased]
+## [0.16.0] - 2026-09-16
 ### Added
 - **Downloads say how fast they are going.** The episode row and the notification now read "180 MB of 420 MB · 1.2 MB/s" instead of a percentage. A percentage answers the wrong question when a download is slow: it does not say whether it is still moving.
 - **You pick the quality, and you see what it costs.** The first time you download anything, Zenyomi asks which quality to use and shows roughly how big each one is — 324 MB, 230 MB, 137 MB — then remembers the answer and stops asking. Change it in Settings → Downloads. If an episode turns out not to have your usual quality, it shows the ones it does have and lets you choose for that episode.
