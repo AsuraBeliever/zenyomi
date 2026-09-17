@@ -19,7 +19,7 @@
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | Releases 0.5.x – 0.17.0 | ✅ | hasta `v0.17.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
-| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local. La de la v0.15.0 se completó el 2026-09-16 en el dispositivo del cliente: el binario del CI descargó un episodio de 353,9 MB de vídeo real, con su `.part` renombrándose al acabar y cero errores — que es además la prueba de que **R8 no se llevó ffmpeg-kit** por delante |
+| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local. En la v0.17.0: firma con la clave del proyecto, identidad correcta, cero marca ajena, y **R8 no se llevó ffmpeg-kit** —`log`, `statistics` y `nativeFFmpegExecute` conservan su nombre, igual que las clases nuevas del descargador—, que era el riesgo real porque esta release reescribe ese camino entero. Publicar costó cinco intentos, todos de subida: ver `RELEASING.md` |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
 | PiP del player | ✅ | Activity propia |

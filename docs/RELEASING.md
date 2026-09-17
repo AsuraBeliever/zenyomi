@@ -124,7 +124,7 @@ caché fría, y eso no se puede provocar.
 
 ## `Headers Timeout Error` subiendo los APK — arreglado, y dos trampas por el camino
 
-Pasó en la v0.17.0 y costó cuatro intentos. Las dos compilaciones pasaron siempre; lo que
+Pasó en la v0.17.0 y costó cinco intentos. Las dos compilaciones pasaron siempre; lo que
 fallaba era **la subida**: seis APK, unos 800 MB, que el action subía **en paralelo** en un
 solo step, y GitHub cortaba la conexión a los dieciséis minutos con
 `##[error]Headers Timeout Error`.
@@ -138,6 +138,10 @@ aun así **finaliza la release**: la saca de borrador y la publica **vacía**, e
 release antes de volver a subirlos, así que un intento que se corta deja **menos** ficheros que
 el anterior. En la v0.17.0 se vio ir de 5 assets a 3, perdiendo por el camino el `arm64-v8a`
 que ya estaba bien subido.
+
+**Trampa 3, ya del arreglo.** El job de release **no hace checkout**: solo descarga los APK
+ya compilados. `gh` no tiene entonces remoto del que deducir el repositorio y muere con
+`not a git repository` antes de subir un byte. Se le dice con `GH_REPO`.
 
 **El arreglo.** El action ya no recibe `files`: solo crea la release y sus notas. Los APK los
 sube un step aparte con `gh release upload --clobber`, **uno a uno y con tres intentos cada
