@@ -37,6 +37,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import eu.kanade.presentation.anime.components.DownloadQualityDialog
 import eu.kanade.presentation.components.SearchToolbar
 import eu.kanade.presentation.manga.components.LibraryBottomActionMenu
 import eu.kanade.presentation.util.Tab
@@ -115,6 +116,15 @@ data object AnimeLibraryTab : Tab {
         }
 
         BackHandler(enabled = state.selectionMode, onBack = viewModel::clearSelection)
+
+        state.qualityDialog?.let { (_, choice) ->
+            DownloadQualityDialog(
+                qualities = choice.qualities,
+                firstTime = choice.remember,
+                onConfirm = { height, _ -> viewModel.confirmQuality(height) },
+                onDismissRequest = viewModel::dismissQualityDialog,
+            )
+        }
 
         state.changeCategoryDialog?.let { dialog ->
             // El mismo dialogo que la ficha, no una copia.

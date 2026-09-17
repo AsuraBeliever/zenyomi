@@ -11,6 +11,9 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Other` - for technical stuff.
 
 ## [Unreleased]
+### Fixed
+- **The quality question reaches every download, not just the ones started from an entry.** Downloading from Updates or by selecting entries in the library went straight to the queue: it never asked which quality, never applied the one you had chosen, and never knew how big the episode was, so the row showed no total. Those are the two places you actually download from when new episodes appear, which is why it looked as though the feature had not shipped at all.
+
 ### Improved
 - **Downloads are around three times faster.** They were slow for a reason that had nothing to do with your connection: ffmpeg asks for one segment, waits, then asks for the next, and these sources spread an episode across four CDN hosts in rotation — so every segment paid a fresh DNS lookup, TCP handshake and TLS handshake, in series. Measured on the device: segments arriving every 490 ms like clockwork, the interval the same whatever the segment's size, which is latency and not bandwidth. Zenyomi now fetches the segments itself, several at a time and at most two per host, and hands ffmpeg finished files to join. The same episode went from about 200 seconds to 73.
 

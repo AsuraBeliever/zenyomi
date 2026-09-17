@@ -30,9 +30,7 @@ import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
-import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadPreferences
-import eu.kanade.tachiyomi.data.download.anime.DownloadQuality
-import eu.kanade.tachiyomi.data.download.anime.GetDownloadQualities
+import eu.kanade.tachiyomi.data.download.anime.StartAnimeDownload
 import eu.kanade.tachiyomi.data.saver.Image
 import eu.kanade.tachiyomi.data.saver.ImageSaver
 import eu.kanade.tachiyomi.data.saver.Location
@@ -94,8 +92,7 @@ class AnimeDetailsViewModel(
     private val sourceManager: AnimeSourceManager,
     private val updateAnime: UpdateAnime,
     private val downloadManager: AnimeDownloadManager,
-    private val downloadPreferences: AnimeDownloadPreferences,
-    private val getDownloadQualities: GetDownloadQualities,
+    private val startAnimeDownload: StartAnimeDownload,
     private val getAnimeCategories: GetAnimeCategories,
     private val setAnimeCategories: SetAnimeCategories,
     private val getAnimeTracks: GetAnimeTracks,
@@ -322,64 +319,6 @@ class AnimeDetailsViewModel(
     fun downloadEpisode(episode: Episode) = startDownload(listOf(episode))
 
     /**
-     * Queues [episodes], asking which quality first if there is a reason to ask.
-     *
-     * The source is asked what it has before anything is queued, which costs a round trip on
-     * the tap. It buys the two things a download decision needs: whether the quality you
-     * usually take exists for this episode, and how big the file is going to be.
-     *
-     * The qualities of the first episode stand for the batch. Asking per episode would mean a
-     * round trip each and a dialog each, for a set of episodes that in practice all come from
-     * the same encoder with the same ladder.
-     */
-    private fun startDownload(episodes: List<Episode>) {
-        val anime = state.value.anime ?: return
-        if (episodes.isEmpty()) return
-        _state.update { it.copy(preparingDownload = true) }
-        viewModelScope.launch {
-            val found = runCatching { getDownloadQualities.await(anime.source, episodes.first()) }
-                .onFailure { logcat(LogPriority.WARN, it) { "Could not read the qualities on offer" } }
-                .getOrNull()
-            _state.update { it.copy(preparingDownload = false) }
-
-            val qualities = found.orEmpty()
-            val saved = downloadPreferences.quality.get()
-            when {
-                // Nothing to choose between. Queue it and say nothing: a dialog with one
-                // option in it is a dialog that should not have opened.
-                qualities.size <= 1 -> enqueue(episodes, null, qualities.firstOrNull()?.estimatedBytes)
-                saved == AnimeDownloadPreferences.UNSET ->
-                    _state.update { it.copy(qualityDialog = QualityDialog(episodes, qualities, firstTime = true)) }
-                saved == AnimeDownloadPreferences.BEST ->
-                    enqueue(episodes, null, qualities.firstOrNull()?.estimatedBytes)
-                qualities.any { it.height == saved } ->
-                    enqueue(episodes, saved, qualities.first { it.height == saved }.estimatedBytes)
-                // The usual quality is not on offer here, so the viewer gets to see what is.
-                // This choice is for these episodes only; the default stays as it was.
-                else ->
-                    _state.update { it.copy(qualityDialog = QualityDialog(episodes, qualities, firstTime = false)) }
-            }
-        }
-    }
-
-    /** @param remember whether this also becomes the default for everything from now on. */
-    fun confirmQuality(height: Int?, remember: Boolean) {
-        val dialog = state.value.qualityDialog ?: return
-        if (remember) {
-            downloadPreferences.quality.set(height ?: AnimeDownloadPreferences.BEST)
-        }
-        _state.update { it.copy(qualityDialog = null) }
-        enqueue(dialog.episodes, height, dialog.qualities.firstOrNull { it.height == height }?.estimatedBytes)
-    }
-
-    fun dismissQualityDialog() = _state.update { it.copy(qualityDialog = null) }
-
-    private fun enqueue(episodes: List<Episode>, quality: Int?, estimatedBytes: Long?) {
-        val anime = state.value.anime ?: return
-        downloadManager.enqueue(anime, episodes, quality, estimatedBytes)
-    }
-
-    /**
      * The toolbar's batch download, with the same choices the manga one offers.
      *
      * "Next" means the next ones to watch — counted forwards from the earliest unseen episode,
@@ -417,6 +356,30 @@ class AnimeDetailsViewModel(
         }
         if (wanted.isNotEmpty()) startDownload(wanted)
     }
+
+    private fun startDownload(episodes: List<Episode>) {
+        val anime = state.value.anime ?: return
+        if (episodes.isEmpty()) return
+        _state.update { it.copy(preparingDownload = true) }
+        viewModelScope.launch {
+            val outcome = startAnimeDownload.await(anime, episodes)
+            _state.update {
+                it.copy(
+                    preparingDownload = false,
+                    qualityDialog = outcome as? StartAnimeDownload.Outcome.Choose,
+                )
+            }
+        }
+    }
+
+    fun confirmQuality(height: Int?) {
+        val anime = state.value.anime ?: return
+        val dialog = state.value.qualityDialog ?: return
+        _state.update { it.copy(qualityDialog = null) }
+        startAnimeDownload.confirm(anime, dialog, height)
+    }
+
+    fun dismissQualityDialog() = _state.update { it.copy(qualityDialog = null) }
 
     fun deleteDownload(episode: Episode) {
         val anime = state.value.anime ?: return
@@ -907,23 +870,10 @@ class AnimeDetailsViewModel(
         val coverDialog: Boolean = false,
         /** Asking the source what qualities it has, before anything is queued. */
         val preparingDownload: Boolean = false,
-        val qualityDialog: QualityDialog? = null,
+        val qualityDialog: StartAnimeDownload.Outcome.Choose? = null,
     ) {
         val selectedEpisodes: List<Episode> get() = visibleEpisodes.filter { it.id in selectedEpisodeIds }
     }
-
-    /**
-     * A download held up waiting for the viewer to choose a quality.
-     *
-     * @param firstTime whether this choice also becomes the default. True the first time
-     * anything is downloaded, which is the only time the question is asked unprompted; false
-     * when it is asked because the saved default is not among [qualities] for these episodes.
-     */
-    data class QualityDialog(
-        val episodes: List<Episode>,
-        val qualities: List<DownloadQuality>,
-        val firstTime: Boolean,
-    )
 
     /** The categories that exist, and the ones this anime is currently filed under. */
     data class CategoryDialog(

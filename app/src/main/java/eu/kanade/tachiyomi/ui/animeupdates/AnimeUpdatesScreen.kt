@@ -33,6 +33,7 @@ import coil3.compose.AsyncImage
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.anime.components.AnimeUpdatesItem
+import eu.kanade.presentation.anime.components.DownloadQualityDialog
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
@@ -86,6 +87,15 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                 snackbarHostState.showSnackbar(it)
                 viewModel.clearPlaybackError()
             }
+        }
+
+        state.qualityDialog?.let { (_, choice) ->
+            DownloadQualityDialog(
+                qualities = choice.qualities,
+                firstTime = choice.remember,
+                onConfirm = { height, _ -> viewModel.confirmQuality(height) },
+                onDismissRequest = viewModel::dismissQualityDialog,
+            )
         }
 
         BackHandler(enabled = state.selected.isNotEmpty()) {

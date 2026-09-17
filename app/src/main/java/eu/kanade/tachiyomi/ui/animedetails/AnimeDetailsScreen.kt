@@ -138,8 +138,8 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
         state.qualityDialog?.let { dialog ->
             DownloadQualityDialog(
                 qualities = dialog.qualities,
-                firstTime = dialog.firstTime,
-                onConfirm = viewModel::confirmQuality,
+                firstTime = dialog.remember,
+                onConfirm = { height, _ -> viewModel.confirmQuality(height) },
                 onDismissRequest = viewModel::dismissQualityDialog,
             )
         }
