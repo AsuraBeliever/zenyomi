@@ -10,6 +10,7 @@ import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
+import eu.kanade.tachiyomi.data.download.anime.StartAnimeDownload
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibraryDisplayMode
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibraryPreferences
 import eu.kanade.tachiyomi.ui.animelibrary.setting.AnimeLibrarySort
@@ -62,6 +63,7 @@ class AnimeLibraryViewModel(
     private val setAnimeCategories: SetAnimeCategories,
     private val sourceManager: AnimeSourceManager,
     private val downloadManager: AnimeDownloadManager,
+    private val startAnimeDownload: StartAnimeDownload,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -330,10 +332,25 @@ class AnimeLibraryViewModel(
                                 }
                             }
                 }
-                if (wanted.isNotEmpty()) downloadManager.enqueue(anime, wanted)
+                if (wanted.isEmpty()) return@forEach
+                when (val outcome = startAnimeDownload.await(anime, wanted)) {
+                    is StartAnimeDownload.Outcome.Queued -> Unit
+                    // Only the first entry of a selection gets to ask; the rest follow the
+                    // answer. A dialog per anime on a batch of ten would be unusable.
+                    is StartAnimeDownload.Outcome.Choose ->
+                        _state.update { it.copy(qualityDialog = anime to outcome) }
+                }
             }
         }
     }
+
+    fun confirmQuality(height: Int?) {
+        val (anime, choice) = state.value.qualityDialog ?: return
+        _state.update { it.copy(qualityDialog = null) }
+        startAnimeDownload.confirm(anime, choice, height)
+    }
+
+    fun dismissQualityDialog() = _state.update { it.copy(qualityDialog = null) }
 
     /** Las saca de la biblioteca. Los ficheros descargados no se tocan aqui, como en Mihon. */
     fun removeSelectedFromLibrary() {
@@ -399,6 +416,8 @@ class AnimeLibraryViewModel(
         /** Los anime marcados ahora mismo. Vacio = no hay modo seleccion. */
         val selection: Set<Long> = emptySet(),
         val changeCategoryDialog: ChangeCategoryDialog? = null,
+        /** El anime esperando calidad, y lo que la fuente ofrece para el. */
+        val qualityDialog: Pair<Anime, StartAnimeDownload.Outcome.Choose>? = null,
     ) {
         val selectionMode: Boolean get() = selection.isNotEmpty()
         val selectedAnime: List<LibraryAnime> get() = library.filter { it.id in selection }

@@ -5,12 +5,17 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.animesource.AnimeSource
+import eu.kanade.tachiyomi.animesource.model.Track
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.network.NetworkHelper
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Semaphore
 import logcat.LogPriority
 import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -19,7 +24,9 @@ import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.model.Episode
+import java.io.File
 import java.io.InputStream
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Downloads one episode's video for offline watching.
@@ -38,6 +45,8 @@ class AnimeDownloader(
     private val provider: AnimeDownloadProvider,
     private val networkHelper: NetworkHelper,
     private val remuxer: HlsRemuxer,
+    private val prefetcher: HlsPrefetcher,
+    private val sizer: StreamSizer,
 ) {
 
     private val _progress = MutableStateFlow(emptyMap<Long, AnimeDownloadProgress>())
@@ -148,38 +157,57 @@ class AnimeDownloader(
                 val variants = HlsPlaylist.variants(playlist, video.videoUrl)
                 val chosen = variants.pick(quality)
                 val media = chosen?.let { fetchText(it.url, video.headers) } ?: playlist
-                // What was measured when the viewer chose, which is the better number: it
-                // was worked out by weighing segments of this exact stream. The playlist's
-                // own bitrate is the fallback for a download queued without being measured.
-                val estimated = expectedBytes ?: HlsPlaylist.estimatedBytes(
-                    bandwidth = chosen?.bandwidth,
-                    durationSeconds = HlsPlaylist.durationSeconds(media),
-                )
+                // What was measured when the viewer chose, if anything was. A download queued
+                // without a dialog has no number, and it is measured here instead: a handful of
+                // HEAD requests at the start of something that runs for minutes costs nothing,
+                // whereas doing it on the tap is the difference between a button and a wait.
+                // The audio the source keeps apart from the picture is fetched too and lands
+                // in the same file, so it belongs in the total. Leaving it out is what made a
+                // download read "200 MB of 160 MB": the bytes counted every stream and the
+                // total counted one.
+                val estimated = expectedBytes ?: sizer
+                    .sizeOfMedia(chosen?.url ?: video.videoUrl, video.headers, chosen?.bandwidth, media)
+                    ?.plus(video.audioTracks.sumOf { sizer.sizeOfMedia(it.url, video.headers, null) ?: 0L })
 
                 val target = provider.createEpisodeFile(anime, source, episode, REMUXED_EXTENSION)
                     ?: error("Could not create the download file")
                 written = target
                 val rate = DownloadRate()
-                remuxer.remux(
-                    videoUrl = chosen?.url ?: video.videoUrl,
-                    headers = video.headers,
-                    audioTracks = video.audioTracks,
-                    subtitleTracks = video.subtitleTracks,
-                    target = target,
-                    onBytes = { bytes ->
-                        setProgress(
-                            episode.id,
-                            AnimeDownloadProgress(
-                                downloadedBytes = bytes,
-                                // An estimate, and the only number available: a stream
-                                // declares no length. The bar is honest about arriving a
-                                // little before or after 100%.
-                                totalBytes = estimated,
-                                bytesPerSecond = rate.sample(bytes),
-                            ),
-                        )
-                    },
-                )
+                val report = { bytes: Long ->
+                    setProgress(
+                        episode.id,
+                        AnimeDownloadProgress(
+                            downloadedBytes = bytes,
+                            // An estimate, and the only number available up front: a stream
+                            // declares no length. The bar is honest about arriving a little
+                            // before or after 100%.
+                            estimatedTotalBytes = estimated,
+                            bytesPerSecond = rate.sample(bytes),
+                        ),
+                    )
+                }
+
+                // The segments are fetched here, several at a time, rather than left to
+                // ffmpeg, which asks for them one after another. See [HlsPrefetcher].
+                val workspace = prefetcher.workspace(episode.id)
+                val fetched = runCatching {
+                    prefetchAll(chosen?.url ?: video.videoUrl, media, video, workspace, report)
+                }.getOrNull()
+
+                try {
+                    remuxer.remux(
+                        videoUrl = fetched?.video?.playlist?.absolutePath ?: chosen?.url ?: video.videoUrl,
+                        headers = video.headers,
+                        audioTracks = fetched?.audio ?: video.audioTracks,
+                        subtitleTracks = video.subtitleTracks,
+                        target = target,
+                        // Nothing to report while muxing when the bytes are already on disk;
+                        // ffmpeg is only copying them into a container at that point.
+                        onBytes = if (fetched == null) report else { _ -> },
+                    )
+                } finally {
+                    workspace.deleteRecursively()
+                }
             }
             // Only now is it an episode rather than a download in flight.
             written?.let { provider.finish(it) }
@@ -192,6 +220,60 @@ class AnimeDownloader(
             provider.findAnyEpisodeFile(anime, source, episode)?.delete()
             clearProgress(episode.id)
         }
+    }
+
+    /** The video and its separate audio tracks, all now on local disk. */
+    private data class Prefetched(val video: HlsPrefetcher.Local, val audio: List<Track>)
+
+    /**
+     * Fetches the picture and every audio track that goes with it, at the same time.
+     *
+     * One connection budget across all of them rather than one each: the audio streams are a
+     * tenth the size of the video and finish early, and giving each its own budget would only
+     * mean more connections to the same four hosts for no gain.
+     *
+     * Subtitles are left where they are. They are one small file apiece, so the round trip
+     * ffmpeg pays for them is the only one there is.
+     */
+    private suspend fun prefetchAll(
+        videoUrl: String,
+        media: String,
+        video: Video,
+        workspace: File,
+        onBytes: (Long) -> Unit,
+    ): Prefetched? = coroutineScope {
+        val permits = Semaphore(HlsPrefetcher.PARALLELISM)
+        val perStream = ConcurrentHashMap<String, Long>()
+        val report = { key: String, bytes: Long ->
+            perStream[key] = bytes
+            onBytes(perStream.values.sum())
+        }
+
+        val videoTask = async {
+            prefetcher.prefetch(videoUrl, video.headers, media, File(workspace, "video"), permits) {
+                report("video", it)
+            }
+        }
+        val audioTasks = video.audioTracks.mapIndexed { index, track ->
+            async {
+                val playlist = runCatching { fetchText(track.url, video.headers) }.getOrNull()
+                    ?: return@async track to null
+                val local = prefetcher.prefetch(
+                    track.url,
+                    video.headers,
+                    playlist,
+                    File(workspace, "audio$index"),
+                    permits,
+                ) { report("audio$index", it) }
+                track to local
+            }
+        }
+
+        val localVideo = videoTask.await() ?: return@coroutineScope null
+        val audio = audioTasks.awaitAll().map { (track, local) ->
+            local?.let { track.copy(url = it.playlist.absolutePath) } ?: track
+        }
+        Prefetched(localVideo, audio)
     }
 
     private fun fetchText(url: String, headers: Headers?): String {
@@ -225,7 +307,7 @@ class AnimeDownloader(
                         episodeId,
                         AnimeDownloadProgress(
                             downloadedBytes = downloaded,
-                            totalBytes = total.takeIf { size -> size > 0 },
+                            estimatedTotalBytes = total.takeIf { size -> size > 0 },
                             bytesPerSecond = rate.sample(downloaded),
                         ),
                     )

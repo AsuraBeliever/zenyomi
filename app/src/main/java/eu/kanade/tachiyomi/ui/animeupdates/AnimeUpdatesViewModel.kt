@@ -14,6 +14,7 @@ import eu.kanade.presentation.anime.NoVideoFoundException
 import eu.kanade.presentation.anime.SourceOutdatedException
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
+import eu.kanade.tachiyomi.data.download.anime.StartAnimeDownload
 import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +62,7 @@ class AnimeUpdatesViewModel(
     private val sourceHealth: AnimeSourceHealth,
     private val sourceManager: AnimeSourceManager,
     private val downloadManager: AnimeDownloadManager,
+    private val startAnimeDownload: StartAnimeDownload,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -141,9 +143,21 @@ class AnimeUpdatesViewModel(
     fun downloadEpisode(update: AnimeUpdatesWithRelations) {
         viewModelScope.launch {
             val (anime, _, episode) = resolve(update) ?: return@launch
-            downloadManager.enqueue(anime, listOf(episode))
+            when (val outcome = startAnimeDownload.await(anime, listOf(episode))) {
+                is StartAnimeDownload.Outcome.Queued -> Unit
+                is StartAnimeDownload.Outcome.Choose ->
+                    _state.update { it.copy(qualityDialog = anime to outcome) }
+            }
         }
     }
+
+    fun confirmQuality(height: Int?) {
+        val (anime, choice) = state.value.qualityDialog ?: return
+        _state.update { it.copy(qualityDialog = null) }
+        startAnimeDownload.confirm(anime, choice, height)
+    }
+
+    fun dismissQualityDialog() = _state.update { it.copy(qualityDialog = null) }
 
     fun deleteDownload(update: AnimeUpdatesWithRelations) {
         // launchIO, like the collector above: deleting the file and rescanning what is left
@@ -298,6 +312,8 @@ class AnimeUpdatesViewModel(
         val playbackError: Throwable? = null,
         /** Episode ids picked out by long-pressing, as on the manga updates screen. */
         val selected: Set<Long> = emptySet(),
+        /** The anime waiting on a quality, and what it has on offer. */
+        val qualityDialog: Pair<Anime, StartAnimeDownload.Outcome.Choose>? = null,
     ) {
         val isEmpty: Boolean get() = items.isEmpty()
 
