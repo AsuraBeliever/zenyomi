@@ -161,9 +161,15 @@ class HlsRemuxer(
     private fun MutableList<String>.addInput(url: String, headers: Headers?, isPlaylist: Boolean) {
         // Per input, because ffmpeg applies these to whichever -i follows. Without them a
         // segment request is a stranger's request, and the hosts that check Referer say 403.
-        headers?.takeIf { it.size > 0 }?.let {
-            add("-headers")
-            add(it.joinToString("") { (name, value) -> "$name: $value\r\n" })
+        //
+        // Only for one that is actually fetched: a stream whose segments were already
+        // downloaded is handed to ffmpeg as a path, and the file protocol has no use for HTTP
+        // headers — it rejects the whole command with "Option headers not found".
+        if (url.startsWith("http")) {
+            headers?.takeIf { it.size > 0 }?.let {
+                add("-headers")
+                add(it.joinToString("") { (name, value) -> "$name: $value\r\n" })
+            }
         }
         if (isPlaylist) {
             // Segments are not always named like video. The playlist that prompted this fix

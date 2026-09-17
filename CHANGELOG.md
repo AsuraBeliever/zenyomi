@@ -10,6 +10,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [Unreleased]
+### Improved
+- **Downloads are around three times faster.** They were slow for a reason that had nothing to do with your connection: ffmpeg asks for one segment, waits, then asks for the next, and these sources spread an episode across four CDN hosts in rotation — so every segment paid a fresh DNS lookup, TCP handshake and TLS handshake, in series. Measured on the device: segments arriving every 490 ms like clockwork, the interval the same whatever the segment's size, which is latency and not bandwidth. Zenyomi now fetches the segments itself, several at a time and at most two per host, and hands ffmpeg finished files to join. The same episode went from about 200 seconds to 73.
+
 ## [0.16.0] - 2026-09-16
 ### Added
 - **Downloads say how fast they are going.** The episode row and the notification now read "180 MB of 420 MB · 1.2 MB/s" instead of a percentage. A percentage answers the wrong question when a download is slow: it does not say whether it is still moving.
