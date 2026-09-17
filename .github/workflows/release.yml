@@ -157,16 +157,47 @@ jobs:
             > [!IMPORTANT]
             >
             > Zenyomi installs alongside Mihon and Aniyomi rather than over them, so you can keep all three. Restore a Mihon backup from **More → Backup and restore** to bring your library across.
-          files: |
-            zenyomi-${{ needs.get_tag.outputs.tag }}.apk
-            zenyomi-${{ needs.get_tag.outputs.tag }}-foss.apk
-            zenyomi-arm64-v8a-${{ needs.get_tag.outputs.tag }}.apk
-            zenyomi-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
-            zenyomi-x86-${{ needs.get_tag.outputs.tag }}.apk
-            zenyomi-x86_64-${{ needs.get_tag.outputs.tag }}.apk
+          # No files here on purpose: this step only writes the release and its notes. The
+          # APKs go up in the step below, one at a time. Handing all six to this action
+          # uploads them in parallel and the step dies as a whole on `Headers Timeout Error`
+          # — six files and 800 MB do not reliably fit in one window. Worse, it clears the
+          # release's assets before re-uploading, so a failed retry leaves *fewer* files than
+          # the attempt before it: the v0.17.0 release went 5 assets, then 3.
           # Published, not a draft. When this created drafts, every tag ended up with two
           # entries — CI's draft and the one published by hand — sharing a tag name, and
           # `gh release delete <tag>` then removes whichever it picks first.
           draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # One at a time, each retried on its own, and --clobber so re-running the workflow
+      # replaces a file instead of tripping over it. A flaky upload now costs that one file
+      # another try rather than the whole release.
+      - name: Upload the APKs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.get_tag.outputs.tag }}
+        run: |
+          set -u
+          for name in \
+            "zenyomi-$TAG.apk" \
+            "zenyomi-$TAG-foss.apk" \
+            "zenyomi-arm64-v8a-$TAG.apk" \
+            "zenyomi-armeabi-v7a-$TAG.apk" \
+            "zenyomi-x86-$TAG.apk" \
+            "zenyomi-x86_64-$TAG.apk"
+          do
+            for attempt in 1 2 3; do
+              echo "Uploading $name (attempt $attempt)"
+              if gh release upload "$TAG" "$name" --clobber; then
+                break
+              fi
+              if [ "$attempt" = "3" ]; then
+                echo "::error::Could not upload $name after 3 attempts"
+                exit 1
+              fi
+              sleep 30
+            done
+          done
+          echo "Assets now on the release:"
+          gh release view "$TAG" --json assets --jq '.assets[].name'

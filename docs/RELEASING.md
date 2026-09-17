@@ -122,6 +122,36 @@ vez de pedírselas a JitPack, y sin carrera de escritura con el `Build` de al la
 Lo que **sigue sin demostrarse** es el reintento: haría falta que JitPack fallara con la
 caché fría, y eso no se puede provocar.
 
+## `Headers Timeout Error` subiendo los APK — arreglado, y dos trampas por el camino
+
+Pasó en la v0.17.0 y costó cuatro intentos. Las dos compilaciones pasaron siempre; lo que
+fallaba era **la subida**: seis APK, unos 800 MB, que el action subía **en paralelo** en un
+solo step, y GitHub cortaba la conexión a los dieciséis minutos con
+`##[error]Headers Timeout Error`.
+
+**Trampa 1: `--failed` es el reintento equivocado.** `gh run rerun <id> --failed` relanza solo
+el job de release, en un runner nuevo que no tiene los APK que compilaron los otros dos. El
+action no encuentra ningún fichero, lo dice en voz baja —`does not include a valid file`— y
+aun así **finaliza la release**: la saca de borrador y la publica **vacía**, en verde.
+
+**Trampa 2: reintentar no es acumulativo, es destructivo.** El action borra los assets de la
+release antes de volver a subirlos, así que un intento que se corta deja **menos** ficheros que
+el anterior. En la v0.17.0 se vio ir de 5 assets a 3, perdiendo por el camino el `arm64-v8a`
+que ya estaba bien subido.
+
+**El arreglo.** El action ya no recibe `files`: solo crea la release y sus notas. Los APK los
+sube un step aparte con `gh release upload --clobber`, **uno a uno y con tres intentos cada
+uno**. Un fichero flojo cuesta ahora otro intento de ese fichero, no la release entera, y
+`--clobber` hace que relanzar el workflow reemplace en vez de chocar.
+
+```sh
+gh run rerun <run-id>          # el workflow entero, nunca --failed
+gh release view v<version> --json assets --jq '.assets | length'   # debe dar 6
+```
+
+Comprobar el número de assets antes de dar una release por buena no es opcional: que el job
+diga `success` no significa que haya subido nada.
+
 ## Verificar una release antes de anunciarla
 
 Sobre el APK **que publicó el CI**, no sobre el que compilaste tú. Son binarios
