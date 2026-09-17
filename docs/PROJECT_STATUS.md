@@ -85,10 +85,11 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
 Ninguno.
 
-## Lo que hace lenta una descarga, medido (2026-09-16)
+## Por qué una descarga era lenta, y qué se hizo (2026-09-16)
 
-No es el ancho de banda del cliente. Los segmentos llegan a un ritmo **constante de ~490 ms**,
-y cada uno vive en un host distinto porque la fuente los reparte entre cuatro CDN rotando:
+No era el ancho de banda del cliente. Los segmentos llegaban a un ritmo **constante de
+~490 ms**, y cada uno vive en un host distinto porque la fuente los reparte entre cuatro CDN
+rotando:
 
 ```
 seg 232  18.023  st1.advancedairesearchlab.xyz
@@ -99,12 +100,21 @@ seg 236  19.960  st1.advancedairesearchlab.xyz  +521 ms
 ```
 
 Que el intervalo no dependa del tamaño del segmento es la firma de que manda la latencia:
-cada trozo pesa ~0,7 MB, que en una conexión decente son ~60 ms de transferencia. Los otros
-~430 ms son DNS, TCP y TLS **contra un host nuevo, y en serie**, porque el demuxer de HLS de
-ffmpeg descarga un segmento detrás de otro y no sabe paralelizar.
+cada trozo pesa ~0,7 MB, que son ~60 ms de transferencia. Los otros ~430 ms eran DNS, TCP y
+TLS **contra un host nuevo y en serie**, porque el demuxer de HLS de ffmpeg pide un segmento
+detrás de otro.
 
-El arreglo es dejar de delegarle la descarga: bajar los segmentos nosotros con seis u ocho
-conexiones a la vez y darle a ffmpeg trozos ya locales para que solo los junte. Pendiente.
+Ahora los segmentos los baja la app en paralelo (`HlsPrefetcher`) y ffmpeg solo junta ficheros
+locales. **El mismo episodio pasó de ~200 s a 73 s.**
+
+Dos cosas que salieron al hacerlo y que están en el código por algo:
+
+- **Ocho peticiones a la vez provocan 429.** El límite que importa es **por host**, no global:
+  dos por host entre cuatro hosts solapa las esperas sin parecerle un ataque a ninguno.
+- **Un 429 no es el fallo de un segmento**, es el host pidiendo calma. Reintentar ese segmento
+  medio segundo después gastaba los intentos dentro de la misma ventana y tiraba un episodio
+  descargado al 80% — 227 segmentos ya en disco— para empezar de cero en serie. Ahora el host
+  entra en cooldown y los otros tres siguen.
 
 ## Pendiente menor
 
