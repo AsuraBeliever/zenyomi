@@ -11,6 +11,9 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Other` - for technical stuff.
 
 ## [Unreleased]
+### Added
+- **Anime downloads show up in the download queue.** The queue screen only ever knew about manga, so an anime download was invisible while it ran. It has a tab each now: the anime side lists what is waiting, with the one being fetched showing how much has arrived, how fast, and a progress bar, and an X to take anything out of the queue.
+
 ### Fixed
 - **Tapping download starts the download.** It was taking twenty seconds or more first, because the app asked the source what qualities it had and then measured every one of them — some thirty requests — before anything was queued. Once you have chosen a quality it now does no network at all on the tap: it queues in a quarter of a second and works the rest out in the background. The first download ever still asks, which is the one time the wait buys something.
 - **A download no longer reads "200 MB of 160 MB".** The running total counted every stream — the picture and the separate audio tracks that end up in the same file — while the size it was compared against counted only the picture. The size now includes them, and if an estimate still comes in under the truth the app drops the total rather than printing a number it can see is wrong.

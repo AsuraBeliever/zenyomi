@@ -671,6 +671,10 @@
     <string name="anime_download_quality_setting">Download quality</string>
     <string name="anime_download_quality_best">Best available</string>
     <string name="anime_download_quality_ask">Ask the first time</string>
+    <string name="anime_download_queue_cancel">Remove from the queue</string>
+    <!-- Tabs on the download queue screen -->
+    <string name="anime_download_queue_tab_manga">Manga</string>
+    <string name="anime_download_queue_tab_anime">Anime</string>
     <string name="anime_action_delete_download">Delete download</string>
     <string name="anime_download_queued">Added to the download queue</string>
     <string name="anime_track_no_account">Sign in to MyAnimeList or AniList from Settings to track anime</string>

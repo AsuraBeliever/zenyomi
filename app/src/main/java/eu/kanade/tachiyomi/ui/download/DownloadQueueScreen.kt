@@ -3,13 +3,17 @@ package eu.kanade.tachiyomi.ui.download
 import android.view.LayoutInflater
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SmallExtendedFloatingActionButton
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.animateFloatingActionButton
@@ -20,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,18 +46,22 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import dev.zacsweers.metrox.viewmodel.metroViewModel
+import eu.kanade.presentation.anime.AnimeDownloadQueueContent
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.presentation.components.NestedMenuItem
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.databinding.DownloadListBinding
+import eu.kanade.tachiyomi.ui.download.anime.AnimeDownloadQueueViewModel
+import kotlinx.coroutines.CoroutineScope
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.automirroredrounded.Sort
 import mihon.icons.materialsymbols.roundedfilled.Pause
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.core.common.util.lang.launchUI
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.Pill
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
@@ -67,8 +76,15 @@ object DownloadQueueScreen : Screen() {
         val scope = rememberCoroutineScope()
         val viewModel = metroViewModel<DownloadQueueViewModel>()
         val downloadList by viewModel.state.collectAsStateWithLifecycle()
+        // El unico anadido de Zenyomi en esta pantalla de Mihon: una pestana al lado de la
+        // suya. La cola de anime es otro downloader y otra lista, y meterla en el adaptador
+        // heredado de Mihon —cuyos elementos son descargas de manga— encareceria cada merge.
+        val animeViewModel = metroViewModel<AnimeDownloadQueueViewModel>()
+        val animeItems by animeViewModel.items.collectAsStateWithLifecycle()
+        var animeTab by rememberSaveable { mutableStateOf(false) }
+
         val downloadCount by remember {
-            derivedStateOf { downloadList.sumOf { it.subItems.size } }
+            derivedStateOf { downloadList.sumOf { it.subItems.size } + animeItems.size }
         }
 
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -231,12 +247,51 @@ object DownloadQueueScreen : Screen() {
                 )
             },
         ) { contentPadding ->
+            Column(modifier = Modifier.padding(top = contentPadding.calculateTopPadding())) {
+                PrimaryTabRow(selectedTabIndex = if (animeTab) 1 else 0) {
+                    Tab(
+                        selected = !animeTab,
+                        onClick = { animeTab = false },
+                        text = { Text(stringResource(ANMR.strings.anime_download_queue_tab_manga)) },
+                    )
+                    Tab(
+                        selected = animeTab,
+                        onClick = { animeTab = true },
+                        text = { Text(stringResource(ANMR.strings.anime_download_queue_tab_anime)) },
+                    )
+                }
+                if (animeTab) {
+                    AnimeDownloadQueueContent(
+                        items = animeItems,
+                        onCancel = animeViewModel::cancel,
+                        contentPadding = PaddingValues(bottom = contentPadding.calculateBottomPadding()),
+                    )
+                    return@Column
+                }
+                MangaQueue(viewModel, downloadList, contentPadding, nestedScrollConnection, scope)
+            }
+        }
+    }
+
+    /**
+     * Mihon's own list, untouched, moved into a function so the tabs above can choose between
+     * it and the anime one without the two bodies getting tangled together.
+     */
+    @Composable
+    private fun MangaQueue(
+        viewModel: DownloadQueueViewModel,
+        downloadList: List<DownloadHeaderItem>,
+        contentPadding: PaddingValues,
+        nestedScrollConnection: NestedScrollConnection,
+        scope: CoroutineScope,
+    ) {
+        run {
             if (downloadList.isEmpty()) {
                 EmptyScreen(
                     stringRes = MR.strings.information_no_downloads,
-                    modifier = Modifier.padding(contentPadding),
+                    modifier = Modifier.padding(bottom = contentPadding.calculateBottomPadding()),
                 )
-                return@Scaffold
+                return
             }
 
             val density = LocalDensity.current
