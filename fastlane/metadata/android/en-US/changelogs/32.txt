@@ -1,0 +1,9 @@
+Improved: anime downloads are around three times faster. The segments are fetched several at a time instead of one after another, which is what they were doing while your connection sat idle waiting on handshakes.
+
+Fixed: tapping download now starts the download instead of thinking about it for twenty seconds first.
+
+Fixed: a download no longer reads "200 MB of 160 MB".
+
+Fixed: the download quality question reaches downloads started from Updates and from the library, not only from an entry.
+
+Added: anime downloads appear in the download queue, with their own tab beside manga, showing speed and progress and letting you remove one.

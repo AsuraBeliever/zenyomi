@@ -3,11 +3,10 @@
 El ecosistema de Aniyomi se degrada solo: los sitios cambian y las extensiones no lo hacen.
 Esto **se mide**, no se opina. La medición la produce un arnés que vive en los builds de debug.
 
-**Última pasada: 2026-09-16** (antes de la v0.15.0), emulador Pixel 10 Pro XL, 24 fuentes
-instaladas. Repite el resultado de la del 2026-09-15: 6 fuentes reproducen vídeo —AnimeOnsen,
-Jkanime, KickAssAnime, Latanime, TioAnime y TioHentai—, y las mismas nueve fallan por causa
-propia. `anime-source-health.json` pasa de 6 entradas a 9: AllAnime, AnimeKhor y Miruro.tv
-estaban diagnosticadas aquí como fallo de la extensión pero no se marcaban dentro de la app.
+**Última pasada: 2026-09-17** (antes de la v0.17.0), emulador Pixel 10 Pro XL, 24 fuentes
+instaladas. Repite exactamente el resultado del 2026-09-16: 6 fuentes reproducen vídeo
+—AnimeOnsen, Jkanime, KickAssAnime, Latanime, TioAnime y TioHentai— y las mismas nueve
+fallan por causa propia, que son las que `anime-source-health.json` marca dentro de la app.
 
 ---
 

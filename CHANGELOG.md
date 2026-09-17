@@ -10,7 +10,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
-## [Unreleased]
+## [0.17.0] - 2026-09-17
 ### Added
 - **Anime downloads show up in the download queue.** The queue screen only ever knew about manga, so an anime download was invisible while it ran. It has a tab each now: the anime side lists what is waiting, with the one being fetched showing how much has arrived, how fast, and a progress bar, and an X to take anything out of the queue.
 

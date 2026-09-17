@@ -164,6 +164,7 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.14.4 | 29 | — | **Nunca se publicó.** Preparada en `develop` y verde en CI, pero no llegó a `main` ni a tag; su contenido sale en la 0.15.0 |
 | 0.15.0 | 30 | **clave del proyecto** | Las descargas de anime guardaban el m3u8 en vez del vídeo. Incluye lo de la 0.14.4 |
 | 0.16.0 | 31 | **clave del proyecto** | Velocidad y tamaño en las descargas, y elegir calidad. Prueba de humo hecha en el dispositivo del cliente |
+| 0.17.0 | 32 | **clave del proyecto** | Descargas ~3× más rápidas, el botón responde al instante, y el anime aparece en la cola de descargas. Probada en el emulador por indicación del cliente |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es

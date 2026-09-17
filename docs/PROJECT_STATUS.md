@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-09-16
+**Actualizado:** 2026-09-17
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.16.0, tag en `main`
+**Última release:** v0.17.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,7 +18,7 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x – 0.16.0 | ✅ | hasta `v0.16.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Releases 0.5.x – 0.17.0 | ✅ | hasta `v0.17.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
 | Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local. La de la v0.15.0 se completó el 2026-09-16 en el dispositivo del cliente: el binario del CI descargó un episodio de 353,9 MB de vídeo real, con su `.part` renombrándose al acabar y cero errores — que es además la prueba de que **R8 no se llevó ffmpeg-kit** por delante |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
@@ -70,7 +70,7 @@
 | Historial de anime | ✅ | se registra al reproducir; pantalla propia desde la biblioteca |
 | Novedades de anime | ✅ | pantalla propia desde la biblioteca: episodios nuevos por día, reproducir, marcar visto y descargar |
 | Añadir a biblioteca | ✅ | botón de favorito en la ficha, con fecha de alta |
-| Descargas de anime | ✅ | cola persistente, worker en primer plano, notificaciones y borrado. **Guardaban la lista m3u8 en vez del vídeo**: corregido con ffmpeg el 2026-09-16 y verificado en el dispositivo — 360 MB, 2 audios, 8 subtítulos, reproducido sin red |
+| Descargas de anime | ✅ | cola persistente, worker en primer plano, notificaciones y borrado. Vídeo real desde la 0.15.0; desde la 0.17.0 los segmentos se bajan en paralelo (~3× más rápido), se elige la calidad y se ve velocidad, tamaño y cola |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ✅ | MyAnimeList, AniList y **Kitsu** verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación, progreso, puntuación, privado y desvincular, comprobado en los servidores de cada servicio. En Kitsu además se comprobó que la entrada cae en la biblioteca de anime y no en la de manga |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
@@ -85,7 +85,7 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
 Ninguno.
 
-## Por qué una descarga era lenta, y qué se hizo (2026-09-16)
+## Por qué una descarga era lenta, y qué se hizo (2026-09-17)
 
 No era el ancho de banda del cliente. Los segmentos llegaban a un ritmo **constante de
 ~490 ms**, y cada uno vive en un host distinto porque la fuente los reparte entre cuatro CDN
@@ -105,7 +105,16 @@ TLS **contra un host nuevo y en serie**, porque el demuxer de HLS de ffmpeg pide
 detrás de otro.
 
 Ahora los segmentos los baja la app en paralelo (`HlsPrefetcher`) y ffmpeg solo junta ficheros
-locales. **El mismo episodio pasó de ~200 s a 73 s.**
+locales. **El mismo episodio pasó de ~200 s a 61-73 s.**
+
+Y el botón que los encola volvió a ser un botón: medía el tamaño de todas las calidades —unas
+treinta peticiones— antes de encolar nada. **De más de 20 s a 260 ms.** Lo que cuesta es que un
+episodio sin la calidad guardada ya no ofrece las que tiene: coge la más cercana por debajo, y
+se puede recuperar en cuanto el diálogo sea barato de abrir.
+
+Descargar varios seguidos **sí va bajando de ritmo**: el primero baja 711 segmentos en ~47 s y
+el tercero tarda ~100 s en lo mismo, sin un solo error ni un 429. Es la fuente frenando la
+descarga sostenida, no el código.
 
 Dos cosas que salieron al hacerlo y que están en el código por algo:
 
