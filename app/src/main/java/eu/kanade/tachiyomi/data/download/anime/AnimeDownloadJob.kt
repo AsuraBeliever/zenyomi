@@ -89,10 +89,15 @@ class AnimeDownloadJob(private val context: Context, workerParams: WorkerParamet
                 continue
             }
 
-            notifier.showProgress(episode.name, 0, downloadManager.queue.value.size - 1)
+            notifier.showProgress(episode.name, null, downloadManager.queue.value.size - 1)
 
+            // The quality the viewer chose is applied here, before anything is fetched, and
+            // not only inside the playlist: a source that hands one video per quality has no
+            // variants to choose between later, and the download came down at whatever the
+            // player would have preferred no matter what was picked.
             val video = runCatching { getEpisodeVideos.await(anime.source, episode) }
                 .getOrDefault(emptyList())
+                .forQuality(item.quality)
                 .let { getEpisodeVideos.playable(anime.source, it) }
 
             if (video == null || !downloader.isDownloadable(source, video)) {
@@ -111,7 +116,9 @@ class AnimeDownloadJob(private val context: Context, workerParams: WorkerParamet
                         }
                     }
                 }
-                downloader.download(anime, source, episode, video).also { mirror.cancel() }
+                downloader.download(anime, source, episode, video, item.quality, item.estimatedBytes).also {
+                    mirror.cancel()
+                }
             }
 
             if (result.isFailure) {
@@ -125,7 +132,7 @@ class AnimeDownloadJob(private val context: Context, workerParams: WorkerParamet
         val queue = downloadManager.queue.first()
         return ForegroundInfo(
             Notifications.ID_DOWNLOAD_EPISODE_PROGRESS,
-            notifier.progressNotification(null, 0, queue.size),
+            notifier.progressNotification(null, null, queue.size),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             } else {

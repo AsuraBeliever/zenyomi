@@ -1,0 +1,5 @@
+Added: downloads say how fast they are going. The episode row and the notification now read "180 MB of 420 MB - 1.2 MB/s" instead of a percentage.
+
+Added: you pick the download quality, and you see what it costs. The first time you download anything Zenyomi asks, shows roughly how big each quality is, then remembers the answer. Change it in Settings > Downloads. If an episode does not have your usual quality, it offers the ones it does have.
+
+Fixed: the quality you pick is the quality you get. On sources that return a separate video per quality, picking 360p still downloaded 1080p.

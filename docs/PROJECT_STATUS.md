@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-16
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.15.0, tag en `main`
+**Última release:** v0.16.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** sí — la línea 0.5.x se prueba en el Galaxy S25 Ultra
 
@@ -18,8 +18,8 @@
 | Rebranding a Zenyomi | ✅ | app.zenyomi, v0.1.0, icono e identidad propios |
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
-| Releases 0.5.x – 0.15.0 | ✅ | hasta `v0.15.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
-| Prueba de humo sobre el APK **publicado** | ⚠️ | desde la 0.9.0 no basta el APK local. En la v0.15.0 se comprobó sobre el binario del CI: firma (SHA-256 de la clave del proyecto), identidad (`app.zenyomi`, 30, 0.15.0), cero marca ajena, arranque sin crash, y **que R8 no rompió ffmpeg-kit** — `log`, `statistics` y `nativeFFmpegExecute` conservan su nombre en el dex, que es lo que el nativo llama de vuelta. **Falta ejecutar una descarga desde el binario publicado**: el móvil perdió la depuración inalámbrica |
+| Releases 0.5.x – 0.16.0 | ✅ | hasta `v0.16.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
+| Prueba de humo sobre el APK **publicado** | ✅ | desde la 0.9.0 no basta el APK local. La de la v0.15.0 se completó el 2026-09-16 en el dispositivo del cliente: el binario del CI descargó un episodio de 353,9 MB de vídeo real, con su `.part` renombrándose al acabar y cero errores — que es además la prueba de que **R8 no se llevó ffmpeg-kit** por delante |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
 | PiP del player | ✅ | Activity propia |
@@ -83,12 +83,28 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 
 ## Bloqueos activos
 
-**La v0.15.0 está publicada pero sin rematar la prueba de humo.** Falta ejecutar una descarga
-real desde el APK que publicó el CI. Lo que sí se comprobó sobre ese binario está en la tabla
-de arriba, incluido el riesgo de R8 sobre ffmpeg-kit, que es el que rompió el player en la
-0.3.0. Lo que falta necesita el dispositivo, y el móvil soltó la depuración inalámbrica a
-mitad de la sesión: el puerto responde pero rechaza el handshake, así que hay que volver a
-vincular con código.
+Ninguno.
+
+## Lo que hace lenta una descarga, medido (2026-09-16)
+
+No es el ancho de banda del cliente. Los segmentos llegan a un ritmo **constante de ~490 ms**,
+y cada uno vive en un host distinto porque la fuente los reparte entre cuatro CDN rotando:
+
+```
+seg 232  18.023  st1.advancedairesearchlab.xyz
+seg 233  18.456  st1.habibikun.xyz          +433 ms
+seg 234  18.933  st1.babybayw.xyz           +477 ms
+seg 235  19.439  st1.narutokun.xyz          +506 ms
+seg 236  19.960  st1.advancedairesearchlab.xyz  +521 ms
+```
+
+Que el intervalo no dependa del tamaño del segmento es la firma de que manda la latencia:
+cada trozo pesa ~0,7 MB, que en una conexión decente son ~60 ms de transferencia. Los otros
+~430 ms son DNS, TCP y TLS **contra un host nuevo, y en serie**, porque el demuxer de HLS de
+ffmpeg descarga un segmento detrás de otro y no sabe paralelizar.
+
+El arreglo es dejar de delegarle la descarga: bajar los segmentos nosotros con seis u ocho
+conexiones a la vez y darle a ffmpeg trozos ya locales para que solo los junte. Pendiente.
 
 ## Pendiente menor
 

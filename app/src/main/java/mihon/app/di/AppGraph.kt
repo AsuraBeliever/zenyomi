@@ -25,6 +25,7 @@ import eu.kanade.tachiyomi.data.download.DownloadCache
 import eu.kanade.tachiyomi.data.download.DownloadJob
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadJob
+import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadPreferences
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.data.library.MetadataUpdateJob
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
@@ -93,6 +94,8 @@ interface AppGraph : ViewModelGraph {
     val readerPreferences: ReaderPreferences
 
     val playerPreferences: PlayerPreferences
+
+    val animeDownloadPreferences: AnimeDownloadPreferences
 
     val subtitlePreferences: SubtitlePreferences
     val networkPreferences: NetworkPreferences
