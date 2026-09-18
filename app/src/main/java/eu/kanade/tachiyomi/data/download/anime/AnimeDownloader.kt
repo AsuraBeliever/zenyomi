@@ -8,19 +8,24 @@ import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.Track
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.network.NetworkHelper
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
 import logcat.LogPriority
 import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
-import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.model.Episode
@@ -53,6 +58,33 @@ class AnimeDownloader(
 
     /** Episode id to how far along it is, for rows that are downloading right now. */
     val progress: StateFlow<Map<Long, AnimeDownloadProgress>> = _progress.asStateFlow()
+
+    /**
+     * The download in flight, so it can be called off.
+     *
+     * A map rather than a single reference because nothing here promises the queue will
+     * always run one at a time, and a cancel that hit the wrong episode would be worse than
+     * one that did nothing.
+     */
+    private val active = ConcurrentHashMap<Long, Deferred<Result<Unit>>>()
+
+    /**
+     * Stops the download of [episodeId] if it is the one running.
+     *
+     * @return whether there was one to stop. The queue is the caller's to tidy either way:
+     * an episode still waiting its turn has no download to cancel, only a place in line.
+     *
+     * What has landed so far is thrown away rather than kept. A half-written video reads as a
+     * finished download to every other part of the app, and resuming is not something this
+     * downloader can do.
+     */
+    fun cancel(episodeId: Long): Boolean = active.remove(episodeId)?.let {
+        it.cancel()
+        true
+    } ?: false
+
+    /** Stops whatever is running, for "cancel everything". */
+    fun cancelAll() = active.keys.toList().forEach { cancel(it) }
 
     /**
      * Whether an episode can be downloaded at all.
@@ -112,8 +144,41 @@ class AnimeDownloader(
         video: Video,
         quality: Int?,
         expectedBytes: Long?,
-    ): Result<Unit> = withIOContext {
-        runCatching {
+    ): Result<Unit> = supervisorScope {
+        // Its own child job, kept where [cancel] can reach it, and a *supervisor* scope so
+        // calling one episode off does not take the queue down with it. Cancelling the job
+        // that runs the fetch is the only thing that actually stops a download: dropping the
+        // row from the queue, which is all cancelling used to do, left the video coming down
+        // to a file nobody was watching any more.
+        val task = async(Dispatchers.IO) { fetch(anime, source, episode, video, quality, expectedBytes) }
+        active[episode.id] = task
+        try {
+            task.await()
+        } catch (e: CancellationException) {
+            // Two different things throw this: the viewer cancelling this episode, and the
+            // whole worker going down. Only the first is something to carry on from.
+            ensureActive()
+            // Let the fetch finish unwinding before sweeping up after it, so the file is not
+            // deleted out from under something still writing to it.
+            task.join()
+            // Whatever landed before the stop goes with it: see [cancel].
+            provider.findAnyEpisodeFile(anime, source, episode)?.delete()
+            Result.failure(e)
+        } finally {
+            active.remove(episode.id, task)
+            clearProgress(episode.id)
+        }
+    }
+
+    private suspend fun fetch(
+        anime: Anime,
+        source: AnimeSource,
+        episode: Episode,
+        video: Video,
+        quality: Int?,
+        expectedBytes: Long?,
+    ): Result<Unit> {
+        return runCatching {
             // Whatever is already there for this episode goes first, including a playlist
             // left by a version of this that did not know the difference. Otherwise the
             // storage framework keeps it and names the new file "episode (1).mp4".
@@ -161,12 +226,15 @@ class AnimeDownloader(
                 // without a dialog has no number, and it is measured here instead: a handful of
                 // HEAD requests at the start of something that runs for minutes costs nothing,
                 // whereas doing it on the tap is the difference between a button and a wait.
+                val picture = expectedBytes
+                    ?: sizer.sizeOfMedia(chosen?.url ?: video.videoUrl, video.headers, chosen?.bandwidth, media)
                 // The audio the source keeps apart from the picture is fetched too and lands
-                // in the same file, so it belongs in the total. Leaving it out is what made a
-                // download read "200 MB of 160 MB": the bytes counted every stream and the
-                // total counted one.
-                val estimated = expectedBytes ?: sizer
-                    .sizeOfMedia(chosen?.url ?: video.videoUrl, video.headers, chosen?.bandwidth, media)
+                // in the same file, so it belongs in the total — including when the number came
+                // from the dialog, which measures the picture alone so that two qualities can be
+                // compared without waiting on tracks that weigh the same in both. Leaving it out
+                // is what made a download read "200 MB of 160 MB": the bytes counted every
+                // stream and the total counted one.
+                val estimated = picture
                     ?.plus(video.audioTracks.sumOf { sizer.sizeOfMedia(it.url, video.headers, null) ?: 0L })
 
                 val target = provider.createEpisodeFile(anime, source, episode, REMUXED_EXTENSION)
@@ -190,11 +258,21 @@ class AnimeDownloader(
                 // The segments are fetched here, several at a time, rather than left to
                 // ffmpeg, which asks for them one after another. See [HlsPrefetcher].
                 val workspace = prefetcher.workspace(episode.id)
-                val fetched = runCatching {
-                    prefetchAll(chosen?.url ?: video.videoUrl, media, video, workspace, report)
-                }.getOrNull()
-
+                // The whole of it inside the cleanup, not just the muxing: a download called
+                // off during the fetch never reaches the muxing, and used to leave its
+                // workspace behind in the cache for good.
                 try {
+                    val fetched = try {
+                        prefetchAll(chosen?.url ?: video.videoUrl, media, video, workspace, report)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // Falling back to letting ffmpeg fetch the segments itself is slower
+                        // but works; being cancelled is neither, and must not land here.
+                        logcat(LogPriority.WARN, e) { "Could not prefetch ${episode.name}" }
+                        null
+                    }
+
                     remuxer.remux(
                         videoUrl = fetched?.video?.playlist?.absolutePath ?: chosen?.url ?: video.videoUrl,
                         headers = video.headers,
@@ -213,6 +291,9 @@ class AnimeDownloader(
             written?.let { provider.finish(it) }
             clearProgress(episode.id)
         }.onFailure {
+            // A cancellation is not a failure: the file is swept and the news is broken by
+            // whoever asked for it, not by an error in the log.
+            if (it is CancellationException) throw it
             // Said out loud. A download that fails silently and leaves a notification with
             // no reason in it is one nobody can diagnose, here or from a bug report.
             logcat(LogPriority.ERROR, it) { "Could not download ${episode.name}" }
@@ -232,6 +313,15 @@ class AnimeDownloader(
      * tenth the size of the video and finish early, and giving each its own budget would only
      * mean more connections to the same four hosts for no gain.
      *
+     * Sharing that budget is not the same as queueing for it, which is what this used to do
+     * and why a download ran fast and then crawled. Every stream threw all of its segments at
+     * one semaphore at once, and a semaphore hands permits out in the order they were asked
+     * for: the video got its hundreds of requests in first, so the audio's waited behind every
+     * last one of them. The two streams were nominally concurrent and in practice consecutive
+     * — picture at full speed, then a long slow tail of sound, which is exactly what it looked
+     * like. So each stream now holds a cap of its own and only then queues for the shared
+     * budget, and no stream can have more than its cap of requests waiting in that queue.
+     *
      * Subtitles are left where they are. They are one small file apiece, so the round trip
      * ffmpeg pays for them is the only one there is.
      */
@@ -242,7 +332,7 @@ class AnimeDownloader(
         workspace: File,
         onBytes: (Long) -> Unit,
     ): Prefetched? = coroutineScope {
-        val permits = Semaphore(HlsPrefetcher.PARALLELISM)
+        val budget = Semaphore(HlsPrefetcher.PARALLELISM)
         val perStream = ConcurrentHashMap<String, Long>()
         val report = { key: String, bytes: Long ->
             perStream[key] = bytes
@@ -250,9 +340,13 @@ class AnimeDownloader(
         }
 
         val videoTask = async {
-            prefetcher.prefetch(videoUrl, video.headers, media, File(workspace, "video"), permits) {
-                report("video", it)
-            }
+            prefetcher.prefetch(
+                videoUrl,
+                video.headers,
+                media,
+                File(workspace, "video"),
+                HlsPrefetcher.share(budget, HlsPrefetcher.VIDEO_SHARE),
+            ) { report("video", it) }
         }
         val audioTasks = video.audioTracks.mapIndexed { index, track ->
             async {
@@ -263,7 +357,7 @@ class AnimeDownloader(
                     video.headers,
                     playlist,
                     File(workspace, "audio$index"),
-                    permits,
+                    HlsPrefetcher.share(budget, HlsPrefetcher.AUDIO_SHARE),
                 ) { report("audio$index", it) }
                 track to local
             }
@@ -284,7 +378,14 @@ class AnimeDownloader(
         }
     }
 
-    private fun streamToFile(
+    /**
+     * Copies a plain video file to disk.
+     *
+     * Suspending, and checking as it goes, only so that it can be stopped: a `read`/`write`
+     * loop is blocking from end to end, and a coroutine cancelled in the middle of one carries
+     * on to the last byte. A cancelled download of an mp4 kept downloading.
+     */
+    private suspend fun streamToFile(
         input: InputStream,
         head: ByteArray,
         headLength: Int,
@@ -299,6 +400,7 @@ class AnimeDownloader(
                 var downloaded = headLength.toLong()
                 val buffer = ByteArray(BUFFER_SIZE)
                 while (true) {
+                    currentCoroutineContext().ensureActive()
                     val read = it.read(buffer)
                     if (read == -1) break
                     output.write(buffer, 0, read)

@@ -120,8 +120,8 @@ data object AnimeLibraryTab : Tab {
         state.qualityDialog?.let { (_, choice) ->
             DownloadQualityDialog(
                 qualities = choice.qualities,
-                firstTime = choice.remember,
-                onConfirm = { height, _ -> viewModel.confirmQuality(height) },
+                reason = choice.reason,
+                onConfirm = viewModel::confirmQuality,
                 onDismissRequest = viewModel::dismissQualityDialog,
             )
         }

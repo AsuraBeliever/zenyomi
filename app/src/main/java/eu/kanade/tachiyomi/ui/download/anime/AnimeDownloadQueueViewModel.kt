@@ -74,7 +74,7 @@ class AnimeDownloadQueueViewModel(
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5.seconds), 0)
 
-    fun cancel(episodeId: Long) = downloadManager.dequeue(episodeId)
+    fun cancel(episodeId: Long) = downloadManager.cancel(episodeId)
 
     fun clearAll() = downloadManager.clearQueue()
 }

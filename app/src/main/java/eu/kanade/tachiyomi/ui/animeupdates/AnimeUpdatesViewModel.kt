@@ -140,15 +140,36 @@ class AnimeUpdatesViewModel(
         }
     }
 
-    fun downloadEpisode(update: AnimeUpdatesWithRelations) {
+    /**
+     * @param ask show the quality question for this download alone, whatever quality is
+     * saved. What a long press on the download button is for.
+     *
+     * The row is marked as busy before anything is asked of the network, so the button reacts
+     * to the first tap: resolving an episode and weighing its qualities takes seconds, and
+     * until the episode reaches the queue there was nothing on screen to say so.
+     */
+    fun downloadEpisode(update: AnimeUpdatesWithRelations, ask: Boolean = false) {
         viewModelScope.launch {
-            val (anime, _, episode) = resolve(update) ?: return@launch
-            when (val outcome = startAnimeDownload.await(anime, listOf(episode))) {
-                is StartAnimeDownload.Outcome.Queued -> Unit
-                is StartAnimeDownload.Outcome.Choose ->
-                    _state.update { it.copy(qualityDialog = anime to outcome) }
+            _state.update { it.copy(preparingEpisodeIds = it.preparingEpisodeIds + update.episodeId) }
+            try {
+                val (anime, _, episode) = resolve(update) ?: return@launch
+                when (val outcome = startAnimeDownload.await(anime, listOf(episode), ask)) {
+                    is StartAnimeDownload.Outcome.Queued -> Unit
+                    is StartAnimeDownload.Outcome.Choose ->
+                        _state.update { it.copy(qualityDialog = anime to outcome) }
+                }
+            } finally {
+                _state.update { it.copy(preparingEpisodeIds = it.preparingEpisodeIds - update.episodeId) }
             }
         }
+    }
+
+    /**
+     * Calls off a download, whether it is waiting its turn or coming down right now. Not the
+     * same thing as [deleteDownload], which is for a file that is already there.
+     */
+    fun cancelDownload(update: AnimeUpdatesWithRelations) {
+        downloadManager.cancel(update.episodeId)
     }
 
     fun confirmQuality(height: Int?) {
@@ -314,6 +335,7 @@ class AnimeUpdatesViewModel(
         val selected: Set<Long> = emptySet(),
         /** The anime waiting on a quality, and what it has on offer. */
         val qualityDialog: Pair<Anime, StartAnimeDownload.Outcome.Choose>? = null,
+        val preparingEpisodeIds: Set<Long> = emptySet(),
     ) {
         val isEmpty: Boolean get() = items.isEmpty()
 

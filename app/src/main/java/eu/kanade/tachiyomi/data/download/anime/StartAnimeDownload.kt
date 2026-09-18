@@ -22,32 +22,56 @@ class StartAnimeDownload(
     private val getDownloadQualities: GetDownloadQualities,
 ) {
 
+    /** Why the viewer is being shown the question. The dialog says so in its own words. */
+    enum class Reason {
+        /** The first download ever, and the answer becomes the default. */
+        FIRST_TIME,
+
+        /** The saved quality is not among the ones these episodes have. */
+        NOT_AVAILABLE,
+
+        /** They asked for it, by holding the download button. Just this once. */
+        ASKED,
+    }
+
     /** What the caller has to do next. */
     sealed interface Outcome {
         /** Already queued; nothing to show. */
         data object Queued : Outcome
 
-        /**
-         * The viewer has to choose before this can be queued.
-         *
-         * @param remember whether the choice also becomes the default. True the first time
-         * anything is downloaded, which is the only time the question is asked unprompted;
-         * false when the saved default is simply not on offer for these episodes.
-         */
+        /** The viewer has to choose before this can be queued. */
         data class Choose(
             val episodes: List<Episode>,
             val qualities: List<DownloadQuality>,
-            val remember: Boolean,
-        ) : Outcome
+            val reason: Reason,
+        ) : Outcome {
+            /** Whether the choice also becomes the default. Only the unprompted question does. */
+            val remember: Boolean get() = reason == Reason.FIRST_TIME
+        }
     }
 
     /**
      * The qualities of the first episode stand for the batch. Asking per episode would mean a
      * round trip and a dialog each, for a set that in practice comes from one encoder with one
      * ladder.
+     *
+     * @param ask show the question whatever is saved, for a download where the usual quality
+     * is not what is wanted — a long press on the download button. What is picked applies to
+     * this download only: changing the default is what Settings is for, and a one-off grab of
+     * something smaller should not quietly redefine every download after it.
      */
-    suspend fun await(anime: Anime, episodes: List<Episode>): Outcome {
+    suspend fun await(anime: Anime, episodes: List<Episode>, ask: Boolean = false): Outcome {
         if (episodes.isEmpty()) return Outcome.Queued
+
+        if (ask) {
+            val offered = qualities(anime, episodes, measure = true)
+            // Nothing to choose between is not worth a dialog with one row in it; it is queued
+            // at what there is, which is what picking the single row would have done.
+            if (offered.size <= 1) {
+                return queue(anime, episodes, offered.firstOrNull()?.height, offered.firstOrNull()?.estimatedBytes)
+            }
+            return Outcome.Choose(episodes, offered, Reason.ASKED)
+        }
 
         val saved = downloadPreferences.quality.get()
 
@@ -67,7 +91,7 @@ class StartAnimeDownload(
         // to be read by somebody, and the answer is kept for good.
         val measured = qualities(anime, episodes, measure = true)
         if (measured.size <= 1) return queue(anime, episodes, null, measured.firstOrNull()?.estimatedBytes)
-        return Outcome.Choose(episodes, measured, remember = true)
+        return Outcome.Choose(episodes, measured, Reason.FIRST_TIME)
     }
 
     private suspend fun qualities(anime: Anime, episodes: List<Episode>, measure: Boolean) =

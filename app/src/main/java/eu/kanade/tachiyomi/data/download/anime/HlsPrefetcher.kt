@@ -5,6 +5,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.network.NetworkHelper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -49,10 +50,24 @@ class HlsPrefetcher(
     data class Local(val playlist: File, val bytes: Long)
 
     /**
+     * One stream's claim on the connections an episode is allowed.
+     *
+     * Two limits, not one, and in this order: how many requests this stream may have going at
+     * once, and only then the budget it shares with the episode's other streams. The cap is
+     * what keeps the shared queue fair — a stream can never have more than [cap] requests
+     * waiting in it, so the picture cannot bury the sound behind three hundred of its own.
+     */
+    class Share(private val cap: Semaphore, private val shared: Semaphore) {
+        suspend fun <T> withPermit(action: suspend () -> T): T =
+            cap.withPermit { shared.withPermit { action() } }
+    }
+
+    /**
      * Downloads every segment [playlistUrl] names into [directory].
      *
-     * @param permits shared across every stream of one episode — the video and its audio
-     * tracks — so the whole download keeps to one connection budget rather than one each.
+     * @param permits this stream's share of the connections the episode is allowed. See
+     * [Share]: the budget inside it is the same object for every stream of one episode, so the
+     * whole download keeps to one connection budget rather than one each.
      * @param onBytes called as segments land, with the running total for this stream.
      * @return the local playlist, or null when this is not a media playlist or a segment could
      * not be fetched. A null sends the caller back to letting ffmpeg do it the slow way, which
@@ -63,7 +78,7 @@ class HlsPrefetcher(
         headers: Headers?,
         media: String,
         directory: File,
-        permits: Semaphore,
+        permits: Share,
         onBytes: (Long) -> Unit,
     ): Local? {
         val segments = HlsPlaylist.segmentUrls(media, playlistUrl)
@@ -87,6 +102,11 @@ class HlsPrefetcher(
                     }
                 }.awaitAll()
             }
+        } catch (e: CancellationException) {
+            // A cancelled download has nothing to fall back to: it is over. Letting this land
+            // in the catch below would send ffmpeg off to fetch the whole stream again.
+            directory.deleteRecursively()
+            throw e
         } catch (e: Exception) {
             logcat(LogPriority.WARN, e) { "Could not prefetch the segments; leaving it to ffmpeg" }
             directory.deleteRecursively()
@@ -186,6 +206,8 @@ class HlsPrefetcher(
                     file.outputStream().use { out -> body.byteStream().use { it.copyTo(out) } }
                 }
                 return file.length()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 lastFailure = e
             }
@@ -206,6 +228,19 @@ class HlsPrefetcher(
          * than the waiting becomes the limit — which is the point.
          */
         const val PARALLELISM = 8
+
+        /**
+         * The most of that budget any one stream may be queueing for.
+         *
+         * The picture is the bulk of an episode and gets most of it; a sound track is a tenth
+         * the size and needs no more than the per-host limit allows it anyway. What these are
+         * really for is the queue: see [Share].
+         */
+        const val VIDEO_SHARE = 6
+        const val AUDIO_SHARE = 2
+
+        /** A stream's claim on [budget], capped at [cap] requests of its own. */
+        fun share(budget: Semaphore, cap: Int) = Share(Semaphore(cap), budget)
 
         /** In flight against any one host. See [hostPermits]. */
         private const val PER_HOST = 2

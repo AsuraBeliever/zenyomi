@@ -10,6 +10,20 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [Unreleased]
+### Fixed
+- **The download button reacts to the first tap.** It always had something to say about the tap and never said it: whether it queues straight away or has to go and ask the source what qualities it has, the row now starts spinning the moment you press it, exactly as it does once the episode is really downloading. Before, the several seconds it takes to ask about qualities were spent with nothing on screen at all, which is why it looked as though the press had missed.
+- **Cancelling a download cancels the download.** The X in the queue, and holding the button on an episode being fetched, only dropped the row from the queue: the video carried on coming down and turned up in the entry a few minutes later as though nothing had been pressed. The download itself is stopped now, and the half-finished file goes with it.
+- **The sound no longer arrives long after the picture.** The two are fetched at the same time, and they were — on paper. In practice every stream threw all of its segments at one shared connection budget at once, and a queue serves whoever asked first: the picture's several hundred requests went in ahead of the sound's, so the sound waited for the last of them. The download ran fast, then crawled through a tail that on a real episode is a third of it. Each stream now has a share of its own, and they finish together.
+
+### Changed
+- **Holding the download button asks which quality to use.** For that download only — your usual quality stays as it is, and it is still changed from Settings → Downloads. The dialog that used to appear once, the first time you ever downloaded anything, is now available whenever you want it.
+- **The sizes beside each quality are the picture alone.** They exist so two qualities can be compared, and audio the source keeps in a separate stream weighs the same whichever one you pick, so adding it to every row moved them all equally and cost a round trip per track while you waited on the dialog. A download's own total still counts everything it is fetching.
+
+### Improved
+- **The quality dialog opens in a fraction of the time.** Every quality on offer was weighed one after another — a playlist and five requests each, end to end — and they are now weighed all at once.
+- **The app's own icon at the top of More and About.** It was still the drawn apple from before the icon changed, which is the single-tint mark the status bar needs and stopped being what the app looks like.
+
 ## [0.17.0] - 2026-09-17
 ### Added
 - **Anime downloads show up in the download queue.** The queue screen only ever knew about manga, so an anime download was invisible while it ran. It has a tab each now: the anime side lists what is waiting, with the one being fetched showing how much has arrived, how fast, and a progress bar, and an X to take anything out of the queue.
