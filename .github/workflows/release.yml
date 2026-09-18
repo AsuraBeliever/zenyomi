@@ -43,8 +43,24 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
+      # El job firmado empaqueta cinco APK — el universal y los cuatro por ABI, unos 640 MB
+      # en total — sobre los intermedios de R8 y las nativas de mpv y ffmpeg. El runner trae
+      # unos 14 GB libres y en la v0.18.1 no llegaron: `packageRelease` murió sin nombrar su
+      # causa, mientras el job FOSS, que empaqueta uno solo, terminaba sin problema. Lo que
+      # se borra aquí no lo usa esta build.
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndk /opt/ghc \
+            /usr/local/share/boost /usr/local/lib/node_modules /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
+
+      # --stacktrace porque sin él Gradle corta la causa: la v0.18.1 solo dijo "A failure
+      # occurred while executing PackageAndroidArtifact$IncrementalSplitterRunnable" y hubo
+      # que deducir el motivo. Un release rojo tiene que decir por qué a la primera.
       - name: Build
-        run: .github/scripts/gradle-with-retry.sh assembleRelease -Penable-updater
+        run: .github/scripts/gradle-with-retry.sh assembleRelease -Penable-updater --stacktrace
         env:
           storeFileBase64: ${{ secrets.SIGNING_KEY }}
           storePassword: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -97,7 +113,7 @@ jobs:
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       - name: Build
-        run: .github/scripts/gradle-with-retry.sh assembleFoss -Penable-updater
+        run: .github/scripts/gradle-with-retry.sh assembleFoss -Penable-updater --stacktrace
         env:
           storeFileBase64: ${{ secrets.SIGNING_KEY }}
           storePassword: ${{ secrets.KEY_STORE_PASSWORD }}
