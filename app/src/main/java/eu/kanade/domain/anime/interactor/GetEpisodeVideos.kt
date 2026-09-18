@@ -13,6 +13,7 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.episode.model.Episode
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -36,6 +37,56 @@ class GetEpisodeVideos(
 
     /** Una vez por clase de extension; la respuesta no cambia mientras la app viva. */
     private val hosterSupport = ConcurrentHashMap<String, Boolean>()
+
+    /**
+     * What each episode last resolved to, for as long as it is worth reusing.
+     *
+     * Resolving is not one request: it is the hoster list, then a video list per hoster,
+     * then usually an extractor chain per mirror, and often against a host that rate-limits.
+     * None of it was remembered, so leaving the player and opening the same episode again
+     * paid the whole bill a second time — and paid it slower than the first, because the
+     * first pass had just spent the rate limiter's budget.
+     *
+     * Reusing a url is no bolder than what already happens: one resolved at the start of an
+     * episode has to stay good for the twenty minutes it plays, so minutes-old is well
+     * inside what every source already guarantees. [TTL] keeps it to that.
+     */
+    private val resolved = object : LinkedHashMap<Long, Resolved>(0, 0.75f, true) {
+        override fun removeEldestEntry(eldest: Map.Entry<Long, Resolved>) = size > MAX_REMEMBERED
+    }
+
+    private class Resolved(val video: Video, val at: Long)
+
+    /**
+     * The video [episodeId] last resolved to, or null if it was never resolved or the entry
+     * has gone stale. A hit skips the whole network path below.
+     */
+    fun cached(episodeId: Long): Video? = synchronized(resolved) {
+        val hit = resolved[episodeId] ?: return null
+        if (System.currentTimeMillis() - hit.at > TTL.inWholeMilliseconds) {
+            resolved.remove(episodeId)
+            return null
+        }
+        hit.video
+    }
+
+    /** Remembers what an episode resolved to, so opening it again costs nothing. */
+    fun remember(episodeId: Long, video: Video) = synchronized(resolved) {
+        resolved[episodeId] = Resolved(video, System.currentTimeMillis())
+        Unit
+    }
+
+    /**
+     * Drops what an episode resolved to.
+     *
+     * Called when a url turns out not to play: without it the retry would be handed the same
+     * dead url until the entry expired on its own, which reads as an episode that is simply
+     * broken.
+     */
+    fun forget(episodeId: Long) = synchronized(resolved) {
+        resolved.remove(episodeId)
+        Unit
+    }
 
     /**
      * @throws kotlinx.coroutines.TimeoutCancellationException if the source takes longer than
@@ -174,6 +225,16 @@ class GetEpisodeVideos(
 
         /** Long enough for a slow site, short enough that a hung one is not forever. */
         private val TIMEOUT = 60.seconds
+
+        /**
+         * How long a resolved url is reused. Long enough to cover stepping out of the player
+         * and back in, short enough that a link a host signs for a single short window is not
+         * handed out after it has died.
+         */
+        private val TTL = 5.minutes
+
+        /** Enough for the episode being watched and the ones around it, and no more. */
+        private const val MAX_REMEMBERED = 16
 
         /**
          * How many mirrors are tried before giving up. Each one that needs resolving is a
