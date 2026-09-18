@@ -49,9 +49,10 @@ import java.util.concurrent.ConcurrentHashMap
 class AnimeDownloader(
     private val provider: AnimeDownloadProvider,
     private val networkHelper: NetworkHelper,
-    private val remuxer: HlsRemuxer,
+    private val remuxer: StreamRemuxer,
     private val prefetcher: HlsPrefetcher,
     private val sizer: StreamSizer,
+    private val probe: StreamProbe,
 ) {
 
     private val _progress = MutableStateFlow(emptyMap<Long, AnimeDownloadProgress>())
@@ -191,104 +192,57 @@ class AnimeDownloader(
 
             var written: UniFile? = null
 
-            val playlist = networkHelper.client.newCall(request).execute().use { response ->
+            val manifest = networkHelper.client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("HTTP ${response.code}")
                 val body = response.body ?: error("Empty response")
                 val input = body.byteStream()
 
-                val head = ByteArray(SNIFF_BYTES)
+                val head = ByteArray(StreamSniffer.SNIFF_BYTES)
                 val headLength = input.readAtMost(head)
 
-                if (looksLikePlaylist(head, headLength)) {
+                when (val delivery = StreamSniffer.classify(head, headLength)) {
+                    // Said out loud instead of saved. An expired link and a login wall both
+                    // arrive as a perfectly successful response with a page in it, and writing
+                    // that page to the downloads folder is how an episode came to look
+                    // downloaded when nothing of it was there.
+                    is StreamDelivery.Unusable -> error(delivery.reason)
                     // Small enough to hold: a few hundred lines of text. Read out so the
                     // connection is closed before ffmpeg opens its own.
-                    String(head, 0, headLength, Charsets.UTF_8) + input.readBytes().decodeToString()
-                } else {
+                    is StreamDelivery.Manifest -> Manifest(
+                        hls = delivery.hls,
+                        text = String(head, 0, headLength, Charsets.UTF_8) + input.readBytes().decodeToString(),
+                    )
                     // A real video, and its first bytes are already in hand: write them and
                     // keep going rather than asking for them a second time.
-                    val target = provider.createEpisodeFile(anime, source, episode, extensionFor(video.videoUrl))
-                        ?: error("Could not create the download file")
-                    written = target
-                    streamToFile(input, head, headLength, body.contentLength(), target, episode.id)
-                    null
+                    StreamDelivery.Container -> {
+                        val target = provider.createEpisodeFile(anime, source, episode, extensionFor(video.videoUrl))
+                            ?: error("Could not create the download file")
+                        written = target
+                        streamToFile(input, head, headLength, body.contentLength(), target, episode.id)
+                        null
+                    }
                 }
             }
 
-            if (playlist != null) {
-                // A master playlist names other playlists, one per quality, and ffmpeg left to
-                // choose among them picks for itself. The quality is the viewer's, so the
-                // variant is resolved here: the one they asked for, or the best on offer when
-                // that request cannot be met.
-                val variants = HlsPlaylist.variants(playlist, video.videoUrl)
-                val chosen = variants.pick(quality)
-                val media = chosen?.let { fetchText(it.url, video.headers) } ?: playlist
-                // What was measured when the viewer chose, if anything was. A download queued
-                // without a dialog has no number, and it is measured here instead: a handful of
-                // HEAD requests at the start of something that runs for minutes costs nothing,
-                // whereas doing it on the tap is the difference between a button and a wait.
-                val picture = expectedBytes
-                    ?: sizer.sizeOfMedia(chosen?.url ?: video.videoUrl, video.headers, chosen?.bandwidth, media)
-                // The audio the source keeps apart from the picture is fetched too and lands
-                // in the same file, so it belongs in the total — including when the number came
-                // from the dialog, which measures the picture alone so that two qualities can be
-                // compared without waiting on tracks that weigh the same in both. Leaving it out
-                // is what made a download read "200 MB of 160 MB": the bytes counted every
-                // stream and the total counted one.
-                val estimated = picture
-                    ?.plus(video.audioTracks.sumOf { sizer.sizeOfMedia(it.url, video.headers, null) ?: 0L })
-
+            if (manifest != null) {
                 val target = provider.createEpisodeFile(anime, source, episode, REMUXED_EXTENSION)
                     ?: error("Could not create the download file")
                 written = target
-                val rate = DownloadRate()
-                val report = { bytes: Long ->
-                    setProgress(
-                        episode.id,
-                        AnimeDownloadProgress(
-                            downloadedBytes = bytes,
-                            // An estimate, and the only number available up front: a stream
-                            // declares no length. The bar is honest about arriving a little
-                            // before or after 100%.
-                            estimatedTotalBytes = estimated,
-                            bytesPerSecond = rate.sample(bytes),
-                        ),
-                    )
-                }
-
-                // The segments are fetched here, several at a time, rather than left to
-                // ffmpeg, which asks for them one after another. See [HlsPrefetcher].
-                val workspace = prefetcher.workspace(episode.id)
-                // The whole of it inside the cleanup, not just the muxing: a download called
-                // off during the fetch never reaches the muxing, and used to leave its
-                // workspace behind in the cache for good.
-                try {
-                    val fetched = try {
-                        prefetchAll(chosen?.url ?: video.videoUrl, media, video, workspace, report)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        // Falling back to letting ffmpeg fetch the segments itself is slower
-                        // but works; being cancelled is neither, and must not land here.
-                        logcat(LogPriority.WARN, e) { "Could not prefetch ${episode.name}" }
-                        null
-                    }
-
-                    remuxer.remux(
-                        videoUrl = fetched?.video?.playlist?.absolutePath ?: chosen?.url ?: video.videoUrl,
-                        headers = video.headers,
-                        audioTracks = fetched?.audio ?: video.audioTracks,
-                        subtitleTracks = video.subtitleTracks,
-                        target = target,
-                        // Nothing to report while muxing when the bytes are already on disk;
-                        // ffmpeg is only copying them into a container at that point.
-                        onBytes = if (fetched == null) report else { _ -> },
-                    )
-                } finally {
-                    workspace.deleteRecursively()
+                if (manifest.hls) {
+                    downloadPlaylist(episode, video, quality, expectedBytes, manifest.text, target)
+                } else {
+                    // Every other manifest — DASH today, whatever a source moves to next — is
+                    // ffmpeg's to fetch. Slower than the HLS path, which reads the playlist
+                    // itself and pulls the segments down several at a time, but correct
+                    // without this app having to learn the format.
+                    downloadThroughFfmpeg(episode, video, quality, expectedBytes, target)
                 }
             }
-            // Only now is it an episode rather than a download in flight.
-            written?.let { provider.finish(it) }
+
+            // Only now is it an episode rather than a download in flight — and only if it is
+            // one. See [verify].
+            verify(written ?: error("Nothing was downloaded"))
+            provider.finish(written)
             clearProgress(episode.id)
         }.onFailure {
             // A cancellation is not a failure: the file is swept and the news is broken by
@@ -300,6 +254,177 @@ class AnimeDownloader(
             // A partial file would read as a finished download, so it goes.
             provider.findAnyEpisodeFile(anime, source, episode)?.delete()
             clearProgress(episode.id)
+        }
+    }
+
+    /** A manifest and which kind it is, on its way from the sniff to the path that handles it. */
+    private data class Manifest(val hls: Boolean, val text: String)
+
+    /**
+     * An HLS stream, fetched by this app rather than by ffmpeg.
+     *
+     * The one format with a reader of its own, and it earns it: reading the playlist is what
+     * lets the segments be pulled down several at a time, which is the difference between a
+     * four-minute download and a seventy-second one. Everything else goes through
+     * [downloadThroughFfmpeg], which is slower and needs no reader at all.
+     */
+    private suspend fun downloadPlaylist(
+        episode: Episode,
+        video: Video,
+        quality: Int?,
+        expectedBytes: Long?,
+        playlist: String,
+        target: UniFile,
+    ) {
+        // A master playlist names other playlists, one per quality, and ffmpeg left to
+        // choose among them picks for itself. The quality is the viewer's, so the
+        // variant is resolved here: the one they asked for, or the best on offer when
+        // that request cannot be met.
+        val variants = HlsPlaylist.variants(playlist, video.videoUrl)
+        val chosen = variants.pick(quality)
+        val media = chosen?.let { fetchText(it.url, video.headers) } ?: playlist
+        // What was measured when the viewer chose, if anything was. A download queued
+        // without a dialog has no number, and it is measured here instead: a handful of
+        // HEAD requests at the start of something that runs for minutes costs nothing,
+        // whereas doing it on the tap is the difference between a button and a wait.
+        val picture = expectedBytes
+            ?: sizer.sizeOfMedia(chosen?.url ?: video.videoUrl, video.headers, chosen?.bandwidth, media)
+        // The audio the source keeps apart from the picture is fetched too and lands
+        // in the same file, so it belongs in the total — including when the number came
+        // from the dialog, which measures the picture alone so that two qualities can be
+        // compared without waiting on tracks that weigh the same in both. Leaving it out
+        // is what made a download read "200 MB of 160 MB": the bytes counted every
+        // stream and the total counted one.
+        val estimated = picture?.plus(sideCarBytes(video))
+
+        val report = reporter(episode.id, estimated)
+
+        // The segments are fetched here, several at a time, rather than left to
+        // ffmpeg, which asks for them one after another. See [HlsPrefetcher].
+        val workspace = prefetcher.workspace(episode.id)
+        // The whole of it inside the cleanup, not just the muxing: a download called
+        // off during the fetch never reaches the muxing, and used to leave its
+        // workspace behind in the cache for good.
+        try {
+            val fetched = try {
+                prefetchAll(chosen?.url ?: video.videoUrl, media, video, workspace, report)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Falling back to letting ffmpeg fetch the segments itself is slower
+                // but works; being cancelled is neither, and must not land here.
+                logcat(LogPriority.WARN, e) { "Could not prefetch ${episode.name}" }
+                null
+            }
+
+            remuxer.remux(
+                videoUrl = fetched?.video?.playlist?.absolutePath ?: chosen?.url ?: video.videoUrl,
+                headers = video.headers,
+                audioTracks = fetched?.audio ?: video.audioTracks,
+                subtitleTracks = video.subtitleTracks,
+                target = target,
+                // One quality by this point, whether it was resolved above or handed over as
+                // the only one there was, so there is nothing to leave out.
+                selection = StreamRemuxer.Selection.Everything,
+                hlsInput = true,
+                // Nothing to report while muxing when the bytes are already on disk;
+                // ffmpeg is only copying them into a container at that point.
+                onBytes = if (fetched == null) report else { _ -> },
+            )
+        } finally {
+            workspace.deleteRecursively()
+        }
+    }
+
+    /**
+     * Any other manifest, fetched by ffmpeg.
+     *
+     * The general path, and the reason a source moving from HLS to DASH is not a source
+     * needing code. ffmpeg opens the manifest, and what has to be decided here is the same
+     * thing the HLS path decides for itself: which quality, out of the several a manifest
+     * usually carries. It matters for more than the file size — ffmpeg fetches every stream
+     * something maps and discards the rest, so an unmapped 1080p representation is one that
+     * never comes down the wire.
+     *
+     * ffprobe is what answers "which qualities are in here", for this format and for every
+     * other one it knows, which is the whole point of asking it rather than writing a reader.
+     */
+    private suspend fun downloadThroughFfmpeg(
+        episode: Episode,
+        video: Video,
+        quality: Int?,
+        expectedBytes: Long?,
+        target: UniFile,
+    ) {
+        val probed = probe.probe(video.videoUrl, video.headers)
+        val chosen = probed?.videos?.pickByHeight(quality)
+        // Bitrate times length, the same estimate the HLS path makes from the numbers in a
+        // playlist. The picture from the dialog if it was shown one, plus the sound in the
+        // manifest and the sound beside it, because all of it ends up in the one file.
+        val picture = expectedBytes ?: probed?.pictureBytes(chosen)
+        val estimated = picture
+            ?.plus(probed?.audioBytes ?: 0L)
+            ?.plus(sideCarBytes(video))
+
+        remuxer.remux(
+            videoUrl = video.videoUrl,
+            headers = video.headers,
+            audioTracks = video.audioTracks,
+            subtitleTracks = video.subtitleTracks,
+            target = target,
+            selection = when (chosen) {
+                // Nothing came back from the probe: ffmpeg is opening something ffprobe could
+                // not, which it might still manage. Taking everything is what it used to do
+                // and is better than refusing.
+                null -> StreamRemuxer.Selection.Everything
+                else -> StreamRemuxer.Selection.OneVideo(chosen.index, probed?.audioStreams ?: 0)
+            },
+            hlsInput = false,
+            onBytes = reporter(episode.id, estimated),
+        )
+    }
+
+    /**
+     * Refuses to call something an episode until it is one.
+     *
+     * The net under every path above, and the lesson of the two ways this has gone wrong: a
+     * playlist saved as an mp4, and a DASH manifest saved as an mp4 after the playlist case
+     * was fixed. Both left a few kilobytes on disk wearing the downloaded tick, and both were
+     * only found when somebody tried to watch offline. Whatever route the bytes took, and
+     * whatever format nobody has thought of yet, the file has to contain a video and have a
+     * length before it is finished — so the next surprise is a failed download, which is
+     * visible, rather than an empty one, which is not.
+     */
+    private suspend fun verify(file: UniFile) {
+        when (probe.isPlayable(file)) {
+            false -> error("what arrived is not a playable video")
+            // The check could not be made. Not a reason to throw away a download that may well
+            // be fine — but worth saying, because a check that silently stops checking is
+            // worse than no check.
+            null -> logcat(LogPriority.WARN) { "Could not check what was downloaded for ${file.name}" }
+            true -> Unit
+        }
+    }
+
+    /** The tracks the source keeps apart from the picture, which land in the same file. */
+    private suspend fun sideCarBytes(video: Video): Long =
+        video.audioTracks.sumOf { sizer.sizeOfMedia(it.url, video.headers, null) ?: 0L }
+
+    /** The progress callback both manifest paths report through. */
+    private fun reporter(episodeId: Long, estimated: Long?): (Long) -> Unit {
+        val rate = DownloadRate()
+        return { bytes ->
+            setProgress(
+                episodeId,
+                AnimeDownloadProgress(
+                    downloadedBytes = bytes,
+                    // An estimate, and the only number available up front: a stream
+                    // declares no length. The bar is honest about arriving a little
+                    // before or after 100%.
+                    estimatedTotalBytes = estimated,
+                    bytesPerSecond = rate.sample(bytes),
+                ),
+            )
         }
     }
 
@@ -446,29 +571,14 @@ class AnimeDownloader(
         /** Matches tachiyomi.source.local.anime.LocalAnimeSource.ID without depending on it. */
         private const val LOCAL_ANIME_SOURCE_ID = 0L
 
-        /** Enough to hold the first line of a playlist whatever whitespace precedes it. */
-        private const val SNIFF_BYTES = 256
-
         /**
-         * What a remuxed episode ends up as, whatever the playlist was called.
+         * What a remuxed episode ends up as, whatever the manifest was called.
          *
          * Matroska rather than mp4 because an episode arrives in pieces — picture here,
          * Japanese and English audio there, eight subtitle languages somewhere else — and mkv
          * is the container that takes all of them side by side without converting anything.
          */
         private const val REMUXED_EXTENSION = "mkv"
-
-        private const val PLAYLIST_MARKER = "#EXTM3U"
-
-        /**
-         * Whether the response is a playlist rather than a video.
-         *
-         * Decided on the bytes, not on the url or the content type: sources serve playlists
-         * from paths ending in .mp4 and label them as octet-streams, and every m3u8 in
-         * existence starts with this line.
-         */
-        fun looksLikePlaylist(head: ByteArray, length: Int): Boolean =
-            String(head, 0, length, Charsets.UTF_8).trimStart().startsWith(PLAYLIST_MARKER)
 
         /**
          * The file extension for a progressive download.
