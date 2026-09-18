@@ -114,9 +114,14 @@ Variantes: `debug` (`app.zenyomi.debug`), `dev`, `release`.
 
 ## 9. Testing
 
-Dispositivo real del cliente vía **wireless debugging (ADB over Wi-Fi)**.
-Procedimiento y estado de la conexión: `docs/TESTING.md`.
-Nunca se entrega un build al cliente sin haberlo instalado y abierto antes.
+**En el emulador.** Todo build se instala y se abre en el emulador antes de darlo por
+bueno; nunca se entrega sin eso.
+
+**El celular del cliente solo cuando él lo pide.** Es su teléfono de uso diario, no un
+banco de pruebas: no se instala nada ahí por iniciativa propia, ni se le ofrece en cada
+cambio. Sigue emparejado por wireless debugging para cuando haga falta.
+
+Procedimiento, fixtures y estado de la conexión: `docs/TESTING.md`.
 
 ## 10. Entorno
 
