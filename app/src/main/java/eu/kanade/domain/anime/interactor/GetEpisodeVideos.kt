@@ -1,5 +1,6 @@
 package eu.kanade.domain.anime.interactor
 
+import androidx.annotation.VisibleForTesting
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -71,18 +72,28 @@ class GetEpisodeVideos(
      * The video [episodeId] last resolved to, or null if it was never resolved or the entry
      * has gone stale. A hit skips the whole network path below.
      */
-    fun cached(episodeId: Long): Video? = synchronized(resolved) {
+    fun cached(episodeId: Long): Video? = cached(episodeId, System.currentTimeMillis())
+
+    /** Remembers what an episode resolved to, so opening it again costs nothing. */
+    fun remember(episodeId: Long, video: Video) = remember(episodeId, video, System.currentTimeMillis())
+
+    /**
+     * The clock is a parameter on these two so a test can age an entry past [TTL] without
+     * waiting out the real five minutes.
+     */
+    @VisibleForTesting
+    internal fun cached(episodeId: Long, nowMillis: Long): Video? = synchronized(resolved) {
         val hit = resolved[episodeId] ?: return null
-        if (System.currentTimeMillis() - hit.at > TTL.inWholeMilliseconds) {
+        if (nowMillis - hit.at > TTL.inWholeMilliseconds) {
             resolved.remove(episodeId)
             return null
         }
         hit.video
     }
 
-    /** Remembers what an episode resolved to, so opening it again costs nothing. */
-    fun remember(episodeId: Long, video: Video) = synchronized(resolved) {
-        resolved[episodeId] = Resolved(video, System.currentTimeMillis())
+    @VisibleForTesting
+    internal fun remember(episodeId: Long, video: Video, nowMillis: Long) = synchronized(resolved) {
+        resolved[episodeId] = Resolved(video, nowMillis)
         Unit
     }
 
