@@ -6,8 +6,8 @@ cumplimiento y se revisa **antes de cada release**.
 ## Checklist que pide Mihon
 
 Mihon publica sus requisitos para forks en su `CONTRIBUTING.md`, sección *Forks*.
-Estado a 2026-09-16 (revisado antes de la v0.13.0, la v0.13.1, la v0.14.0, la v0.14.1, la v0.14.2,
-la v0.14.3, la v0.14.4, la v0.15.0, la v0.16.0 y la v0.17.0):
+Estado a 2026-09-17 (revisado antes de la v0.13.0, la v0.13.1, la v0.14.0, la v0.14.1, la v0.14.2,
+la v0.14.3, la v0.14.4, la v0.15.0, la v0.16.0, la v0.17.0 y la v0.18.0):
 
 | Requisito de Mihon | Estado | Cómo se cumple |
 |---|---|---|
@@ -57,6 +57,17 @@ Menciones legítimas y esperadas: `LICENSE`, `NOTICE`, `README`, `CHANGELOG`,
 `CONTRIBUTING`, `docs/` — ahí Mihon y Aniyomi **deben** aparecer, es la atribución.
 También los espacios de nombres internos de Kotlin (`eu.kanade.tachiyomi`,
 `mihon.app.*`), que se conservan a propósito para no romper los merges con upstream.
+
+## Nota de la v0.18.0: un fixture de terceros que no entró
+
+El lector de manifiestos DASH se escribió contra un MPD real de AnimeOnsen, y lo cómodo
+habría sido dejar ese fichero en `app/src/test/resources` como fixture. No entró: es un
+fichero servido por un tercero, y la regla de «Cómo auditar» no distingue entre un logo y
+cualquier otro activo ajeno. Los manifiestos de los tests están escritos a mano con la misma
+estructura y valores propios, que prueban exactamente el mismo código.
+
+Queda anotado porque es la clase de cosa que se cuela sin mala intención: un fichero de
+datos técnicos no parece un activo de marca, pero sigue siendo de otro.
 
 ## Observación abierta: credenciales de API heredadas
 

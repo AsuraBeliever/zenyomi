@@ -315,8 +315,11 @@ class AnimeDetailsViewModel(
      * a video takes long enough that tying it to this ViewModel meant navigating back cancelled
      * it halfway. Video resolution happens in the job too, as late as possible, because a source
      * can hand back a different (or expired) url between queueing and downloading.
+     *
+     * @param ask show the quality question for this download alone, whatever quality is
+     * saved. What a long press on the download button is for.
      */
-    fun downloadEpisode(episode: Episode) = startDownload(listOf(episode))
+    fun downloadEpisode(episode: Episode, ask: Boolean = false) = startDownload(listOf(episode), ask)
 
     /**
      * The toolbar's batch download, with the same choices the manga one offers.
@@ -357,15 +360,26 @@ class AnimeDetailsViewModel(
         if (wanted.isNotEmpty()) startDownload(wanted)
     }
 
-    private fun startDownload(episodes: List<Episode>) {
+    /**
+     * Marks the rows as busy before anything is asked of the network, and unmarks them once
+     * the episodes are queued or the dialog is up.
+     *
+     * The button has to react to the first tap. Queueing at a settled quality is immediate,
+     * but the first download of all — and every long press — has to go and ask the source what
+     * it has and weigh it, which is seconds of a button that did nothing. The state existed and
+     * nothing was reading it; the row now spins on it, exactly as it does once the episode is
+     * really in the queue, so the wait looks like the beginning of the download it is.
+     */
+    private fun startDownload(episodes: List<Episode>, ask: Boolean = false) {
         val anime = state.value.anime ?: return
         if (episodes.isEmpty()) return
-        _state.update { it.copy(preparingDownload = true) }
+        val preparing = episodes.mapTo(mutableSetOf()) { it.id }
+        _state.update { it.copy(preparingEpisodeIds = it.preparingEpisodeIds + preparing) }
         viewModelScope.launch {
-            val outcome = startAnimeDownload.await(anime, episodes)
+            val outcome = startAnimeDownload.await(anime, episodes, ask)
             _state.update {
                 it.copy(
-                    preparingDownload = false,
+                    preparingEpisodeIds = it.preparingEpisodeIds - preparing,
                     qualityDialog = outcome as? StartAnimeDownload.Outcome.Choose,
                 )
             }
@@ -380,6 +394,17 @@ class AnimeDetailsViewModel(
     }
 
     fun dismissQualityDialog() = _state.update { it.copy(qualityDialog = null) }
+
+    /**
+     * Calls off a download, whether it is waiting its turn or coming down right now.
+     *
+     * Not the same thing as [deleteDownload], which is for a file that is already there. These
+     * were wired to the same method, so cancelling a download in flight deleted a file that did
+     * not exist yet and left the video coming down regardless.
+     */
+    fun cancelDownload(episode: Episode) {
+        downloadManager.cancel(episode.id)
+    }
 
     fun deleteDownload(episode: Episode) {
         val anime = state.value.anime ?: return
@@ -869,7 +894,7 @@ class AnimeDetailsViewModel(
         val setIntervalDialog: Boolean = false,
         val coverDialog: Boolean = false,
         /** Asking the source what qualities it has, before anything is queued. */
-        val preparingDownload: Boolean = false,
+        val preparingEpisodeIds: Set<Long> = emptySet(),
         val qualityDialog: StartAnimeDownload.Outcome.Choose? = null,
     ) {
         val selectedEpisodes: List<Episode> get() = visibleEpisodes.filter { it.id in selectedEpisodeIds }

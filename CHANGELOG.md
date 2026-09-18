@@ -10,6 +10,25 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.18.0] - 2026-09-17
+### Fixed
+- **The download button reacts to the first tap.** It always had something to say about the tap and never said it: whether it queues straight away or has to go and ask the source what qualities it has, the row now starts spinning the moment you press it, exactly as it does once the episode is really downloading. Before, the several seconds it takes to ask about qualities were spent with nothing on screen at all, which is why it looked as though the press had missed.
+- **Cancelling a download cancels the download.** The X in the queue, and holding the button on an episode being fetched, only dropped the row from the queue: the video carried on coming down and turned up in the entry a few minutes later as though nothing had been pressed. The download itself is stopped now, and the half-finished file goes with it.
+- **The sound no longer arrives long after the picture.** The two are fetched at the same time, and they were — on paper. In practice every stream threw all of its segments at one shared connection budget at once, and a queue serves whoever asked first: the picture's several hundred requests went in ahead of the sound's, so the sound waited for the last of them. The download ran fast, then crawled through a tail that on a real episode is a third of it. Each stream now has a share of its own, and they finish together.
+
+### Changed
+- **Holding the download button asks which quality to use.** For that download only — your usual quality stays as it is, and it is still changed from Settings → Downloads. The dialog that used to appear once, the first time you ever downloaded anything, is now available whenever you want it.
+- **The sizes beside each quality are the picture alone.** They exist so two qualities can be compared, and audio the source keeps in a separate stream weighs the same whichever one you pick, so adding it to every row moved them all equally and cost a round trip per track while you waited on the dialog. A download's own total still counts everything it is fetching.
+
+### Improved
+- **DASH downloads are as fast as the rest.** Zenyomi reads the manifest itself and pulls the segments down several at a time, the same way it already did for HLS, instead of leaving ffmpeg to ask for them one after another. The episode this was measured on went from about seven minutes to fifty-two seconds, and came out byte for byte the same. A manifest it cannot read still works — it just takes the slow road.
+- **A DASH episode's size and qualities come from the manifest.** No waiting on a probe before the quality dialog opens, and a total on the progress bar that is worked out from what the manifest declares rather than measured off a sample.
+- **Downloads work with whatever format a source serves, not just the one they were written against.** The downloader used to ask one question — "is this an HLS playlist?" — and treat everything else as a video file to be written to disk. So when a source served DASH instead, the eight kilobytes of manifest were saved as the episode, with the downloaded tick on it; the same would have happened for the next format, and the one after. It now asks the question the other way round: media is binary and a manifest is text, so bytes go to disk and text goes to ffmpeg, which already speaks HLS, DASH and Smooth Streaming. A source switching format is no longer a source needing a fix. Verified on AnimeOnsen, which is the one that turned this up: a real 155 MB episode where there used to be 8 KB of XML.
+- **A download that is not a video fails instead of pretending.** Whatever route the bytes took, the finished file is now checked before it becomes an episode: it has to be a real container with a video in it and a length. The two ways this has gone wrong — a playlist saved as an episode, and then a manifest saved as one — both looked like finished downloads until somebody tried to watch offline. The next surprise will be a failed download, which you can see.
+- **An expired link or a login page is refused, not saved.** They arrive as a perfectly successful response with a web page in it, and that page used to be written to the downloads folder.
+- **The quality dialog opens in a fraction of the time.** Every quality on offer was weighed one after another — a playlist and five requests each, end to end — and they are now weighed all at once.
+- **The app's own icon at the top of More and About.** It was still the drawn apple from before the icon changed, which is the single-tint mark the status bar needs and stopped being what the app looks like.
+
 ## [0.17.0] - 2026-09-17
 ### Added
 - **Anime downloads show up in the download queue.** The queue screen only ever knew about manga, so an anime download was invisible while it ran. It has a tab each now: the anime side lists what is waiting, with the one being fetched showing how much has arrived, how fast, and a progress bar, and an X to take anything out of the queue.

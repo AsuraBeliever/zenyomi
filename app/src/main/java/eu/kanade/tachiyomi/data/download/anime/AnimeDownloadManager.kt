@@ -51,15 +51,29 @@ class AnimeDownloadManager(
         AnimeDownloadJob.start(context)
     }
 
-    /** Removes an entry that has not started yet, or the running one after it is cancelled. */
+    /** Removes an entry from the queue. Called by the job as each episode finishes. */
     fun dequeue(episodeId: Long) {
         _queue.update { queue -> queue.filterNot { it.episodeId == episodeId } }
         persist()
     }
 
+    /**
+     * Takes an episode out of the queue and stops it if it is the one downloading.
+     *
+     * What cancelling used to do was the first half only, which on the episode being fetched
+     * right then was not cancelling at all: the row left the screen, the video carried on
+     * coming down, and it appeared in the entry a few minutes later as though nothing had been
+     * pressed. The download itself has to be called off, and that is [AnimeDownloader.cancel].
+     */
+    fun cancel(episodeId: Long) {
+        downloader.cancel(episodeId)
+        dequeue(episodeId)
+    }
+
     fun clearQueue() {
         _queue.value = emptyList()
         persist()
+        downloader.cancelAll()
         AnimeDownloadJob.stop(context)
     }
 
