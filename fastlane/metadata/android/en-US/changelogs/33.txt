@@ -1,0 +1,15 @@
+Fixed: anime downloads now work whatever streaming format a source uses. A source serving DASH used to leave eight kilobytes of manifest on your device wearing a downloaded tick; that episode is now a real file, and a format nobody has hit yet will work too instead of failing silently.
+
+Fixed: cancelling a download actually stops it. Before, the row left the queue and the video carried on coming down.
+
+Fixed: the download button reacts to the first tap instead of looking like the press missed.
+
+Fixed: the sound no longer arrives long after the picture. Both are fetched together now, so a download no longer runs fast and then crawls.
+
+Improved: DASH downloads are as fast as the rest — one episode went from about seven minutes to under a minute.
+
+Improved: a download that is not really a video now fails, visibly, instead of looking finished until you try to watch it offline.
+
+Changed: hold the download button to pick a quality for that one download, without changing your usual one.
+
+Changed: the app's own icon at the top of More and About, instead of the old one.

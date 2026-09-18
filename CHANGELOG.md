@@ -10,7 +10,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
-## [Unreleased]
+## [0.18.0] - 2026-09-17
 ### Fixed
 - **The download button reacts to the first tap.** It always had something to say about the tap and never said it: whether it queues straight away or has to go and ask the source what qualities it has, the row now starts spinning the moment you press it, exactly as it does once the episode is really downloading. Before, the several seconds it takes to ask about qualities were spent with nothing on screen at all, which is why it looked as though the press had missed.
 - **Cancelling a download cancels the download.** The X in the queue, and holding the button on an episode being fetched, only dropped the row from the queue: the video carried on coming down and turned up in the entry a few minutes later as though nothing had been pressed. The download itself is stopped now, and the half-finished file goes with it.
