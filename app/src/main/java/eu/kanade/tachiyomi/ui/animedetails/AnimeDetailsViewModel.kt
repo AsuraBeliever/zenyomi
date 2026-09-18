@@ -267,6 +267,13 @@ class AnimeDetailsViewModel(
                 _state.update { it.copy(resolvingEpisodeId = null) }
                 return@launch onResolved(PlaybackRequest.local(local))
             }
+            // Lo que este episodio resolvio hace un momento sirve tal cual. Salir del
+            // reproductor y volver a entrar repetia toda la cadena de peticiones para acabar
+            // abriendo exactamente el mismo video.
+            getEpisodeVideos.cached(episode.id)?.let { known ->
+                _state.update { it.copy(resolvingEpisodeId = null, playbackError = null) }
+                return@launch onResolved(PlaybackRequest.from(known))
+            }
             val result = runCatching { getEpisodeVideos.await(anime.source, episode) }
                 .onFailure { logcat(LogPriority.WARN, it) { "Could not resolve ${episode.name}" } }
             val video = result.getOrDefault(emptyList())
@@ -287,6 +294,7 @@ class AnimeDetailsViewModel(
                     },
                 )
             }
+            video?.let { getEpisodeVideos.remember(episode.id, it) }
             // The whole video travels, not just its url: the headers it was resolved with and
             // any side-car subtitle track are as much a part of playing it as the url is.
             onResolved(video?.let(PlaybackRequest::from))

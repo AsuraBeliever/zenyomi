@@ -57,6 +57,7 @@ import eu.kanade.presentation.anime.components.AnimeInfoBox
 import eu.kanade.presentation.anime.components.DownloadQualityDialog
 import eu.kanade.presentation.anime.components.EpisodeHeader
 import eu.kanade.presentation.anime.components.EpisodeSettingsDialog
+import eu.kanade.presentation.anime.components.formatEpisodePosition
 import eu.kanade.presentation.components.NavigatorAdaptiveSheet
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
@@ -256,7 +257,12 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                     navigateUp = navigator::pop,
                     onClickFilter = viewModel::showEpisodeSettings,
                     onClickDownload = viewModel::downloadEpisodes.takeIf { state.canDownload },
-                    onClickRefresh = viewModel::refreshDownloaded,
+                    // refreshFromSource, lo mismo que el gesto de tirar hacia abajo, que es
+                    // a lo que Mihon ata este boton en la ficha de manga. Estaba atado a
+                    // refreshDownloaded, que solo vuelve a mirar que episodios estan bajados:
+                    // el menu decia "Refresh" y no le preguntaba nada a la fuente, asi que un
+                    // episodio nuevo no aparecia por mucho que se pulsara.
+                    onClickRefresh = viewModel::refreshFromSource,
                     onClickEditCategory = viewModel::showCategoryDialog
                         .takeIf { anime?.favorite == true },
                     onClickMigrate = {
@@ -660,15 +666,6 @@ private fun EpisodeLoadingOverlay(onCancel: () -> Unit) {
             }
         }
     }
-}
-
-/** "12:34", o "1:02:03" si pasa de la hora. El mismo sitio donde el manga dice "Pagina 12". */
-private fun formatEpisodePosition(seconds: Long): String {
-    val total = seconds / 1000
-    val h = total / 3600
-    val m = (total % 3600) / 60
-    val sec = total % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }
 
 /** Comparte el enlace del anime en la fuente, igual que la ficha de manga comparte el suyo. */

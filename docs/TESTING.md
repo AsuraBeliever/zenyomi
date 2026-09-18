@@ -1,9 +1,25 @@
-# Testing en dispositivo real
+# Testing
 
-Todo build se prueba en el celular del cliente por **wireless debugging** (ADB
-sobre Wi-Fi). No se entrega nada sin haberlo instalado y abierto antes.
+Todo build se instala y se abre en el **emulador** antes de darlo por bueno. No se
+entrega nada sin eso.
 
-## Estado de la conexión
+El celular del cliente **solo se toca cuando él lo pide** (2026-09-18): es su teléfono
+de uso diario. Sigue emparejado por wireless debugging para cuando lo pida, y el
+procedimiento de reconexión está más abajo, pero no se instala ahí por iniciativa
+propia.
+
+## Emulador
+
+`emulator-5554` — Pixel 10 Pro XL (AVD), Android 17, x86_64. Tiene ya la fixture de
+anime y los clips de FFmpeg que se describen más abajo.
+
+```sh
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+ANDROID_SERIAL=emulator-5554 ./gradlew :app:installDebug
+adb -s emulator-5554 shell am start -n app.zenyomi.dev/eu.kanade.tachiyomi.ui.main.MainActivity
+```
+
+## Estado de la conexión del celular (solo si lo pide)
 
 | Campo | Valor |
 |---|---|
@@ -82,7 +98,20 @@ adb -s emulator-5554 shell "run-as app.zenyomi.dev sh -c 'cat /data/local/tmp/an
 ```
 
 Hay que borrar el `-wal` y el `-shm` al restituir, o SQLite reaplica el diario y descarta
-lo insertado. El emulador conserva ahora una entrada `Anime de prueba (fixture)` con tres
+lo insertado.
+
+**Y al leer hay que traerse los tres ficheros, no solo el `.db`.** Con WAL activado lo
+que la app acaba de escribir vive en `anime.db-wal` hasta el siguiente checkpoint, así
+que un `cat databases/anime.db` a secas devuelve una foto vieja: se puede comprobar un
+cambio, no verlo, y concluir que el código no funciona cuando sí. Lo mismo al preparar
+un caso de prueba — `PRAGMA wal_checkpoint(TRUNCATE)` antes de hacer push.
+
+```sh
+for f in anime.db anime.db-wal anime.db-shm; do
+  adb -s emulator-5554 shell "run-as app.zenyomi.dev cat databases/$f" > live.${f#anime.}
+done
+sqlite3 live.db "SELECT ..."   # sqlite3 reaplica el wal al abrir
+``` El emulador conserva ahora una entrada `Anime de prueba (fixture)` con tres
 episodios.
 
 ## Vídeos de prueba generados con FFmpeg

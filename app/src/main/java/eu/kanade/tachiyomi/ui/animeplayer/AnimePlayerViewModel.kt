@@ -9,6 +9,7 @@ import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
+import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
 import eu.kanade.tachiyomi.ui.animeplayer.setting.PlayerPreferences
 import eu.kanade.tachiyomi.ui.animeplayer.setting.SubtitlePreferences
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.domain.episode.interactor.GetEpisode
 import tachiyomi.domain.episode.interactor.UpdateEpisode
 import tachiyomi.domain.episode.model.EpisodeUpdate
@@ -37,6 +39,7 @@ class AnimePlayerViewModel(
     private val updateEpisode: UpdateEpisode,
     private val upsertAnimeHistory: UpsertAnimeHistory,
     private val trackEpisode: TrackEpisode,
+    private val getEpisodeVideos: GetEpisodeVideos,
     private val playerPreferences: PlayerPreferences,
     private val subtitlePreferences: SubtitlePreferences,
 ) : ViewModel() {
@@ -64,9 +67,25 @@ class AnimePlayerViewModel(
         }
     }
 
+    /**
+     * Drops the url this episode was opened with.
+     *
+     * A resolved url is reused for a few minutes so that stepping out and back in does not
+     * re-run the whole resolution. One that mpv could not play has to leave that cache on the
+     * way out, or every retry is handed the same dead link and the episode looks broken
+     * rather than unlucky.
+     */
+    fun onPlaybackFailed() {
+        getEpisodeVideos.forget(episodeId)
+    }
+
     fun saveProgress(positionSeconds: Int, durationSeconds: Int) {
         if (durationSeconds <= 0) return
-        viewModelScope.launch {
+        // launchNonCancellable, como hace el lector de manga al guardar la pagina: el ultimo
+        // guardado ocurre cuando el reproductor se desmonta, y para entonces la actividad ya
+        // se esta cerrando y viewModelScope esta cancelado. Con `launch` a secas ese guardado
+        // no llegaba a la base de datos, asi que salir de una pausa perdia el avance.
+        viewModelScope.launchNonCancellable {
             // History is what drives the recents list, so it is stamped on every save
             // rather than only when an episode finishes.
             upsertAnimeHistory.await(
@@ -85,7 +104,7 @@ class AnimePlayerViewModel(
 
             if (seen && !pushedToTrackers) {
                 pushedToTrackers = true
-                val episode = getEpisode.await(episodeId) ?: return@launch
+                val episode = getEpisode.await(episodeId) ?: return@launchNonCancellable
                 trackEpisode.await(episode.animeId, episode.episodeNumber)
             }
         }
