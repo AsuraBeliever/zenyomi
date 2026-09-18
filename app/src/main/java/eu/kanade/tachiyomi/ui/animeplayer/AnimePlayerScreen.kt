@@ -132,6 +132,9 @@ fun AnimePlayerContent(
     // The subtitle panel, held here for the same reason: while it is open the controls have to
     // stay, or adjusting the size would dismiss the thing being adjusted.
     var subtitlePanelOpen by remember { mutableStateOf(false) }
+    // The chapters the file declares, or null until they have been asked for. Read once per
+    // file, because a container's chapter list does not change while it plays.
+    var chapters by remember { mutableStateOf<List<ZenyomiMPVView.Chapter>?>(null) }
     // mpv has run out of file. The clock cannot say this: `keep-open` stops on the last frame
     // a second short of the duration, so the episode ends without the two ever meeting.
     var endReached by remember { mutableStateOf(false) }
@@ -288,6 +291,7 @@ fun AnimePlayerContent(
         scrubbing = null
         playbackFailure = null
         loading = true
+        chapters = null
         endReached = false
         autoAdvanceCancelled = false
         view.playFile(
@@ -325,6 +329,10 @@ fun AnimePlayerContent(
             if (duration > 0) {
                 tracks = withContext(Dispatchers.IO) { view.tracks() }
             }
+            // Once per file. Cheap when there are none, which is most streams.
+            if (duration > 0 && chapters == null) {
+                chapters = withContext(Dispatchers.IO) { view.chapters() }
+            }
             delay(2000)
         }
     }
@@ -341,6 +349,18 @@ fun AnimePlayerContent(
     val endCardLead = minOf(END_CARD_LEAD_SECONDS, duration / 4)
     val endCardVisible = nextEpisode != null && !inPictureInPicture && !loading &&
         playbackFailure == null && (remaining <= endCardLead || endReached)
+
+    // Where the opening ends, when the file says so. A release with a chapter called
+    // "Opening" has answered the question exactly; everything else gets the jump below.
+    val opening = remember(chapters) { openingChapter(chapters) }
+    val skipIntroLength = remember { viewModel.preferences.skipIntroLength.get() }
+    // Inside the opening when it is known, and otherwise early enough in the episode for an
+    // opening to be what is on screen — capped against the episode's own length, so a five
+    // minute recap does not carry the button through half of itself.
+    val withinOpening = opening?.contains(position)
+        ?: (position <= minOf(SKIP_WINDOW_SECONDS, duration / 4))
+    val skipVisible = withinOpening && duration > 0 && !inPictureInPicture && !loading &&
+        playbackFailure == null && !endCardVisible
 
     // Resolving the next episode costs what opening this one did, and the credits are exactly
     // the window in which to spend it unnoticed. Without this the countdown reaches zero and
@@ -728,6 +748,43 @@ fun AnimePlayerContent(
             }
         }
 
+        // Skipping the opening. Exactly to its end when the file declares one, and a jump of
+        // the length in Settings when it does not — which is every stream that ships no
+        // chapters, so the button has to work without them.
+        AnimatedVisibility(
+            visible = skipVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .systemBarsPadding()
+                .padding(end = 16.dp, bottom = END_CARD_BOTTOM_MARGIN),
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.75f),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    text = stringResource(ANMR.strings.player_skip_intro),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier
+                        .clickable {
+                            val target = opening?.last ?: (position + skipIntroLength)
+                            // The bar moves with it, the same way a drag does: mpv keeps
+                            // reporting where the episode was until it has decoded where it
+                            // is going, and a button that appears to do nothing for a second
+                            // gets pressed again.
+                            position = target
+                            seekTarget = target
+                            view.seekTo(target)
+                            showControls()
+                        }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
+        }
+
         // What is coming next, while what is playing finishes. Shown whether or not the
         // controls are up: it is the one thing on this screen that has to be seen without
         // being asked for, because it is about to act on its own.
@@ -869,6 +926,39 @@ private fun EpisodeStepButton(
         )
     }
 }
+
+/**
+ * The stretch of the episode a chapter calls the opening, or null if nothing does.
+ *
+ * Matched on whole words so that "Ending" is not read as an opening and "Part 2" is not read
+ * as anything. The chapter after it is where it ends: a last chapter named "Opening" would be
+ * an opening that runs to the end of the file, which is not a thing, and skipping to the end
+ * of the episode on the strength of a title is worse than not offering to.
+ */
+internal fun openingChapter(chapters: List<ZenyomiMPVView.Chapter>?): IntRange? {
+    if (chapters == null) return null
+    val index = chapters.indexOfFirst { OPENING_TITLE.containsMatchIn(it.title.orEmpty()) }
+    if (index < 0) return null
+    val start = chapters[index].start
+    val end = chapters.getOrNull(index + 1)?.start ?: return null
+    return if (end > start) start..end else null
+}
+
+/**
+ * What a chapter calls an opening, in the releases that name their chapters at all.
+ *
+ * Not "avant": that is the cold open *before* the opening, and treating it as one would skip
+ * the scene the episode starts with and leave the opening itself to play.
+ */
+private val OPENING_TITLE = Regex("""\b(op|opening|intro)\b""", RegexOption.IGNORE_CASE)
+
+/**
+ * How long into an episode the skip button is offered when nothing says where the opening is.
+ *
+ * Five minutes: openings are at the start but not always at second zero — a cold open before
+ * one is common — and past this the button is only in the way.
+ */
+private const val SKIP_WINDOW_SECONDS = 300
 
 /** Used only until mpv reports the real one, which takes a moment after the file opens. */
 private const val DEFAULT_ASPECT = 16f / 9f

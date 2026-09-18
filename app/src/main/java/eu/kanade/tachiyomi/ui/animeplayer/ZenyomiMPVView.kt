@@ -764,6 +764,30 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         pendingAudio.mapIndexed { index, track -> track.placeholder(-(index + 1), "audio") } +
         pendingSubtitles.mapIndexed { index, track -> track.placeholder(-(index + 1), "sub") }
 
+    /**
+     * The chapters the file itself declares, in order.
+     *
+     * Worth asking for because of what the good ones are called: a release with a chapter
+     * named "Opening" has said exactly where the opening ends, which is more than any guess at
+     * a duration can do. Files without chapters — most streams — answer with nothing, and the
+     * skip button falls back to jumping a fixed length.
+     *
+     * A blocking read like [tracks]: from the polling loop, not from a button.
+     */
+    fun chapters(): List<Chapter> {
+        val count = MPVLib.getPropertyInt("chapter-list/count") ?: return emptyList()
+        return (0 until count).mapNotNull { index ->
+            // As a string and parsed here: the property is a double, and MPVLib's integer
+            // getter on a double property fails rather than rounding.
+            val start = MPVLib.getPropertyString("chapter-list/$index/time")?.toDoubleOrNull()
+                ?: return@mapNotNull null
+            Chapter(
+                title = MPVLib.getPropertyString("chapter-list/$index/title"),
+                start = start.toInt(),
+            )
+        }
+    }
+
     private fun SourceTrack.placeholder(id: Int, type: String) = Track(
         id = id,
         type = type,
@@ -979,6 +1003,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      */
     private fun List<String>.toMpvList(): String =
         joinToString(",") { it.replace(",", "\\,") }
+
+    /** One chapter of the file being played: where it starts, and what it is called. */
+    data class Chapter(val title: String?, val start: Int)
 
     /**
      * Watches for the two moments that matter: a file opening, and mpv giving up on one.

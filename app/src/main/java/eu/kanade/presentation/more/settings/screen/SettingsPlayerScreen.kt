@@ -72,6 +72,14 @@ object SettingsPlayerScreen : SearchableSettings {
                 title = stringResource(ANMR.strings.pref_player_subtitle_languages),
                 subtitle = stringResource(ANMR.strings.pref_player_languages_summary),
             ),
+            Preference.PreferenceItem.ListPreference(
+                preference = playerPref.skipIntroLength,
+                entries = listOf(60, 70, 80, 85, 90, 120).associateWith { seconds ->
+                    stringResource(ANMR.strings.player_seconds, seconds)
+                },
+                title = stringResource(ANMR.strings.pref_player_skip_intro_length),
+                subtitle = stringResource(ANMR.strings.pref_player_skip_intro_length_summary),
+            ),
             Preference.PreferenceItem.SwitchPreference(
                 preference = playerPref.autoplayNext,
                 title = stringResource(ANMR.strings.pref_player_autoplay_next),

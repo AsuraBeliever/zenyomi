@@ -42,6 +42,16 @@ class PlayerPreferences(
     val preferredSubtitleLanguages: Preference<String> = preferenceStore.getString("pref_player_sub_langs", "")
 
     /**
+     * How much of an opening the skip button jumps when nothing says where it ends.
+     *
+     * Eighty-five seconds, which is what a television opening is: the standard cut is 90 s
+     * with a few of them spent on the first shots of the episode. Aniyomi settled on the same
+     * number. It is a setting because a series that runs a shorter one exists, and because a
+     * number that is nearly right is worse than one the viewer chose.
+     */
+    val skipIntroLength: Preference<Int> = preferenceStore.getInt("pref_player_skip_intro_length", 85)
+
+    /**
      * Whether the end of an episode opens the next one on its own.
      *
      * On, because the alternative is what watching a season used to be: leave the player, find
