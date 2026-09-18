@@ -1,6 +1,8 @@
 package eu.kanade.domain.anime.interactor
 
+import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import eu.kanade.domain.episode.model.toSEpisode
 import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.Video
@@ -29,8 +31,16 @@ import kotlin.time.Duration.Companion.seconds
  * response went straight in the bin. Measured on KickAssAnime: 513 ms, every time.
  *
  * A hoster may carry its videos already, or be marked lazy and need a second call.
+ *
+ * Scoped to the app because both of the things it remembers are worthless otherwise. Without
+ * the scope Metro hands a fresh instance to every injection point, so each entry screen got
+ * its own: leaving an entry threw away what its episodes had resolved to, the player's
+ * `forget` reached a different instance than the one holding the url, and the hoster memo
+ * below — "once per extension class, for the life of the app" — was in truth rebuilt every
+ * time anybody opened anything.
  */
 @Inject
+@SingleIn(AppScope::class)
 class GetEpisodeVideos(
     private val sourceManager: AnimeSourceManager,
 ) {
