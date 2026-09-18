@@ -23,13 +23,13 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Fetches an HLS stream's segments to disk, several at a time, and hands back a playlist that
- * points at the local copies.
+ * Fetches a stream's segments to disk, several at a time, so that ffmpeg is handed local files
+ * rather than a manifest.
  *
  * ffmpeg can fetch a stream perfectly well on its own, and that is what this used to leave it
- * to. The problem is that its hls demuxer asks for one segment, waits, then asks for the next,
- * and the sources this app talks to spread an episode across several CDN hosts in rotation —
- * so every single segment pays a fresh DNS lookup, TCP handshake and TLS handshake, in series.
+ * to. The problem is that its demuxers ask for one segment, wait, then ask for the next, and
+ * the sources this app talks to spread an episode across several CDN hosts in rotation — so
+ * every single segment pays a fresh DNS lookup, TCP handshake and TLS handshake, in series.
  *
  * Measured on the client's phone: segments arriving every 490 ms like clockwork, the interval
  * the same whichever segment it was. An interval that does not move with the size of the thing
@@ -38,10 +38,15 @@ import java.util.concurrent.atomic.AtomicLong
  *
  * Fetching them concurrently overlaps all that waiting. ffmpeg then reads finished files off
  * local disk and only has to mux them, which costs no network at all.
+ *
+ * Which format the segments came from is not this class's business — it is handed a list of
+ * urls by whichever reader could make one. HLS gets [prefetch], which keeps the playlist and
+ * rewrites it to point at the local copies; DASH gets [concatenate], because its segments join
+ * end to end into an ordinary fragmented MP4 and there is no playlist worth keeping.
  */
 @Inject
 @SingleIn(AppScope::class)
-class HlsPrefetcher(
+class SegmentPrefetcher(
     private val context: Context,
     private val networkHelper: NetworkHelper,
 ) {
@@ -86,36 +91,94 @@ class HlsPrefetcher(
         if (!directory.mkdirs() && !directory.isDirectory) return null
 
         val downloaded = AtomicLong()
-        val files = try {
-            coroutineScope {
-                segments.mapIndexed { index, url ->
-                    async {
-                        val host = url.toHttpUrlOrNull()?.host.orEmpty()
-                        permits.withPermit {
-                            hostPermit(host).withPermit {
-                                val file = File(directory, "%05d$SEGMENT_SUFFIX".format(index))
-                                val size = fetchTo(url, headers, host, file)
-                                onBytes(downloaded.addAndGet(size))
-                                file
-                            }
-                        }
-                    }
-                }.awaitAll()
-            }
-        } catch (e: CancellationException) {
-            // A cancelled download has nothing to fall back to: it is over. Letting this land
-            // in the catch below would send ffmpeg off to fetch the whole stream again.
-            directory.deleteRecursively()
-            throw e
-        } catch (e: Exception) {
-            logcat(LogPriority.WARN, e) { "Could not prefetch the segments; leaving it to ffmpeg" }
-            directory.deleteRecursively()
-            return null
-        }
+        val files = fetchAll(segments, headers, directory, permits) { onBytes(downloaded.addAndGet(it)) }
+            ?: return null
 
         val local = File(directory, LOCAL_PLAYLIST)
         local.writeText(rewrite(media, playlistUrl, files))
         return Local(local, downloaded.get())
+    }
+
+    /**
+     * Fetches [urls] and joins them, in order, into one file.
+     *
+     * What DASH needs, and what makes its fast path so much less work than HLS's: an
+     * initialisation segment followed by its media segments *is* a fragmented MP4 once they are
+     * end to end, so there is nothing to rewrite and nothing for ffmpeg to resolve. It opens
+     * one local file.
+     *
+     * @return the joined file, or null when a segment could not be fetched — which sends the
+     * caller back to letting ffmpeg fetch the manifest itself.
+     */
+    suspend fun concatenate(
+        urls: List<String>,
+        headers: Headers?,
+        directory: File,
+        permits: Share,
+        onBytes: (Long) -> Unit,
+    ): File? {
+        if (urls.isEmpty()) return null
+        if (!directory.mkdirs() && !directory.isDirectory) return null
+
+        val downloaded = AtomicLong()
+        val parts = fetchAll(urls, headers, directory, permits) { onBytes(downloaded.addAndGet(it)) }
+            ?: return null
+
+        val joined = File(directory, JOINED_STREAM)
+        return runCatching {
+            joined.outputStream().buffered().use { output ->
+                parts.forEach { part ->
+                    part.inputStream().use { it.copyTo(output) }
+                    // Dropped as it goes in. Holding the pieces and the whole at the same time
+                    // is twice an episode's worth of cache for no reason.
+                    part.delete()
+                }
+            }
+            joined
+        }.getOrElse {
+            logcat(LogPriority.WARN, it) { "Could not join the segments; leaving it to ffmpeg" }
+            directory.deleteRecursively()
+            null
+        }
+    }
+
+    /**
+     * The part both of the above share: every url at once, within the budget.
+     *
+     * @return the files in the order the urls were given, or null when any of them could not be
+     * fetched. All or nothing on purpose — half a stream is not worth handing on.
+     */
+    private suspend fun fetchAll(
+        urls: List<String>,
+        headers: Headers?,
+        directory: File,
+        permits: Share,
+        onBytes: (Long) -> Unit,
+    ): List<File>? = try {
+        coroutineScope {
+            urls.mapIndexed { index, url ->
+                async {
+                    val host = url.toHttpUrlOrNull()?.host.orEmpty()
+                    permits.withPermit {
+                        hostPermit(host).withPermit {
+                            val file = File(directory, "%05d$SEGMENT_SUFFIX".format(index))
+                            val size = fetchTo(url, headers, host, file)
+                            onBytes(size)
+                            file
+                        }
+                    }
+                }
+            }.awaitAll()
+        }
+    } catch (e: CancellationException) {
+        // A cancelled download has nothing to fall back to: it is over. Letting this land
+        // in the catch below would send ffmpeg off to fetch the whole stream again.
+        directory.deleteRecursively()
+        throw e
+    } catch (e: Exception) {
+        logcat(LogPriority.WARN, e) { "Could not prefetch the segments; leaving it to ffmpeg" }
+        directory.deleteRecursively()
+        null
     }
 
     /**
@@ -258,6 +321,7 @@ class HlsPrefetcher(
         /** How long a host that said 429 is left alone. */
         private const val COOLDOWN_MS = 4_000L
         private const val SEGMENT_SUFFIX = ".seg"
+        private const val JOINED_STREAM = "stream.bin"
         private const val LOCAL_PLAYLIST = "local.m3u8"
         private const val WORKSPACE = "anime-download"
         private const val KEY_TAG = "#EXT-X-KEY"

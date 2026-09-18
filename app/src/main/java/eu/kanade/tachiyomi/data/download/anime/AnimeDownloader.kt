@@ -50,7 +50,7 @@ class AnimeDownloader(
     private val provider: AnimeDownloadProvider,
     private val networkHelper: NetworkHelper,
     private val remuxer: StreamRemuxer,
-    private val prefetcher: HlsPrefetcher,
+    private val prefetcher: SegmentPrefetcher,
     private val sizer: StreamSizer,
     private val probe: StreamProbe,
 ) {
@@ -231,11 +231,7 @@ class AnimeDownloader(
                 if (manifest.hls) {
                     downloadPlaylist(episode, video, quality, expectedBytes, manifest.text, target)
                 } else {
-                    // Every other manifest — DASH today, whatever a source moves to next — is
-                    // ffmpeg's to fetch. Slower than the HLS path, which reads the playlist
-                    // itself and pulls the segments down several at a time, but correct
-                    // without this app having to learn the format.
-                    downloadThroughFfmpeg(episode, video, quality, expectedBytes, target)
+                    downloadManifest(episode, video, quality, expectedBytes, manifest.text, target)
                 }
             }
 
@@ -300,7 +296,7 @@ class AnimeDownloader(
         val report = reporter(episode.id, estimated)
 
         // The segments are fetched here, several at a time, rather than left to
-        // ffmpeg, which asks for them one after another. See [HlsPrefetcher].
+        // ffmpeg, which asks for them one after another. See [SegmentPrefetcher].
         val workspace = prefetcher.workspace(episode.id)
         // The whole of it inside the cleanup, not just the muxing: a download called
         // off during the fetch never reaches the muxing, and used to leave its
@@ -334,6 +330,136 @@ class AnimeDownloader(
         } finally {
             workspace.deleteRecursively()
         }
+    }
+
+    /**
+     * Any manifest that is not HLS.
+     *
+     * Two ways to do it, in order of preference. If there is a reader for this format — DASH
+     * has one — the segments are listed and fetched here, several at a time, exactly as the
+     * playlist path does. If there is not, or the reader declines, or a segment cannot be had,
+     * ffmpeg fetches the manifest itself: slower, and right without knowing the format.
+     *
+     * That ordering is the arrangement in ADR-0006 in one method. Correctness never depends on
+     * a reader existing; speed is what a reader buys.
+     */
+    private suspend fun downloadManifest(
+        episode: Episode,
+        video: Video,
+        quality: Int?,
+        expectedBytes: Long?,
+        manifest: String,
+        target: UniFile,
+    ) {
+        val presentation = DashManifest.read(manifest, video.videoUrl)
+        if (presentation != null &&
+            downloadDash(episode, video, quality, expectedBytes, presentation, target)
+        ) {
+            return
+        }
+        downloadThroughFfmpeg(episode, video, quality, expectedBytes, target)
+    }
+
+    /**
+     * A DASH stream, fetched by this app rather than by ffmpeg.
+     *
+     * Its segments join end to end into an ordinary fragmented MP4, one file per stream, so
+     * there is no playlist to rewrite: ffmpeg is handed the picture as input 0 and each sound
+     * track beside it, and only has to mux them.
+     *
+     * @return whether it worked. False sends the caller back to ffmpeg, which is slower and
+     * fetches everything again — the same bargain the playlist path makes, and the reason
+     * anything unfamiliar is declined early rather than half-done.
+     */
+    private suspend fun downloadDash(
+        episode: Episode,
+        video: Video,
+        quality: Int?,
+        expectedBytes: Long?,
+        presentation: DashPresentation,
+        target: UniFile,
+    ): Boolean {
+        val chosen = presentation.videos.pickByHeight(quality) ?: return false
+        val audio = presentation.streams.filter { it.kind == DashStream.Kind.AUDIO }
+        // The bitrates the manifest declares, over the length it declares. Better than asking
+        // ffprobe, and free: this is arithmetic on numbers already read.
+        val picture = expectedBytes ?: presentation.estimatedBytes(chosen)
+        val estimated = picture?.plus(presentation.audioBytes)?.plus(sideCarBytes(video))
+        val report = reporter(episode.id, estimated)
+
+        val workspace = prefetcher.workspace(episode.id)
+        try {
+            val fetched = fetchDash(chosen, audio, video.headers, workspace, report) ?: return false
+            remuxer.remux(
+                videoUrl = fetched.video.absolutePath,
+                headers = video.headers,
+                // The sound out of the manifest, then whatever the source keeps apart from it.
+                audioTracks = fetched.audio + video.audioTracks,
+                subtitleTracks = video.subtitleTracks,
+                target = target,
+                // One stream per file by this point; there is nothing to leave out.
+                selection = StreamRemuxer.Selection.Everything,
+                hlsInput = false,
+                // Nothing to report while muxing: the bytes are already on disk.
+                onBytes = { _ -> },
+            )
+            return true
+        } finally {
+            workspace.deleteRecursively()
+        }
+    }
+
+    /** A DASH stream's picture and sound, all now on local disk. */
+    private data class PrefetchedDash(val video: File, val audio: List<Track>)
+
+    /**
+     * Fetches the picture and every sound track, at the same time and within one budget.
+     *
+     * The same arrangement [prefetchAll] makes for HLS, and for the same reason: a stream that
+     * queues behind another stream's several hundred requests is concurrent on paper and
+     * consecutive in fact.
+     *
+     * @return null if any of them could not be had. All of it or none: an episode missing a
+     * language is worse than one that took the slow path.
+     */
+    private suspend fun fetchDash(
+        picture: DashStream,
+        sound: List<DashStream>,
+        headers: Headers?,
+        workspace: File,
+        onBytes: (Long) -> Unit,
+    ): PrefetchedDash? = coroutineScope {
+        val budget = Semaphore(SegmentPrefetcher.PARALLELISM)
+        val perStream = ConcurrentHashMap<String, Long>()
+        val report = { key: String, bytes: Long ->
+            perStream[key] = bytes
+            onBytes(perStream.values.sum())
+        }
+
+        val videoTask = async {
+            prefetcher.concatenate(
+                picture.urls,
+                headers,
+                File(workspace, "video"),
+                SegmentPrefetcher.share(budget, SegmentPrefetcher.VIDEO_SHARE),
+            ) { report("video", it) }
+        }
+        val audioTasks = sound.mapIndexed { index, stream ->
+            async {
+                prefetcher.concatenate(
+                    stream.urls,
+                    headers,
+                    File(workspace, "audio$index"),
+                    SegmentPrefetcher.share(budget, SegmentPrefetcher.AUDIO_SHARE),
+                ) { report("audio$index", it) }
+                    ?.let { Track(it.absolutePath, stream.lang.orEmpty()) }
+            }
+        }
+
+        val localPicture = videoTask.await() ?: return@coroutineScope null
+        val tracks = audioTasks.awaitAll()
+        if (tracks.any { it == null }) return@coroutineScope null
+        PrefetchedDash(localPicture, tracks.filterNotNull())
     }
 
     /**
@@ -429,7 +555,7 @@ class AnimeDownloader(
     }
 
     /** The video and its separate audio tracks, all now on local disk. */
-    private data class Prefetched(val video: HlsPrefetcher.Local, val audio: List<Track>)
+    private data class Prefetched(val video: SegmentPrefetcher.Local, val audio: List<Track>)
 
     /**
      * Fetches the picture and every audio track that goes with it, at the same time.
@@ -457,7 +583,7 @@ class AnimeDownloader(
         workspace: File,
         onBytes: (Long) -> Unit,
     ): Prefetched? = coroutineScope {
-        val budget = Semaphore(HlsPrefetcher.PARALLELISM)
+        val budget = Semaphore(SegmentPrefetcher.PARALLELISM)
         val perStream = ConcurrentHashMap<String, Long>()
         val report = { key: String, bytes: Long ->
             perStream[key] = bytes
@@ -470,7 +596,7 @@ class AnimeDownloader(
                 video.headers,
                 media,
                 File(workspace, "video"),
-                HlsPrefetcher.share(budget, HlsPrefetcher.VIDEO_SHARE),
+                SegmentPrefetcher.share(budget, SegmentPrefetcher.VIDEO_SHARE),
             ) { report("video", it) }
         }
         val audioTasks = video.audioTracks.mapIndexed { index, track ->
@@ -482,7 +608,7 @@ class AnimeDownloader(
                     video.headers,
                     playlist,
                     File(workspace, "audio$index"),
-                    HlsPrefetcher.share(budget, HlsPrefetcher.AUDIO_SHARE),
+                    SegmentPrefetcher.share(budget, SegmentPrefetcher.AUDIO_SHARE),
                 ) { report("audio$index", it) }
                 track to local
             }

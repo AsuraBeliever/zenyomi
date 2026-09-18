@@ -36,8 +36,9 @@ data class DownloadQuality(
  * Three shapes to cover, because sources disagree on where the qualities live. Some return one
  * entry per quality and the app picks between them. Others return a single stream whose
  * qualities are listed inside it, in a master playlist, so the list has to be opened. And some
- * return a manifest this app has no reader for — DASH, and whatever comes after it — where the
- * question is put to ffprobe instead, which can answer it for any format ffmpeg opens.
+ * return a manifest of another format, where the answer comes from a reader if there is one for
+ * it — DASH has one — and otherwise from ffprobe, which can answer it for any format ffmpeg
+ * opens, at the cost of a round trip.
  *
  * Sizes are a second and dearer question, answered only when asked for. Finding out what
  * exists is one round trip the download was going to make anyway; measuring every quality is
@@ -74,6 +75,11 @@ class GetDownloadQualities(
             .orEmpty()
 
         val delivery = playlist?.let { StreamSniffer.classify(it) }
+        // A manifest this app can read. Costs nothing — the text is already here — and the
+        // numbers are the ones the manifest itself declares, which beats measuring.
+        val dash = playlist
+            ?.takeIf { delivery is StreamDelivery.Manifest && !delivery.hls }
+            ?.let { DashManifest.read(it, video.videoUrl) }
 
         when {
             // The qualities are inside the one stream.
@@ -100,6 +106,18 @@ class GetDownloadQualities(
                             height = it.heightOrNull(),
                             label = it.label(),
                             estimatedBytes = if (measure) sizer.sizeOf(it) else null,
+                        )
+                    }
+            dash != null ->
+                dash.videos
+                    .sortedByDescending { it.height ?: 0 }
+                    .take(MAX_PROBED)
+                    .map {
+                        DownloadQuality(
+                            height = it.height,
+                            label = it.height?.let { height -> "${height}p" } ?: bitrateLabel(it.bandwidth),
+                            // The picture alone, like every other row: see [DownloadQuality].
+                            estimatedBytes = dash.estimatedBytes(it),
                         )
                     }
             // A manifest with no reader here. Asked of ffprobe rather than parsed, which is
