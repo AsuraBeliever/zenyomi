@@ -21,11 +21,11 @@ import kotlin.coroutines.resumeWithException
 /**
  * Turns a stream into a real file on disk.
  *
- * Most anime sources do not serve a video file: they serve an m3u8 playlist, which is a few
- * kilobytes of text naming a few hundred segments that are still on the internet. Fetching
- * that url the way you would fetch an mp4 writes the *playlist* to the downloads folder — it
- * finishes in a second, reports success, and leaves nothing of the episode on the device. It
- * only looks downloaded until the network goes away.
+ * Most anime sources do not serve a video file: they serve a manifest — an m3u8 or an MPD,
+ * which is a few kilobytes of text naming a few hundred segments that are still on the
+ * internet. Fetching that url the way you would fetch an mp4 writes the *manifest* to the
+ * downloads folder: it finishes in a second, reports success, and leaves nothing of the
+ * episode on the device. It only looks downloaded until the network goes away.
  *
  * Sources also hand audio and subtitles over separately from the picture, which is how the
  * player ends up offering Japanese and English on the same episode. Those are their own urls
@@ -33,13 +33,43 @@ import kotlin.coroutines.resumeWithException
  *
  * ffmpeg is what puts all of it back together, and it is already in the build: the player
  * links against it. Nothing is re-encoded — the pieces are copied into one Matroska file as
- * they arrive, so this costs bandwidth and disk, not battery.
+ * they arrive, so this costs bandwidth and disk, not battery. It is also what makes this
+ * general: the same command downloads HLS, DASH and Smooth Streaming, so a source switching
+ * format is not a source needing code.
  */
 @Inject
 @SingleIn(AppScope::class)
-class HlsRemuxer(
+class StreamRemuxer(
     private val context: Context,
 ) {
+
+    /** Which of the input's streams to take. */
+    sealed interface Selection {
+
+        /**
+         * All of them.
+         *
+         * For an input that is one quality already: a media playlist, or the local copy of one
+         * whose segments have been fetched. There is nothing to choose and nothing to discard.
+         */
+        data object Everything : Selection
+
+        /**
+         * One video stream, and all the audio and subtitles alongside it.
+         *
+         * For a manifest that carries several qualities in the one file, which is how DASH
+         * normally arrives. Mapping matters for more than tidiness: ffmpeg discards input
+         * streams nothing maps, and a discarded representation is one the demuxer never
+         * fetches — so without this a 360p download would quietly pull 1080p down as well.
+         *
+         * @param videoIndex the stream's place among the input's video streams, which is what
+         * `0:v:N` counts.
+         * @param audioStreams how many audio streams the input has of its own, so that a
+         * side-car track's name is written onto the right output stream rather than onto one
+         * of these.
+         */
+        data class OneVideo(val videoIndex: Int, val audioStreams: Int) : Selection
+    }
 
     /**
      * Writes [videoUrl] and every track that belongs with it into [target].
@@ -55,19 +85,27 @@ class HlsRemuxer(
         audioTracks: List<Track>,
         subtitleTracks: List<Track>,
         target: UniFile,
+        selection: Selection,
+        hlsInput: Boolean,
         onBytes: (Long) -> Unit,
     ) {
         val output = ffmpegPathFor(target.uri)
 
         try {
-            run(buildArguments(videoUrl, headers, audioTracks, subtitleTracks, output), onBytes)
+            run(
+                buildArguments(videoUrl, headers, audioTracks, subtitleTracks, output, selection, hlsInput),
+                onBytes,
+            )
         } catch (e: IllegalStateException) {
             // One dead subtitle url fails the whole command, and an episode you can watch
             // without subtitles beats an episode you cannot watch. The picture and the sound
             // are not negotiable, so only the subtitles are dropped.
             if (subtitleTracks.isEmpty()) throw e
             logcat(LogPriority.WARN, e) { "Retrying the download without its subtitles" }
-            run(buildArguments(videoUrl, headers, audioTracks, emptyList(), output), onBytes)
+            run(
+                buildArguments(videoUrl, headers, audioTracks, emptyList(), output, selection, hlsInput),
+                onBytes,
+            )
         }
     }
 
@@ -115,20 +153,37 @@ class HlsRemuxer(
         audioTracks: List<Track>,
         subtitleTracks: List<Track>,
         output: String,
+        selection: Selection,
+        hlsInput: Boolean,
     ): Array<String> = buildList {
         add("-y")
 
         // Input 0 is the picture, and whatever sound the stream already carries. It reached
-        // here because its first bytes said it was a playlist, so there is no guessing.
-        addInput(videoUrl, headers, isPlaylist = true)
+        // here because its first bytes said it was a manifest, so there is no guessing.
+        addInput(videoUrl, headers, hls = hlsInput)
         // Then one input per track the source keeps apart. Their order here is their index
         // in the maps below.
-        (audioTracks + subtitleTracks).forEach { addInput(it.url, headers, isPlaylist = looksLikePlaylistUrl(it.url)) }
+        (audioTracks + subtitleTracks).forEach { addInput(it.url, headers, hls = looksLikePlaylistUrl(it.url)) }
 
-        // Everything from the video input: for the media playlist this is handed, that is the
-        // picture plus any audio muxed into the same segments.
-        add("-map")
-        add("0")
+        when (selection) {
+            // Everything from the video input: for the media playlist this is handed, that is
+            // the picture plus any audio muxed into the same segments.
+            Selection.Everything -> {
+                add("-map")
+                add("0")
+            }
+            // One quality out of the several the input carries, and everything that goes with
+            // it. The `?` on the sound and the subtitles is what lets a manifest that has
+            // neither still produce a file rather than an error.
+            is Selection.OneVideo -> {
+                add("-map")
+                add("0:v:${selection.videoIndex}")
+                add("-map")
+                add("0:a?")
+                add("-map")
+                add("0:s?")
+            }
+        }
         (audioTracks + subtitleTracks).forEachIndexed { index, _ ->
             add("-map")
             add("${index + 1}")
@@ -144,8 +199,13 @@ class HlsRemuxer(
         // What the player shows in the track pickers. The source names its tracks in plain
         // words rather than language codes — "Japanese", not "jpn" — so they go in as titles,
         // which is the field that takes free text.
+        //
+        // Counted from after the streams the input brought itself, which on a manifest that
+        // carries its own audio is not zero: naming from zero would write a side-car track's
+        // language onto the stream's own audio and leave the side-car one unnamed.
+        val audioOffset = (selection as? Selection.OneVideo)?.audioStreams ?: 0
         audioTracks.forEachIndexed { index, track ->
-            add("-metadata:s:a:$index")
+            add("-metadata:s:a:${audioOffset + index}")
             add("title=${track.lang}")
         }
         subtitleTracks.forEachIndexed { index, track ->
@@ -158,7 +218,7 @@ class HlsRemuxer(
         add(output)
     }.toTypedArray()
 
-    private fun MutableList<String>.addInput(url: String, headers: Headers?, isPlaylist: Boolean) {
+    private fun MutableList<String>.addInput(url: String, headers: Headers?, hls: Boolean) {
         // Per input, because ffmpeg applies these to whichever -i follows. Without them a
         // segment request is a stranger's request, and the hosts that check Referer say 403.
         //
@@ -171,14 +231,15 @@ class HlsRemuxer(
                 add(it.joinToString("") { (name, value) -> "$name: $value\r\n" })
             }
         }
-        if (isPlaylist) {
+        if (hls) {
             // Segments are not always named like video. The playlist that prompted this fix
             // serves its parts as `000.jpg`, and ffmpeg's hls demuxer refuses unknown
             // extensions by default — it would open the playlist and then download nothing.
             //
-            // Only for a playlist: this belongs to the hls demuxer, and ffmpeg rejects the
-            // whole command with "Option allowed_extensions not found" if it is handed for an
-            // input it does not demux that way. A subtitle file is one of those.
+            // Only for HLS: this option belongs to the hls demuxer alone, and ffmpeg rejects
+            // the whole command with "Option allowed_extensions not found" when it is handed
+            // for an input it does not demux that way — a DASH manifest and a subtitle file
+            // are both of those.
             add("-allowed_extensions")
             add("ALL")
         }
