@@ -59,7 +59,7 @@ está fuera.
 
 | Síntoma | Qué era | Qué hacer |
 |---|---|---|
-| `:app:packageFoss FAILED` sin causa en el log | El runner empaquetando 5 APK, uno de 277 MB | Relanzar el job |
+| `:app:packageRelease` / `packageFoss` FAILED sin causa en el log | El runner quedándose sin disco empaquetando 5 APK, ~640 MB en total | Relanzar el job. Desde la v0.18.1 el workflow libera disco antes de compilar y pasa `--stacktrace`, así que si vuelve a pasar el log **dirá** el motivo |
 | `Could not find flexible-adapter-<rev>.jar` | JitPack sirviendo el POM a medias. El artefacto es un **`.aar`**, no un `.jar`: si Gradle pide un `.jar` es que recibió un POM sin `packaging` y asumió el valor por defecto | Comprobar que JitPack sirve las dos cosas y relanzar |
 
 ```sh
@@ -156,6 +156,32 @@ gh release view v<version> --json assets --jq '.assets | length'   # debe dar 6
 Comprobar el número de assets antes de dar una release por buena no es opcional: que el job
 diga `success` no significa que haya subido nada.
 
+## La v0.18.1: el tag publicado y el workflow rojo
+
+`packageRelease` murió en el runner con el síntoma de la tabla de arriba mientras el job
+FOSS —que empaqueta un APK en vez de cinco— terminaba a su lado, y el mismo commit
+compilaba en local sin quejarse. El playbook dice relanzar, y probablemente habría
+bastado, pero relanzar **no** arregla el margen: el siguiente release volvería a jugárselo.
+
+Lo que se hizo, y por qué en ese orden:
+
+1. **El tag no se movió.** La regla 6 del charter no distingue entre reescribir `main` y
+   reescribir un tag ya publicado. Un tag republicado es exactamente lo que el charter
+   prohíbe, así que `v0.18.1` se quedó donde estaba y el release salió a mano.
+2. **Los APK se recompilaron en local con `-Penable-updater`.** Es el único flag que el
+   workflow pasa y un `assembleRelease` a secas no: sin él, el comprobador de
+   actualizaciones queda apagado y el usuario no se entera de la siguiente versión. Un
+   APK publicado sin ese flag habría sido un release silenciosamente roto.
+3. **El APK FOSS salió del artefacto que el CI sí construyó**, no de una compilación
+   local, para que el que se publica sea el que el workflow produjo.
+4. **El workflow se arregló en `develop`, no en el tag**, porque el arreglo es para el
+   release siguiente. `v0.18.1` lleva el workflow viejo y así se queda.
+
+La lección para la próxima: el playbook decía «relanzar el job» desde la v0.13.0 y nadie
+le puso margen al runner en todo ese tiempo. Un síntoma que se repite no es flakiness,
+es una condición de carrera con el disco que se gana o se pierde según lo que traiga la
+imagen ese día.
+
 ## Verificar una release antes de anunciarla
 
 Sobre el APK **que publicó el CI**, no sobre el que compilaste tú. Son binarios
@@ -199,6 +225,8 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.15.0 | 30 | **clave del proyecto** | Las descargas de anime guardaban el m3u8 en vez del vídeo. Incluye lo de la 0.14.4 |
 | 0.16.0 | 31 | **clave del proyecto** | Velocidad y tamaño en las descargas, y elegir calidad. Prueba de humo hecha en el dispositivo del cliente |
 | 0.17.0 | 32 | **clave del proyecto** | Descargas ~3× más rápidas, el botón responde al instante, y el anime aparece en la cola de descargas. Probada en el emulador por indicación del cliente |
+| 0.18.0 | 33 | **clave del proyecto** | Las descargas dejan de depender del formato; DASH en paralelo. Un solo intento |
+| 0.18.1 | 34 | **clave del proyecto** | El episodio recuerda dónde lo dejaste, y se abre al instante la segunda vez. **Workflow rojo por disco; release publicada a mano desde APK locales con `-Penable-updater`** |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es
