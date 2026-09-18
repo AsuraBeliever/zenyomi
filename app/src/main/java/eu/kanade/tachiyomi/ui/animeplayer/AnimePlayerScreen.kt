@@ -202,7 +202,10 @@ fun AnimePlayerContent(
         if (playerState.loaded) {
             // mpv keeps the window open on a file it could not read, so without this a dead
             // mirror looks exactly like one that is still loading — forever.
-            view.onPlaybackError = { reason -> playbackFailure = reason.orEmpty() }
+            view.onPlaybackError = { reason ->
+                playbackFailure = reason.orEmpty()
+                viewModel.onPlaybackFailed()
+            }
             view.onLoadingChanged = { loading = it }
             view.onBufferingChanged = { buffering = it }
             // Pushed by mpv rather than polled. Polling ran every two seconds, so the clock

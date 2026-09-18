@@ -279,10 +279,17 @@ class AnimeUpdatesViewModel(
                 return@launch onResolved(PlaybackRequest.local(local))
             }
 
+            // Lo mismo que la ficha: un episodio que se acaba de resolver no se vuelve a
+            // resolver.
+            getEpisodeVideos.cached(episode.id)?.let { known ->
+                _state.update { it.copy(resolvingEpisodeId = null, playbackError = null) }
+                return@launch onResolved(PlaybackRequest.from(known))
+            }
             val result = runCatching { getEpisodeVideos.await(anime.source, episode) }
                 .onFailure { logcat(LogPriority.WARN, it) { "Could not resolve ${episode.name}" } }
             val video = result.getOrDefault(emptyList())
                 .let { getEpisodeVideos.playable(anime.source, it) }
+            video?.let { getEpisodeVideos.remember(episode.id, it) }
 
             _state.update {
                 it.copy(

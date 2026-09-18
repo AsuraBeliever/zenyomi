@@ -9,6 +9,7 @@ import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
+import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
 import eu.kanade.tachiyomi.ui.animeplayer.setting.PlayerPreferences
 import eu.kanade.tachiyomi.ui.animeplayer.setting.SubtitlePreferences
@@ -38,6 +39,7 @@ class AnimePlayerViewModel(
     private val updateEpisode: UpdateEpisode,
     private val upsertAnimeHistory: UpsertAnimeHistory,
     private val trackEpisode: TrackEpisode,
+    private val getEpisodeVideos: GetEpisodeVideos,
     private val playerPreferences: PlayerPreferences,
     private val subtitlePreferences: SubtitlePreferences,
 ) : ViewModel() {
@@ -63,6 +65,18 @@ class AnimePlayerViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * Drops the url this episode was opened with.
+     *
+     * A resolved url is reused for a few minutes so that stepping out and back in does not
+     * re-run the whole resolution. One that mpv could not play has to leave that cache on the
+     * way out, or every retry is handed the same dead link and the episode looks broken
+     * rather than unlucky.
+     */
+    fun onPlaybackFailed() {
+        getEpisodeVideos.forget(episodeId)
     }
 
     fun saveProgress(positionSeconds: Int, durationSeconds: Int) {
