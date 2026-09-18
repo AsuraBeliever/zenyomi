@@ -7,11 +7,9 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
-import eu.kanade.domain.anime.interactor.GetEpisodeVideos
+import eu.kanade.domain.anime.interactor.ResolveEpisodeVideo
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
-import eu.kanade.presentation.anime.AnimeSourceHealth
 import eu.kanade.presentation.anime.NoVideoFoundException
-import eu.kanade.presentation.anime.SourceOutdatedException
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import eu.kanade.tachiyomi.data.download.anime.StartAnimeDownload
@@ -58,8 +56,7 @@ class AnimeUpdatesViewModel(
     private val getEpisode: GetEpisode,
     private val updateEpisode: UpdateEpisode,
     private val trackEpisode: TrackEpisode,
-    private val getEpisodeVideos: GetEpisodeVideos,
-    private val sourceHealth: AnimeSourceHealth,
+    private val resolveEpisodeVideo: ResolveEpisodeVideo,
     private val sourceManager: AnimeSourceManager,
     private val downloadManager: AnimeDownloadManager,
     private val startAnimeDownload: StartAnimeDownload,
@@ -271,56 +268,17 @@ class AnimeUpdatesViewModel(
                 _state.update { it.copy(resolvingEpisodeId = null, playbackError = NoVideoFoundException()) }
                 return@launch onResolved(null)
             }
-            val (anime, source, episode) = resolved
-
-            val local = withIOContext { downloadManager.downloadedUri(anime, source, episode) }
-            if (local != null) {
-                _state.update { it.copy(resolvingEpisodeId = null) }
-                return@launch onResolved(PlaybackRequest.local(local))
-            }
-
-            // Lo mismo que la ficha: un episodio que se acaba de resolver no se vuelve a
-            // resolver.
-            getEpisodeVideos.cached(episode.id)?.let { known ->
-                _state.update { it.copy(resolvingEpisodeId = null, playbackError = null) }
-                return@launch onResolved(PlaybackRequest.from(known))
-            }
-            val result = runCatching { getEpisodeVideos.await(anime.source, episode) }
-                .onFailure { logcat(LogPriority.WARN, it) { "Could not resolve ${episode.name}" } }
-            val video = result.getOrDefault(emptyList())
-                .let { getEpisodeVideos.playable(anime.source, it) }
-            video?.let { getEpisodeVideos.remember(episode.id, it) }
-
+            val (anime, _, episode) = resolved
+            val video = resolveEpisodeVideo.await(anime, episode)
             _state.update {
                 it.copy(
                     resolvingEpisodeId = null,
-                    // The throwable travels, not a string: AnimeSourceError decides what the
-                    // user is told, and it is the only place that decision is made.
-                    playbackError = when {
-                        video != null -> null
-                        result.isFailure -> result.exceptionOrNull()
-                        else -> noVideoReason(anime.source)
-                    },
+                    playbackError = (video as? ResolveEpisodeVideo.Result.Failed)?.reason,
                 )
             }
-            onResolved(video?.let(PlaybackRequest::from))
+            onResolved((video as? ResolveEpisodeVideo.Result.Playable)?.request)
         }
     }
-
-    /**
-     * Why an episode produced no video: the episode, or the extension.
-     *
-     * Worth separating because the two ask opposite things of the user. Our last sweep of the
-     * installed sources already knows which ones stopped working; saying "no video found for
-     * this episode" about one of those sends people to try episode after episode of a source
-     * that will never answer.
-     */
-    private fun noVideoReason(sourceId: Long): Throwable =
-        if (sourceHealth.statusOf(sourceId) != null) {
-            SourceOutdatedException()
-        } else {
-            NoVideoFoundException()
-        }
 
     fun clearPlaybackError() = _state.update { it.copy(playbackError = null) }
 

@@ -8,8 +8,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.binding
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import eu.kanade.core.util.insertSeparators
-import eu.kanade.domain.anime.interactor.GetEpisodeVideos
-import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
+import eu.kanade.domain.anime.interactor.ResolveEpisodeVideo
 import eu.kanade.tachiyomi.ui.animeplayer.PlaybackRequest
 import eu.kanade.tachiyomi.util.lang.toLocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,10 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import logcat.LogPriority
 import tachiyomi.core.common.util.lang.launchIO
-import tachiyomi.core.common.util.lang.withIOContext
-import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.anime.interactor.UpdateAnime
 import tachiyomi.domain.episode.interactor.GetEpisode
@@ -32,7 +28,6 @@ import tachiyomi.domain.episode.model.Episode
 import tachiyomi.domain.history.anime.interactor.GetAnimeHistory
 import tachiyomi.domain.history.anime.interactor.RemoveAnimeHistory
 import tachiyomi.domain.history.anime.model.AnimeHistoryWithRelations
-import tachiyomi.domain.source.anime.service.AnimeSourceManager
 
 /**
  * Recently watched anime, newest first.
@@ -49,10 +44,8 @@ class AnimeHistoryViewModel(
     private val removeAnimeHistory: RemoveAnimeHistory,
     private val getAnime: GetAnime,
     private val getEpisode: GetEpisode,
-    private val getEpisodeVideos: GetEpisodeVideos,
+    private val resolveEpisodeVideo: ResolveEpisodeVideo,
     private val updateAnime: UpdateAnime,
-    private val downloadManager: AnimeDownloadManager,
-    private val sourceManager: AnimeSourceManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -117,17 +110,8 @@ class AnimeHistoryViewModel(
         viewModelScope.launch {
             val anime = getAnime.await(history.animeId) ?: return@launch onResolved(null, null)
             val episode = getEpisode.await(history.episodeId) ?: return@launch onResolved(null, null)
-            val source = sourceManager.get(anime.source)
-            val local = source?.let {
-                withIOContext { downloadManager.downloadedUri(anime, it, episode) }
-            }
-            if (local != null) return@launch onResolved(PlaybackRequest.local(local), episode)
-
-            val video = runCatching { getEpisodeVideos.await(anime.source, episode) }
-                .onFailure { logcat(LogPriority.WARN, it) { "Could not resume ${episode.name}" } }
-                .getOrDefault(emptyList())
-                .let { getEpisodeVideos.playable(anime.source, it) }
-            onResolved(video?.let(PlaybackRequest::from), episode)
+            val video = resolveEpisodeVideo.await(anime, episode)
+            onResolved((video as? ResolveEpisodeVideo.Result.Playable)?.request, episode)
         }
     }
 
