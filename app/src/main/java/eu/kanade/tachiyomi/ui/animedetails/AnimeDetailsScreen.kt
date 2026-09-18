@@ -257,7 +257,12 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                     navigateUp = navigator::pop,
                     onClickFilter = viewModel::showEpisodeSettings,
                     onClickDownload = viewModel::downloadEpisodes.takeIf { state.canDownload },
-                    onClickRefresh = viewModel::refreshDownloaded,
+                    // refreshFromSource, lo mismo que el gesto de tirar hacia abajo, que es
+                    // a lo que Mihon ata este boton en la ficha de manga. Estaba atado a
+                    // refreshDownloaded, que solo vuelve a mirar que episodios estan bajados:
+                    // el menu decia "Refresh" y no le preguntaba nada a la fuente, asi que un
+                    // episodio nuevo no aparecia por mucho que se pulsara.
+                    onClickRefresh = viewModel::refreshFromSource,
                     onClickEditCategory = viewModel::showCategoryDialog
                         .takeIf { anime?.favorite == true },
                     onClickMigrate = {
