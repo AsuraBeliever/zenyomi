@@ -16,6 +16,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - **Botón para omitir el opening.** Aparece al principio del episodio y salta 85 segundos, que es lo que dura un opening de televisión; la cifra se cambia en Ajustes → Reproductor. Cuando el fichero trae capítulos y uno de ellos se llama «Opening» —lo habitual en un mkv bien hecho— el salto no es de una cantidad fija: cae exactamente donde termina, y el botón solo se ofrece mientras el opening está en pantalla.
 - **Botones de episodio anterior y siguiente**, a los lados de la barra de búsqueda. En el primero y el último de la serie se ven apagados en vez de desaparecer, para que la barra no cambie de sitio.
 
+### Fixed
+- **Cerrar el reproductor y abrir otro episodio ya no deja la app en «Cargando episodio…» para siempre.** Al salir, mpv tenía que devolver la superficie de vídeo mientras aún estaba pintando en ella, y esa llamada no volvía nunca; como toda la conversación con mpv va por un único hilo, lo que venía detrás —incluido el arranque del siguiente reproductor— se quedaba esperando a algo que no iba a terminar, y la única salida era forzar el cierre de la app. Ahora se descarga el episodio antes de soltar la superficie: lo que tardaba más de segundo y medio y se colgaba, tarda treinta milisegundos.
+- **Volver de segundo plano devuelve la imagen.** Por el mismo motivo, salir del reproductor con el botón de inicio y volver dejaba la pantalla en negro con el sonido corriendo. El episodio se reabre solo, en el segundo en el que estaba.
+
 ### Other
 - La resolución de un episodio —copia descargada, url reutilizada, fuente, y el motivo cuando no sale nada— vivía en la ficha y estaba copiada, con diferencias, en Novedades y en Historial. Ahora es una sola pieza que usan las tres pantallas y también el reproductor. La copia del historial no tenía ni la reutilización ni el motivo del fallo: reanudar desde ahí pagaba otra vez toda la cadena de peticiones y no decía nada cuando fallaba.
 

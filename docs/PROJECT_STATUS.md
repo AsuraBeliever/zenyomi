@@ -53,6 +53,7 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
 | Gestos del player | ✅ | toque simple verificado aquí; el doble toque, verificado por el cliente en el dispositivo (2026-09-16). El aviso del salto sale del lado del que viene |
 | Omitir el opening | ✅ | botón durante el arranque del episodio: salto de 85 s configurable, y exacto cuando el contenedor trae un capítulo llamado «Opening» —ahí solo se ofrece mientras el opening está en pantalla—. Verificado en el emulador con un mkv de capítulos (salta a los 38 s justos) y con un mp4 sin ellos (+85 s). 7 tests sobre la lectura del título del capítulo |
+| Cerrar y reabrir el reproductor | ✅ | antes dejaba la app con un reproductor muerto: soltar la superficie mientras mpv seguía pintando no volvía nunca, y todo lo que se encolaba después —incluido el arranque del siguiente reproductor— esperaba detrás. Ahora se descarga el fichero antes de soltarla, y volver de segundo plano lo reabre donde estaba |
 | Siguiente episodio dentro del player | ✅ | botones de anterior y siguiente junto a la barra, y una tarjeta con cuenta atrás al final del episodio que abre el siguiente sola. Se puede parar con Cancelar, y el ajuste "Reproducir el siguiente episodio automáticamente" lo apaga del todo. El siguiente se resuelve durante los créditos, así que el salto es instantáneo. Verificado en el emulador: cadena de cuatro episodios seguidos, progreso e historial de cada uno en la BD, y vuelta atrás con el botón de anterior |
 | Controles del player | ✅ | play/pausa y saltos en el centro de la imagen, reloj de un segundo, barra que se queda donde se suelta y cubierta de carga con salida. Se ocultan a los 5 s y el toque en la imagen los muestra u oculta en vez de pausar |
 | Arranque de un episodio | ✅ | audio y controles ya no esperan a que se descarguen dieciséis idiomas de subtítulos: de 37 s de vídeo mudo y medio minuto de botones muertos, a 2 s |
@@ -90,20 +91,6 @@ Leyenda: ✅ hecho · ⏳ en curso · 🔴 bloqueado · ⬜ no empezado
 ## Bloqueos activos
 
 Ninguno.
-
-## Fallos abiertos
-
-- **Cerrar el reproductor y volver a abrirlo dentro de la misma sesión lo deja cargando para
-  siempre** (2026-09-18). Al salir con la X, el desmontaje de mpv no termina —el log deja dos
-  `mpv teardown did not finish in time`— y como libmpv se maneja desde un único hilo compartido
-  por todo el proceso, el `create` del siguiente reproductor se queda encolado detrás y nunca
-  llega a correr: el episodio se queda en «Cargando episodio…» y ahí sigue. La única salida es
-  forzar el cierre de la app.
-
-  **No es de la función de siguiente episodio**: se reprodujo igual sobre `develop` sin ninguno
-  de esos cambios, con la misma secuencia (abrir un episodio → X → abrir otro). Lo que sí hace
-  la función es que haga falta mucho menos, porque ya no hay que salir del reproductor para ver
-  el episodio siguiente.
 
 ## Por qué una descarga era lenta, y qué se hizo (2026-09-17)
 

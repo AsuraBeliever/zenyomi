@@ -30,6 +30,16 @@ class AnimePlayerActivity : BaseActivity() {
 
     private var inPictureInPicture by mutableStateOf(false)
 
+    /**
+     * mpv lives as long as this activity, not as long as the composition.
+     *
+     * The order matters at the end: Android destroys the surface before the composition is
+     * disposed, and mpv has to be told the player is closing before that happens or it is
+     * asked to give up a surface it is still drawing into — which is a wait that never ends.
+     * Only the activity knows the difference between closing and going to the background.
+     */
+    private lateinit var player: ZenyomiMPVView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -42,6 +52,8 @@ class AnimePlayerActivity : BaseActivity() {
                 systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }
+
+        player = ZenyomiMPVView(this)
 
         val request = intent.getStringExtra(EXTRA_REQUEST)?.let(PlaybackRequest::decode)
         val title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
@@ -60,11 +72,29 @@ class AnimePlayerActivity : BaseActivity() {
                 request = request,
                 title = title,
                 episodeId = episodeId,
+                view = player,
                 inPictureInPicture = inPictureInPicture,
                 onEnterPictureInPicture = ::enterPictureInPicture,
                 onBack = ::finish,
             )
         }
+    }
+
+    /**
+     * The one place that knows the player is closing rather than being backgrounded. Reached
+     * by the X, by the system back gesture and by closing the picture-in-picture window.
+     */
+    override fun finish() {
+        if (::player.isInitialized) player.finishing = true
+        super.finish()
+    }
+
+    override fun onDestroy() {
+        // Before super, and before the view hierarchy goes: releasing mpv is a blocking
+        // conversation with it, and it has to happen while there is still something to
+        // release.
+        if (::player.isInitialized) player.release()
+        super.onDestroy()
     }
 
     private fun enterPictureInPicture(videoAspect: Float) {
