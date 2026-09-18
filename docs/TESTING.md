@@ -98,7 +98,20 @@ adb -s emulator-5554 shell "run-as app.zenyomi.dev sh -c 'cat /data/local/tmp/an
 ```
 
 Hay que borrar el `-wal` y el `-shm` al restituir, o SQLite reaplica el diario y descarta
-lo insertado. El emulador conserva ahora una entrada `Anime de prueba (fixture)` con tres
+lo insertado.
+
+**Y al leer hay que traerse los tres ficheros, no solo el `.db`.** Con WAL activado lo
+que la app acaba de escribir vive en `anime.db-wal` hasta el siguiente checkpoint, así
+que un `cat databases/anime.db` a secas devuelve una foto vieja: se puede comprobar un
+cambio, no verlo, y concluir que el código no funciona cuando sí. Lo mismo al preparar
+un caso de prueba — `PRAGMA wal_checkpoint(TRUNCATE)` antes de hacer push.
+
+```sh
+for f in anime.db anime.db-wal anime.db-shm; do
+  adb -s emulator-5554 shell "run-as app.zenyomi.dev cat databases/$f" > live.${f#anime.}
+done
+sqlite3 live.db "SELECT ..."   # sqlite3 reaplica el wal al abrir
+``` El emulador conserva ahora una entrada `Anime de prueba (fixture)` con tres
 episodios.
 
 ## Vídeos de prueba generados con FFmpeg
