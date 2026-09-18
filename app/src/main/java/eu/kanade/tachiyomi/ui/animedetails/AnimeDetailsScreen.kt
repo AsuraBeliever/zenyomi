@@ -57,6 +57,7 @@ import eu.kanade.presentation.anime.components.AnimeInfoBox
 import eu.kanade.presentation.anime.components.DownloadQualityDialog
 import eu.kanade.presentation.anime.components.EpisodeHeader
 import eu.kanade.presentation.anime.components.EpisodeSettingsDialog
+import eu.kanade.presentation.anime.components.formatEpisodePosition
 import eu.kanade.presentation.components.NavigatorAdaptiveSheet
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
@@ -660,15 +661,6 @@ private fun EpisodeLoadingOverlay(onCancel: () -> Unit) {
             }
         }
     }
-}
-
-/** "12:34", o "1:02:03" si pasa de la hora. El mismo sitio donde el manga dice "Pagina 12". */
-private fun formatEpisodePosition(seconds: Long): String {
-    val total = seconds / 1000
-    val h = total / 3600
-    val m = (total % 3600) / 60
-    val sec = total % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }
 
 /** Comparte el enlace del anime en la fuente, igual que la ficha de manga comparte el suyo. */

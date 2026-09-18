@@ -34,6 +34,7 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import eu.kanade.presentation.anime.animeSourceErrorText
 import eu.kanade.presentation.anime.components.AnimeUpdatesItem
 import eu.kanade.presentation.anime.components.DownloadQualityDialog
+import eu.kanade.presentation.anime.components.formatEpisodePosition
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
@@ -194,9 +195,12 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                                 AnimeUpdatesItem(
                                     modifier = Modifier.animateItem(),
                                     update = update,
-                                    // Mientras baja, cuánto lleva y a qué velocidad. Es el
-                                    // único hueco de texto de la fila y estaba sin usar.
-                                    seenProgress = progress?.describe(context),
+                                    // Mientras baja, cuánto lleva y a qué velocidad. El resto
+                                    // del tiempo, "12:34" en un episodio a medias, igual que
+                                    // la misma lista dice "Pagina 12" en un capitulo a medias.
+                                    seenProgress = progress?.describe(context)
+                                        ?: update.takeIf { !it.seen && it.lastSecondSeen > 0 }
+                                            ?.let { formatEpisodePosition(it.lastSecondSeen) },
                                     selected = update.episodeId in state.selected,
                                     onLongClick = { viewModel.toggleSelection(update) },
                                     onClick = if (state.selected.isNotEmpty()) {
