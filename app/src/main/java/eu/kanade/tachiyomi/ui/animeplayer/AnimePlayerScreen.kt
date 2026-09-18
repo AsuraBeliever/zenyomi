@@ -91,6 +91,12 @@ fun AnimePlayerContent(
     request: PlaybackRequest,
     title: String,
     episodeId: Long,
+    /**
+     * Created and released by [AnimePlayerActivity] rather than here: mpv has to be told the
+     * player is closing *before* Android takes the surface away, and a composable that is
+     * already leaving the composition cannot know that.
+     */
+    view: ZenyomiMPVView,
     inPictureInPicture: Boolean,
     onEnterPictureInPicture: (videoAspect: Float) -> Unit,
     onBack: () -> Unit,
@@ -178,7 +184,6 @@ fun AnimePlayerContent(
             seekFeedback = null
         }
     }
-    val view = remember { ZenyomiMPVView(context) }
     val viewModel = assistedMetroViewModel<AnimePlayerViewModel, AnimePlayerViewModel.Factory> {
         create(episodeId = episodeId, request = request)
     }
@@ -212,6 +217,39 @@ fun AnimePlayerContent(
     }
     LaunchedEffect(effectiveStyle) { view.applySubtitleStyle(effectiveStyle) }
 
+    /**
+     * Hands one file to mpv and resets everything the screen knew about the last one.
+     *
+     * Two things reach here: the view model saying which episode is playing, and the player
+     * coming back from the background, where the file was unloaded so the surface could be
+     * given up and has to be put back where it was.
+     */
+    fun startPlayback(playback: AnimePlayerViewModel.Playback, resumeAt: Int) {
+        // The screen's own idea of where the video is belongs to the file being left. The
+        // position is kept when reopening the same one, so the bar does not snap to zero and
+        // back while mpv loads.
+        position = resumeAt
+        duration = 0
+        tracks = emptyList()
+        seekTarget = null
+        scrubbing = null
+        playbackFailure = null
+        loading = true
+        chapters = null
+        endReached = false
+        autoAdvanceCancelled = false
+        view.playFile(
+            playback.request.url,
+            resumeAt = resumeAt,
+            subtitleTracks = playback.request.subtitleTracks,
+            audioTracks = playback.request.audioTracks,
+            mpvArgs = playback.request.mpvArgs,
+            // Carried per file, not only at startup: the next episode is as likely to come
+            // from a host that answers a bare request with 403 as this one was.
+            httpHeaders = playback.request.headers.map { (name, value) -> "$name: $value" },
+        )
+    }
+
     DisposableEffect(playerState.loaded) {
         if (playerState.loaded) {
             // mpv keeps the window open on a file it could not read, so without this a dead
@@ -243,6 +281,11 @@ fun AnimePlayerContent(
             view.onDurationChanged = { value -> duration = value }
             view.onPausedChanged = { value -> paused = value }
             view.onEndReachedChanged = { value -> endReached = value }
+            // The surface went away without the player closing, so mpv let go of the file.
+            // Whatever was playing goes back on at the second it was on.
+            view.onNeedsReload = { resumeAt ->
+                playerState.playback?.let { startPlayback(it, resumeAt) }
+            }
             view.initialise(
                 configDir = File(context.filesDir, "mpv"),
                 audioLanguages = viewModel.preferences.preferredAudioLanguages.get(),
@@ -264,13 +307,13 @@ fun AnimePlayerContent(
             view.onDurationChanged = null
             view.onPausedChanged = null
             view.onEndReachedChanged = null
+            view.onNeedsReload = null
             if (playerState.loaded) {
                 // Uses what the polling loop already read instead of asking mpv again:
                 // mpv_get_property waits on mpv's own event loop, and onDispose runs on the
                 // main thread, so leaving the player hung the UI until Android raised an ANR.
                 // The cost is losing at most the last two seconds of progress.
                 if (duration > 0) viewModel.saveProgress(position, duration)
-                view.release()
             }
         }
     }
@@ -283,27 +326,7 @@ fun AnimePlayerContent(
     // already open has to reach mpv too.
     LaunchedEffect(playerState.playback?.serial) {
         val playback = playerState.playback ?: return@LaunchedEffect
-        // The screen's own idea of where the video is belongs to the file being left.
-        position = 0
-        duration = 0
-        tracks = emptyList()
-        seekTarget = null
-        scrubbing = null
-        playbackFailure = null
-        loading = true
-        chapters = null
-        endReached = false
-        autoAdvanceCancelled = false
-        view.playFile(
-            playback.request.url,
-            resumeAt = playback.resumeAt,
-            subtitleTracks = playback.request.subtitleTracks,
-            audioTracks = playback.request.audioTracks,
-            mpvArgs = playback.request.mpvArgs,
-            // Carried per file, not only at startup: the next episode is as likely to come
-            // from a host that answers a bare request with 403 as this one was.
-            httpHeaders = playback.request.headers.map { (name, value) -> "$name: $value" },
-        )
+        startPlayback(playback, playback.resumeAt)
     }
 
     // What is left to poll for, now that position, duration and pause arrive as events: the

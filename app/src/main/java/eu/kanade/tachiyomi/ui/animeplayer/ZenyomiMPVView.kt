@@ -79,6 +79,23 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     /** Whether the source offered subtitles, for the "pick one rather than none" rule. */
     private var addedSubtitles = false
 
+    /**
+     * Told when the file was unloaded to give the surface back, with the second it was on.
+     *
+     * Only when the player is coming back — backgrounded, screen off, anything that takes the
+     * surface away without closing the player.
+     */
+    var onNeedsReload: ((resumeAt: Int) -> Unit)? = null
+
+    /**
+     * Whether the player is closing for good, as opposed to going to the background.
+     *
+     * The surface goes away in both cases and what has to happen to mpv is not the same:
+     * closing unloads the file, backgrounding only pauses it so that coming back resumes where
+     * it was. Set by [AnimePlayerActivity], which is the only place that knows the difference.
+     */
+    var finishing = false
+
     /** The viewer's language preferences, as codes, in order. */
     private var preferredAudio: List<String> = emptyList()
     private var preferredSubtitles: List<String> = emptyList()
@@ -91,6 +108,15 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      * player that is still loading, forever.
      */
     var onPlaybackError: ((String?) -> Unit)? = null
+
+    /**
+     * Held so it can be taken off again.
+     *
+     * MPVLib keeps its log observers in a list of its own that a destroy does not touch, so a
+     * second player added a second one and every line of mpv's log appeared twice — three
+     * times for the third, and so on for as long as the app was running.
+     */
+    private var logObserver: MPVLib.LogObserver? = null
 
     /** The last "HTTP error" mpv logged, which is the useful half of a failure. */
     private var lastHttpError: String? = null
@@ -212,10 +238,12 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             // crossing jni to be formatted and written to logcat while the episode plays.
             // Diagnosing is worth that; a release build on someone's phone is not.
             MPVLib.setOptionString("msg-level", "all=$LOG_LEVEL")
-            MPVLib.addLogObserver { prefix, _, text ->
+            val observer = MPVLib.LogObserver { prefix, _, text ->
                 if (text.contains("HTTP error")) lastHttpError = text.trim()
                 logcat(LogPriority.DEBUG) { "mpv [$prefix] $text".trim() }
             }
+            logObserver = observer
+            MPVLib.addLogObserver(observer)
             MPVLib.setOptionString("config", "yes")
             MPVLib.setOptionString("config-dir", configDir.path)
             // Hardware decoding where the device offers it, falling back to software.
@@ -935,7 +963,13 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         observers.clear()
 
         runOnMpvThread {
+            // Also here, and not only in surfaceDestroyed: which of the two comes first is
+            // Android's to decide, and a destroy that runs while a file is still being
+            // decoded is the same wait as the one above.
+            MPVLib.command(arrayOf("stop"))
             toRemove.forEach { MPVLib.removeObserver(it) }
+            logObserver?.let { MPVLib.removeLogObserver(it) }
+            logObserver = null
             MPVLib.destroy()
             fds.forEach { runCatching { it.close() } }
         }
@@ -970,7 +1004,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         postToMpv {
             MPVLib.attachSurface(surface)
             MPVLib.setOptionString("force-window", "yes")
-            MPVLib.setOptionString("vo", "gpu")
+            MPVLib.setPropertyString("vo", "gpu")
         }
         file?.let { load(it, pendingResumeAt) }
     }
@@ -986,9 +1020,36 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         // main thread, but mpv must stop drawing before the surface is gone, so the wait is
         // bounded rather than skipped.
         runOnMpvThread {
-            MPVLib.setOptionString("vo", "null")
-            MPVLib.setOptionString("force-window", "no")
+            // As a property, and without touching force-window. Asking for `force-window=no`
+            // here is what hung the whole player: mpv reconfigures its window on that option
+            // and the call never came back, so the wait below gave up, Android took the
+            // surface away underneath a mpv that was still holding it, and every later call
+            // on this thread — the destroy right after, and the create of the next player —
+            // queued behind one that will never finish. The player was then dead for the life
+            // of the process: opening another episode sat on "Loading episode…" forever.
+            //
+            // Dropping the video output and handing the surface back is all that is needed,
+            // and it is what mpv's own Android player does here.
+            // mpv has to stop drawing before the surface can be handed back, and asking it
+            // to drop the video output while it is mid-frame is what hung the player: the
+            // call never returned, the wait below gave up, Android took the surface away
+            // underneath a mpv still holding it, and everything queued on this thread
+            // afterwards — the destroy right after, and the create of the *next* player —
+            // waited behind a call that would never finish. Opening another episode then sat
+            // on "Loading episode…" for the life of the process.
+            //
+            // Unloading the file when the player is closing, and pausing when it is only
+            // going to the background: the detach that took longer than a second and a half
+            // now takes about thirty milliseconds either way.
+            val resumeAt = MPVLib.getPropertyInt("time-pos") ?: 0
+            MPVLib.command(arrayOf("stop"))
+            MPVLib.setPropertyString("vo", "null")
             MPVLib.detachSurface()
+            // Going to the background rather than closing: the episode has to come back, and
+            // it can only be put back once the surface is here again. Asking mpv to merely
+            // pause instead of unloading does not work — the detach hangs exactly as it did
+            // before — so the file is reopened where it was.
+            if (!finishing) post { onNeedsReload?.invoke(resumeAt) }
         }
     }
 
