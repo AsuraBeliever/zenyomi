@@ -10,6 +10,7 @@ import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
+import eu.kanade.domain.anime.interactor.GetSkipIntervals
 import eu.kanade.domain.anime.interactor.ResolveEpisodeVideo
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
 import eu.kanade.tachiyomi.ui.animeplayer.setting.PlayerPreferences
@@ -50,6 +51,7 @@ class AnimePlayerViewModel(
     private val getEpisode: GetEpisode,
     private val getEpisodesByAnimeId: GetEpisodesByAnimeId,
     private val resolveEpisodeVideo: ResolveEpisodeVideo,
+    private val getSkipIntervals: GetSkipIntervals,
     private val updateEpisode: UpdateEpisode,
     private val upsertAnimeHistory: UpsertAnimeHistory,
     private val trackEpisode: TrackEpisode,
@@ -73,6 +75,9 @@ class AnimePlayerViewModel(
 
     /** Its episodes in the order the entry screen lists them, which is what "next" means. */
     private var episodes: List<Episode> = emptyList()
+
+    /** Episodes AniSkip has already been asked about, answer or not. */
+    private val askedForSkipIntervals = mutableSetOf<Long>()
 
     private var switchJob: Job? = null
     private var prefetchJob: Job? = null
@@ -150,6 +155,8 @@ class AnimePlayerViewModel(
                 it.copy(
                     switching = false,
                     title = episode.name,
+                    opening = null,
+                    ending = null,
                     playback = Playback(
                         episodeId = episode.id,
                         request = resolved,
@@ -192,6 +199,31 @@ class AnimePlayerViewModel(
             val resolved = resolveEpisodeVideo.await(anime, next)
             if (resolved is ResolveEpisodeVideo.Result.Playable) {
                 prefetched = next.id to resolved.request
+            }
+        }
+    }
+
+    /**
+     * Asks AniSkip where this episode's opening and ending are.
+     *
+     * Needs the episode's length, which only mpv knows and only once the file is open, so the
+     * screen calls this rather than the other way round. Once per episode: the answer is a
+     * property of the episode and the screen asks on every duration change.
+     */
+    fun loadSkipIntervals(durationSeconds: Int) {
+        if (durationSeconds <= 0 || !playerPreferences.aniskipEnabled.get()) return
+        val episodeId = state.value.playback?.episodeId ?: return
+        if (!askedForSkipIntervals.add(episodeId)) return
+        viewModelScope.launch {
+            val episode = getEpisode.await(episodeId) ?: return@launch
+            val intervals = getSkipIntervals.await(episode.animeId, episode.episodeNumber, durationSeconds)
+            // Still the same episode: a slow answer must not land on the one after it.
+            _state.update {
+                if (it.playback?.episodeId != episodeId) {
+                    it
+                } else {
+                    it.copy(opening = intervals?.opening, ending = intervals?.ending)
+                }
             }
         }
     }
@@ -254,6 +286,10 @@ class AnimePlayerViewModel(
         /** An episode is being resolved; the picture on screen is still the old one. */
         val switching: Boolean = false,
         val switchError: Throwable? = null,
+        /** Where AniSkip says the opening is, in seconds. Null when nobody knows. */
+        val opening: IntRange? = null,
+        /** The same for the ending, which is where the next episode is announced. */
+        val ending: IntRange? = null,
     )
 
     /**

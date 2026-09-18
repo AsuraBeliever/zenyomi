@@ -52,6 +52,24 @@ class PlayerPreferences(
     val skipIntroLength: Preference<Int> = preferenceStore.getInt("pref_player_skip_intro_length", 85)
 
     /**
+     * Whether to ask AniSkip where this episode's opening is.
+     *
+     * On, because when it answers the button stops being a guess — but it only answers for an
+     * anime that is tracked with MyAnimeList or AniList, which is how it is keyed, and asking
+     * sends that id to a third party. Off is a setting for anyone who would rather it did not.
+     */
+    val aniskipEnabled: Preference<Boolean> = preferenceStore.getBoolean("pref_player_aniskip", true)
+
+    /**
+     * Whether a known opening is skipped without being asked.
+     *
+     * Off: it acts on an interval somebody else submitted, and when that is wrong it takes a
+     * minute and a half of the episode with it. The button is there for everyone; this is for
+     * the viewer who has decided they trust it.
+     */
+    val autoSkipIntro: Preference<Boolean> = preferenceStore.getBoolean("pref_player_auto_skip_intro", false)
+
+    /**
      * Whether the end of an episode opens the next one on its own.
      *
      * On, because the alternative is what watching a season used to be: leave the player, find
