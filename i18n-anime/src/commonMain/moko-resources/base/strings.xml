@@ -667,6 +667,9 @@
     <!-- Asked when the saved quality is not among the ones this episode offers -->
     <string name="anime_download_quality_missing_title">Choose a quality</string>
     <string name="anime_download_quality_missing_body">This episode is not available at your usual quality. These are the ones it does have.</string>
+    <!-- Asked because the download button was held down -->
+    <string name="anime_download_quality_once_title">Download this one at</string>
+    <string name="anime_download_quality_once_body">Just this download. Your usual quality stays as it is.</string>
     <string name="anime_download_quality_estimated_size">about %1$s</string>
     <string name="anime_download_quality_setting">Download quality</string>
     <string name="anime_download_quality_best">Best available</string>

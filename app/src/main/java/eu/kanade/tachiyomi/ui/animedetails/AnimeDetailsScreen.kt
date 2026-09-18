@@ -138,8 +138,8 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
         state.qualityDialog?.let { dialog ->
             DownloadQualityDialog(
                 qualities = dialog.qualities,
-                firstTime = dialog.remember,
-                onConfirm = { height, _ -> viewModel.confirmQuality(height) },
+                reason = dialog.reason,
+                onConfirm = viewModel::confirmQuality,
                 onDismissRequest = viewModel::dismissQualityDialog,
             )
         }
@@ -437,10 +437,14 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                         val downloaded = episode.id in state.downloadedEpisodeIds
                         val progress = downloadProgress[episode.id]
                         val queued = downloadQueue.any { it.episodeId == episode.id }
+                        // Asked for but not yet in the queue counts as queued for the row's
+                        // purposes: the spinner starts on the tap, not once the source has
+                        // finished being asked what it has.
+                        val preparing = episode.id in state.preparingEpisodeIds
                         val downloadState = when {
                             downloaded -> Download.State.DOWNLOADED
                             progress != null -> Download.State.DOWNLOADING
-                            queued -> Download.State.QUEUE
+                            queued || preparing -> Download.State.QUEUE
                             else -> Download.State.NOT_DOWNLOADED
                         }
                         MangaChapterListItem(
@@ -480,12 +484,19 @@ class AnimeDetailsScreen(private val animeId: Long) : Screen() {
                             },
                             onDownloadClick = { action ->
                                 when (action) {
-                                    ChapterDownloadAction.START,
-                                    ChapterDownloadAction.START_NOW,
-                                    -> viewModel.downloadEpisode(episode)
-                                    ChapterDownloadAction.CANCEL,
-                                    ChapterDownloadAction.DELETE,
-                                    -> viewModel.deleteDownload(episode)
+                                    ChapterDownloadAction.START -> viewModel.downloadEpisode(episode)
+                                    // Holding the button on an episode you do not have asks
+                                    // which quality, for this download only. On one already
+                                    // queued the same action means "start now", which a queue
+                                    // that runs in order start to finish cannot honour.
+                                    ChapterDownloadAction.START_NOW ->
+                                        if (downloadState == Download.State.NOT_DOWNLOADED) {
+                                            viewModel.downloadEpisode(episode, ask = true)
+                                        }
+                                    // Two different things: calling off a download that is
+                                    // happening, and deleting a file that is already there.
+                                    ChapterDownloadAction.CANCEL -> viewModel.cancelDownload(episode)
+                                    ChapterDownloadAction.DELETE -> viewModel.deleteDownload(episode)
                                 }
                             },
                             onChapterSwipe = { action -> viewModel.swipeEpisode(episode, action) },

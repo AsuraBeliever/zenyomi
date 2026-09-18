@@ -92,8 +92,8 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
         state.qualityDialog?.let { (_, choice) ->
             DownloadQualityDialog(
                 qualities = choice.qualities,
-                firstTime = choice.remember,
-                onConfirm = { height, _ -> viewModel.confirmQuality(height) },
+                reason = choice.reason,
+                onConfirm = viewModel::confirmQuality,
                 onDismissRequest = viewModel::dismissQualityDialog,
             )
         }
@@ -181,10 +181,14 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                                 val downloaded = update.episodeId in state.downloadedEpisodeIds
                                 val progress = downloadProgress[update.episodeId]
                                 val queued = downloadQueue.any { it.episodeId == update.episodeId }
+                                // Asked for but not yet in the queue counts as queued for the
+                                // row's purposes: the spinner starts on the tap, not once the
+                                // source has finished being asked what it has.
+                                val preparing = update.episodeId in state.preparingEpisodeIds
                                 val downloadState = when {
                                     downloaded -> Download.State.DOWNLOADED
                                     progress != null -> Download.State.DOWNLOADING
-                                    queued -> Download.State.QUEUE
+                                    queued || preparing -> Download.State.QUEUE
                                     else -> Download.State.NOT_DOWNLOADED
                                 }
                                 AnimeUpdatesItem(
@@ -219,12 +223,24 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                                     onDownloadEpisode = if (update.episodeId in state.downloadableEpisodeIds) {
                                         { action ->
                                             when (action) {
-                                                ChapterDownloadAction.START,
-                                                ChapterDownloadAction.START_NOW,
-                                                -> viewModel.downloadEpisode(update)
-                                                ChapterDownloadAction.CANCEL,
-                                                ChapterDownloadAction.DELETE,
-                                                -> viewModel.deleteDownload(update)
+                                                ChapterDownloadAction.START ->
+                                                    viewModel.downloadEpisode(update)
+                                                // Holding the button on an episode you do not
+                                                // have asks which quality, for this download
+                                                // only. On one already queued the same action
+                                                // means "start now", which a queue that runs in
+                                                // order start to finish cannot honour.
+                                                ChapterDownloadAction.START_NOW ->
+                                                    if (downloadState == Download.State.NOT_DOWNLOADED) {
+                                                        viewModel.downloadEpisode(update, ask = true)
+                                                    }
+                                                // Calling off a download that is happening and
+                                                // deleting a file that is there are not the
+                                                // same thing.
+                                                ChapterDownloadAction.CANCEL ->
+                                                    viewModel.cancelDownload(update)
+                                                ChapterDownloadAction.DELETE ->
+                                                    viewModel.deleteDownload(update)
                                             }
                                         }
                                     } else {
