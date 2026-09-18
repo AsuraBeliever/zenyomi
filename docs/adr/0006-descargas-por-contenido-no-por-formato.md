@@ -60,12 +60,24 @@ camino rápido, si algún día compensa, es un lector más, no un arreglo por ex
 - Las descargas DASH funcionan (verificado con AnimeOnsen: mkv real de 155 MB con un
   único stream de vídeo, su audio y 16 pistas de subtítulos).
 - Las fuentes sin lector propio descargan más despacio, porque los segmentos los pide
-  ffmpeg de uno en uno. Medido en el emulador: ~300–450 kB/s frente a ~2 MB/s del
-  camino HLS. Correcto pero mejorable, y es deuda conocida.
-- La estimación de tamaño de un manifiesto sale de bitrate × duración declarados, que
-  pueden quedarse cortos: en la prueba, 83 MB estimados contra 155 MB reales. La
-  interfaz ya es honesta con eso —cuando los bytes pasan del total, deja de mostrar el
-  total— pero la barra de progreso de esas fuentes es orientativa.
+  ffmpeg de uno en uno. Correcto pero mejorable, y es deuda conocida.
+- La estimación de tamaño sale de bitrate × duración declarados, que pueden quedarse
+  cortos. La interfaz ya es honesta con eso: cuando los bytes pasan del total, deja de
+  mostrar el total.
+
+## Añadido en la v0.18.0: DASH tiene lector
+
+Escrito exactamente como dice el punto 4, y por eso se pudo escribir después sin tocar
+nada de lo anterior: `DashManifest` lista los segmentos, `SegmentPrefetcher` los baja en
+paralelo y los une, y ffmpeg recibe ficheros locales. Cubre `SegmentTemplate` por número
+y por línea de tiempo, `SegmentList`, y la representación que es un solo fichero. Lo que
+no reconoce —varios periodos, un manifiesto en directo, un segmento que se repite «hasta
+que acabe»— lo declina, y entonces lo baja ffmpeg como antes.
+
+Medido en el emulador con AnimeOnsen: de ~7 minutos a **52 segundos**, con el fichero
+resultante igual byte a byte salvo metadatos de muxing. La estimación de tamaño mejoró de
+paso, porque el manifiesto declara bitrates y duración: 150 MB estimados contra 155 reales,
+donde ffprobe decía 83.
 - `AnimeDownloadProvider` sigue teniendo un filtro por extensión de fichero para no
   listar playlists antiguas como episodios. Es histórico y ya no es la defensa: la
   defensa es la comprobación del punto 3.
