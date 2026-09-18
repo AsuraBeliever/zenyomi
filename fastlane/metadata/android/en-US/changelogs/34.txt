@@ -1,0 +1,13 @@
+Fixed: a half-watched episode shows where you left off. The row now reads 12:34, where a chapter row reads Page 12. The position was being saved all along — the row printed it as 0:00 whatever it was, which looks exactly like progress that was never saved.
+
+Fixed: leaving an episode paused no longer loses the session. The last save happened as the player closed and was being cancelled with it.
+
+Fixed: a source that changes its links no longer resets every episode to zero. The position, the seen tick and the bookmark now survive an episode coming back under a new address.
+
+Fixed: a source that momentarily answers with nothing no longer wipes an entry's episodes and their positions.
+
+Fixed: Refresh on an anime entry now actually asks the source. It only re-checked which episodes were downloaded, so a new episode never appeared.
+
+Fixed: the position shows on the Updates row too, as it does on the manga row beside it.
+
+Improved: opening an episode you just watched is instant instead of resolving it all over again. On one source the second open went from ten seconds to a thirtieth of a second. A downloaded episode still plays straight from the file.

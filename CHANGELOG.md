@@ -10,6 +10,21 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.18.1] - 2026-09-18
+### Fixed
+- **A half-watched episode shows where you left off, and goes back there.** The episode row now reads `12:34` where a chapter row reads `Page 12`. The position was being saved correctly the whole time — the row was formatting it as if it were milliseconds, so ten minutes of an episode came out as `0:00`, which looks exactly like progress that was never saved at all. Resuming already worked; nothing on screen said so.
+- **Leaving an episode paused no longer loses the session.** Progress is written every couple of seconds while the video plays, but the last write happens as the player closes — and it was being cancelled along with the screen, so it never reached the database. Pausing and backing out lost everything since the last write made while playing.
+- **A source that changes its links no longer resets every episode to zero.** Episodes are matched to what is stored by their url, so a domain move, a mirror, or a token in the link deleted every episode and added it back as new. The position, the seen flag and the bookmark now cross that gap by episode number, the way the manga side has always carried them, and a re-added episode keeps its original date so it does not resurface in Updates as though it were new.
+- **A source that answers with nothing is no longer believed.** An empty episode list almost never means an entry lost all of its episodes — it means a blocked request or a mirror that went down — and taken at face value it deleted every episode and every position with it. It is refused now. A local folder that really is empty still works as before.
+- **The Refresh item on an anime entry refreshes it.** It only ever re-checked which episodes were already downloaded, so it asked the source nothing and a new episode never appeared however many times it was pressed.
+- **The position shows in Updates too.** That row had a slot for it, used only while a download was running and empty the rest of the time, while the manga row beside it said `Page 12`.
+
+### Improved
+- **Opening an episode you just watched is instant.** Opening one is not a single request: it is the host list, a video list for each of them, and usually a chain of extractors, against sites that limit how fast you may ask. None of it was remembered, so stepping out of the player and back in paid the whole bill again — and paid it slower, because the first pass had just used up the allowance. Measured on one source, the second open went from just over ten seconds to a thirtieth of a second. A downloaded episode still plays from the file, ahead of any of this.
+
+### Other
+- Twenty-nine tests over the pieces above, which had none: the reuse cache and its expiry, the episode sync and what it must and must not carry across a url change, and the position the row prints either side of the hour.
+
 ## [0.18.0] - 2026-09-17
 ### Fixed
 - **The download button reacts to the first tap.** It always had something to say about the tap and never said it: whether it queues straight away or has to go and ask the source what qualities it has, the row now starts spinning the moment you press it, exactly as it does once the episode is really downloading. Before, the several seconds it takes to ask about qualities were spent with nothing on screen at all, which is why it looked as though the press had missed.
