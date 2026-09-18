@@ -10,7 +10,7 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
-## [Unreleased]
+## [0.19.0] - 2026-09-18
 ### Added
 - **Un episodio abre el siguiente solo.** Al llegar a los créditos aparece abajo qué viene después, con una cuenta atrás que va con el vídeo: si pausas, se para; si vuelves atrás, desaparece. Al acabar el episodio, el siguiente empieza sin salir del reproductor. Se puede parar con Cancelar —solo para ese episodio— o apagar del todo en Ajustes → Reproductor. El siguiente episodio se resuelve durante los créditos, así que el salto no se hace esperar.
 - **Botón para omitir el opening.** Aparece al principio del episodio y salta 85 segundos, que es lo que dura un opening de televisión; la cifra se cambia en Ajustes → Reproductor. Cuando el fichero trae capítulos y uno de ellos se llama «Opening» —lo habitual en un mkv bien hecho— el salto no es de una cantidad fija: cae exactamente donde termina, y el botón solo se ofrece mientras el opening está en pantalla.

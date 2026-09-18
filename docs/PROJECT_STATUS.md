@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-18
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.18.1, tag en `main`
+**Última release:** v0.19.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** no por defecto — desde el 2026-09-18 las pruebas van al emulador
 y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
