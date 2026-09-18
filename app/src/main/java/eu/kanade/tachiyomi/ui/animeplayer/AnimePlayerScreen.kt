@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import eu.kanade.presentation.anime.animeSourceErrorText
 import `is`.xyz.mpv.MPVLib
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -61,9 +63,12 @@ import mihon.icons.materialsymbols.rounded.FlipToBack
 import mihon.icons.materialsymbols.rounded.KeyboardArrowLeft
 import mihon.icons.materialsymbols.rounded.KeyboardArrowRight
 import mihon.icons.materialsymbols.rounded.Pause
+import mihon.icons.materialsymbols.rounded.SkipNext
+import mihon.icons.materialsymbols.rounded.SkipPrevious
 import mihon.icons.materialsymbols.rounded.Subtitles
 import mihon.icons.materialsymbols.roundedfilled.Pause
 import mihon.icons.materialsymbols.roundedfilled.PlayArrow
+import tachiyomi.domain.episode.model.Episode
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -127,6 +132,12 @@ fun AnimePlayerContent(
     // The subtitle panel, held here for the same reason: while it is open the controls have to
     // stay, or adjusting the size would dismiss the thing being adjusted.
     var subtitlePanelOpen by remember { mutableStateOf(false) }
+    // mpv has run out of file. The clock cannot say this: `keep-open` stops on the last frame
+    // a second short of the duration, so the episode ends without the two ever meeting.
+    var endReached by remember { mutableStateOf(false) }
+    // Set when the viewer tells the end-of-episode countdown to stop. Per episode, and reset
+    // with every file: saying "not this time" is not the same as turning the setting off.
+    var autoAdvanceCancelled by remember { mutableStateOf(false) }
     // Bumped by anything the viewer does to a control, to start the countdown over. It is the
     // change that matters, not the value: a button press has to restart a timer that is
     // already running, and only a new key does that.
@@ -166,7 +177,7 @@ fun AnimePlayerContent(
     }
     val view = remember { ZenyomiMPVView(context) }
     val viewModel = assistedMetroViewModel<AnimePlayerViewModel, AnimePlayerViewModel.Factory> {
-        create(episodeId = episodeId)
+        create(episodeId = episodeId, request = request)
     }
     val playerState by viewModel.state.collectAsStateWithLifecycle()
 
@@ -228,6 +239,7 @@ fun AnimePlayerContent(
             }
             view.onDurationChanged = { value -> duration = value }
             view.onPausedChanged = { value -> paused = value }
+            view.onEndReachedChanged = { value -> endReached = value }
             view.initialise(
                 configDir = File(context.filesDir, "mpv"),
                 audioLanguages = viewModel.preferences.preferredAudioLanguages.get(),
@@ -240,13 +252,6 @@ fun AnimePlayerContent(
                 // them afterwards makes the text visibly resize a second into every episode.
                 subtitleStyle = subtitleStyle,
             )
-            view.playFile(
-                request.url,
-                resumeAt = playerState.resumeAt,
-                subtitleTracks = request.subtitleTracks,
-                audioTracks = request.audioTracks,
-                mpvArgs = request.mpvArgs,
-            )
         }
         onDispose {
             view.onPlaybackError = null
@@ -255,6 +260,7 @@ fun AnimePlayerContent(
             view.onPositionChanged = null
             view.onDurationChanged = null
             view.onPausedChanged = null
+            view.onEndReachedChanged = null
             if (playerState.loaded) {
                 // Uses what the polling loop already read instead of asking mpv again:
                 // mpv_get_property waits on mpv's own event loop, and onDispose runs on the
@@ -264,6 +270,36 @@ fun AnimePlayerContent(
                 view.release()
             }
         }
+    }
+
+    // Every file mpv opens comes through here, the first one included: which episode is
+    // playing is the view model's answer, not the intent's, because the player now moves on
+    // to the next one by itself.
+    //
+    // Keyed on the serial rather than the episode or the url: replaying the episode that is
+    // already open has to reach mpv too.
+    LaunchedEffect(playerState.playback?.serial) {
+        val playback = playerState.playback ?: return@LaunchedEffect
+        // The screen's own idea of where the video is belongs to the file being left.
+        position = 0
+        duration = 0
+        tracks = emptyList()
+        seekTarget = null
+        scrubbing = null
+        playbackFailure = null
+        loading = true
+        endReached = false
+        autoAdvanceCancelled = false
+        view.playFile(
+            playback.request.url,
+            resumeAt = playback.resumeAt,
+            subtitleTracks = playback.request.subtitleTracks,
+            audioTracks = playback.request.audioTracks,
+            mpvArgs = playback.request.mpvArgs,
+            // Carried per file, not only at startup: the next episode is as likely to come
+            // from a host that answers a bare request with 403 as this one was.
+            httpHeaders = playback.request.headers.map { (name, value) -> "$name: $value" },
+        )
     }
 
     // What is left to poll for, now that position, duration and pause arrive as events: the
@@ -290,6 +326,34 @@ fun AnimePlayerContent(
                 tracks = withContext(Dispatchers.IO) { view.tracks() }
             }
             delay(2000)
+        }
+    }
+
+    // Seconds left of the episode, which is also the countdown the card shows: read off the
+    // video's own clock rather than a timer of our own, so pausing pauses it and seeking back
+    // puts the card away.
+    val nextEpisode = playerState.next
+    val remaining = if (duration > 0) duration - position else Int.MAX_VALUE
+    val autoplayNext = remember { viewModel.preferences.autoplayNext.get() }
+    // Half a minute of warning, unless the episode is too short to spare it: on a five minute
+    // recap the card would otherwise be up for a tenth of it, and on a ten second clip it
+    // would be up from the first frame.
+    val endCardLead = minOf(END_CARD_LEAD_SECONDS, duration / 4)
+    val endCardVisible = nextEpisode != null && !inPictureInPicture && !loading &&
+        playbackFailure == null && (remaining <= endCardLead || endReached)
+
+    // Resolving the next episode costs what opening this one did, and the credits are exactly
+    // the window in which to spend it unnoticed. Without this the countdown reaches zero and
+    // hands over to a spinner, which is the thing it promised not to do.
+    LaunchedEffect(endCardVisible) {
+        if (endCardVisible) viewModel.prefetchNext()
+    }
+
+    // The switch itself, and only once the episode has actually run out: the card is up for
+    // the last half minute so it can be seen coming, not so it can cut the ending short.
+    LaunchedEffect(endReached, autoAdvanceCancelled, playerState.switchError) {
+        if (endReached && autoplayNext && !autoAdvanceCancelled && playerState.switchError == null) {
+            nextEpisode?.let { viewModel.open(it, position, duration) }
         }
     }
 
@@ -549,7 +613,10 @@ fun AnimePlayerContent(
                         )
                     }
                     Text(
-                        text = title,
+                        // The intent's title only until the view model has read the episode:
+                        // from then on it is whatever is playing, which is no longer what the
+                        // player was opened with.
+                        text = playerState.title.ifBlank { title },
                         color = Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -609,6 +676,18 @@ fun AnimePlayerContent(
                     .systemBarsPadding()
                     .padding(16.dp),
             ) {
+                // Either side of the seek bar rather than in the middle of the picture: the
+                // row in the centre is the three controls reached mid-episode, and two more
+                // buttons there would not fit a phone held upright.
+                EpisodeStepButton(
+                    icon = MaterialSymbols.Rounded.SkipPrevious,
+                    contentDescription = stringResource(ANMR.strings.action_previous_episode),
+                    episode = playerState.previous,
+                    onClick = { episode ->
+                        viewModel.open(episode, position, duration)
+                        interaction++
+                    },
+                )
                 Text(
                     formatTime(scrubbing?.toInt() ?: position),
                     color = Color.White,
@@ -637,6 +716,111 @@ fun AnimePlayerContent(
                         .padding(horizontal = 8.dp),
                 )
                 Text(formatTime(duration), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                EpisodeStepButton(
+                    icon = MaterialSymbols.Rounded.SkipNext,
+                    contentDescription = stringResource(ANMR.strings.action_next_episode),
+                    episode = playerState.next,
+                    onClick = { episode ->
+                        viewModel.open(episode, position, duration)
+                        interaction++
+                    },
+                )
+            }
+        }
+
+        // What is coming next, while what is playing finishes. Shown whether or not the
+        // controls are up: it is the one thing on this screen that has to be seen without
+        // being asked for, because it is about to act on its own.
+        nextEpisode?.let { next ->
+            AnimatedVisibility(
+                visible = endCardVisible,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .systemBarsPadding()
+                    .padding(end = 16.dp, bottom = END_CARD_BOTTOM_MARGIN),
+            ) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.75f),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = END_CARD_MAX_WIDTH)
+                            .padding(16.dp),
+                    ) {
+                        Text(
+                            text = stringResource(ANMR.strings.player_up_next),
+                            color = Color.White.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        Text(
+                            text = next.name,
+                            color = Color.White,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        // Three things can be true here and only one line is spent on them: a
+                        // countdown that is running, a countdown the viewer stopped — which
+                        // needs no words, the button is right there — and an episode that
+                        // could not be opened, which does.
+                        val switchError = playerState.switchError
+                        when {
+                            switchError != null -> Text(
+                                text = animeSourceErrorText(switchError),
+                                color = Color.White.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                            autoplayNext && !autoAdvanceCancelled -> Text(
+                                text = stringResource(
+                                    ANMR.strings.player_autoplay_in,
+                                    remaining.coerceAtLeast(0),
+                                ),
+                                color = Color.White.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        ) {
+                            if (playerState.switching) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            } else {
+                                if (autoplayNext && !autoAdvanceCancelled) {
+                                    TextButton(onClick = { autoAdvanceCancelled = true }) {
+                                        Text(
+                                            text = stringResource(MR.strings.action_cancel),
+                                            color = Color.White,
+                                        )
+                                    }
+                                }
+                                TextButton(
+                                    onClick = {
+                                        viewModel.clearSwitchError()
+                                        viewModel.open(next, position, duration)
+                                    },
+                                ) {
+                                    Text(
+                                        text = stringResource(ANMR.strings.player_play_now),
+                                        color = Color.White,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -660,8 +844,49 @@ fun AnimePlayerContent(
     }
 }
 
+/**
+ * One step through the episode list, drawn the same on both sides.
+ *
+ * Disabled rather than hidden at the ends of a series: a button that disappears takes the
+ * layout with it, and the seek bar jumping a few pixels wider on the last episode is a worse
+ * answer than a greyed arrow.
+ */
+@Composable
+private fun EpisodeStepButton(
+    icon: ImageVector,
+    contentDescription: String,
+    episode: Episode?,
+    onClick: (Episode) -> Unit,
+) {
+    IconButton(
+        onClick = { episode?.let(onClick) },
+        enabled = episode != null,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = Color.White.copy(alpha = if (episode != null) 1f else 0.3f),
+        )
+    }
+}
+
 /** Used only until mpv reports the real one, which takes a moment after the file opens. */
 private const val DEFAULT_ASPECT = 16f / 9f
+
+/**
+ * How long before the end the next episode is announced.
+ *
+ * Half a minute: about the length of an ending, so the card arrives with the credits rather
+ * than over the last scene of the episode, and it leaves time for the next one to be resolved
+ * before the countdown reaches zero.
+ */
+private const val END_CARD_LEAD_SECONDS = 30
+
+/** Enough to clear the seek bar, which is what the card sits above. */
+private val END_CARD_BOTTOM_MARGIN = 72.dp
+
+/** Wide enough for two lines of an episode name, narrow enough to leave the picture visible. */
+private val END_CARD_MAX_WIDTH = 320.dp
 
 /**
  * How long the controls stay up with nobody touching them.

@@ -120,6 +120,15 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     var onDurationChanged: ((Int) -> Unit)? = null
     var onPausedChanged: ((Boolean) -> Unit)? = null
 
+    /**
+     * Whether mpv has run out of file.
+     *
+     * The only honest "this episode is over": with `keep-open=always` mpv stops on the last
+     * frame without ever reporting a position equal to the duration, so anything that waits
+     * for the clock to run out waits through the credits and then keeps waiting.
+     */
+    var onEndReachedChanged: ((Boolean) -> Unit)? = null
+
     /** The two reasons there is nothing to show, tracked apart because they overlap. */
     private var restarting = true
     private var bufferingForCache = false
@@ -296,6 +305,10 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             // Set while mpv has stopped to refill, which is the difference between "stalled"
             // and "paused" and the only one of the two worth showing a spinner for.
             MPVLib.observeProperty("paused-for-cache", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
+            // The end of the episode, which the clock cannot be asked for: `keep-open` leaves
+            // mpv sitting on the last frame with time-pos a second short of the duration, so
+            // waiting for the two to meet waits forever.
+            MPVLib.observeProperty("eof-reached", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
             // How the language preferences get applied to tracks that arrive late; see
             // applyTrackPreferences.
             MPVLib.observeProperty("track-list/count", MPVLib.mpvFormat.MPV_FORMAT_INT64)
@@ -331,6 +344,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
                 onPosition = { value -> post { onPositionChanged?.invoke(value) } },
                 onDuration = { value -> post { onDurationChanged?.invoke(value) } },
                 onPaused = { value -> post { onPausedChanged?.invoke(value) } },
+                onEndReached = { value -> post { onEndReachedChanged?.invoke(value) } },
             ),
         )
 
@@ -419,10 +433,29 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         subtitleTracks: List<SourceTrack> = emptyList(),
         audioTracks: List<SourceTrack> = emptyList(),
         mpvArgs: List<Pair<String, String>> = emptyList(),
+        httpHeaders: List<String> = emptyList(),
     ) {
         pendingResumeAt = resumeAt
         externalSubtitles = subtitleTracks
         externalAudio = audioTracks
+        // Everything below belongs to the file that was playing, and the player now opens a
+        // second one without being torn down first — the next episode. Left alone, the new
+        // episode inherited the old one's deferred track lists in its picker, and its
+        // "the source offered subtitles" flag, which is what decides whether a file with no
+        // preferred language gets a subtitle forced on anyway.
+        pendingSubtitles = emptyList()
+        pendingAudio = emptyList()
+        addedSubtitles = false
+        viewerChoseSubtitle = false
+        viewerChoseAudio = false
+        lastHttpError = null
+        // As a property rather than an option, because by now mpv is initialised: the option
+        // form is read at startup and the second episode would have gone out with the first
+        // one's Referer. Cleared explicitly when the new file needs no headers, or the same
+        // staleness happens the other way round.
+        postToMpv {
+            MPVLib.setPropertyString("http-header-fields", httpHeaders.toMpvList())
+        }
         if (mpvArgs.isNotEmpty()) {
             postToMpv {
                 mpvArgs.forEach { (name, value) ->
@@ -576,6 +609,12 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             } else {
                 MPVLib.command(arrayOf("loadfile", target))
             }
+            // `keep-open` leaves mpv paused on the last frame when an episode ends, and pause
+            // is a property of the player, not of the file: the episode opened from there —
+            // which is every episode the player moves on to by itself — arrived already
+            // stopped on its first frame.
+            pausedForFocusLoss = false
+            MPVLib.setPropertyBoolean("pause", false)
         }
     }
 
@@ -957,6 +996,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         private val onPosition: (Int) -> Unit,
         private val onDuration: (Int) -> Unit,
         private val onPaused: (Boolean) -> Unit,
+        private val onEndReached: (Boolean) -> Unit,
     ) : MPVLib.EventObserver {
         override fun event(eventId: Int) {
             when (eventId) {
@@ -985,6 +1025,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             when (property) {
                 "paused-for-cache" -> onBuffering(value)
                 "pause" -> onPaused(value)
+                "eof-reached" -> onEndReached(value)
             }
         }
         override fun eventProperty(property: String, value: String) = Unit
