@@ -41,6 +41,15 @@ class PlayerPreferences(
 
     val preferredSubtitleLanguages: Preference<String> = preferenceStore.getString("pref_player_sub_langs", "")
 
+    /**
+     * Whether the end of an episode opens the next one on its own.
+     *
+     * On, because the alternative is what watching a season used to be: leave the player, find
+     * the row below, tap it, wait. The countdown on screen is what makes it safe to default to
+     * — it says what is about to happen and takes a tap to stop.
+     */
+    val autoplayNext: Preference<Boolean> = preferenceStore.getBoolean("pref_player_autoplay_next", true)
+
     /** Whether starting an episode goes fullscreen with the system bars hidden. */
     val hideSystemBars: Preference<Boolean> = preferenceStore.getBoolean("pref_player_hide_system_bars", true)
 }

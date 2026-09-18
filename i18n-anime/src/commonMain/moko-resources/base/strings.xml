@@ -435,6 +435,11 @@
     <string name="player_pause">Pause</string>
     <string name="player_loading">Loading episode…</string>
     <string name="player_cancel_loading">Stop loading</string>
+    <string name="player_up_next">Up next</string>
+    <string name="player_autoplay_in">Starts in %1$d s</string>
+    <string name="player_play_now">Play now</string>
+    <string name="pref_player_autoplay_next">Play the next episode automatically</string>
+    <string name="pref_player_autoplay_next_summary">A countdown at the end of an episode opens the next one. It can be stopped from the player.</string>
     <string name="sort_anime_last_update_check">Last update check</string>
     <string name="sort_anime_episode_fetch_date">Episode fetch date</string>
     <string name="label_anime_library">Anime</string>

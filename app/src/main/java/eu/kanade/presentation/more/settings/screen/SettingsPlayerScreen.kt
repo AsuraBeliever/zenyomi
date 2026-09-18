@@ -73,6 +73,11 @@ object SettingsPlayerScreen : SearchableSettings {
                 subtitle = stringResource(ANMR.strings.pref_player_languages_summary),
             ),
             Preference.PreferenceItem.SwitchPreference(
+                preference = playerPref.autoplayNext,
+                title = stringResource(ANMR.strings.pref_player_autoplay_next),
+                subtitle = stringResource(ANMR.strings.pref_player_autoplay_next_summary),
+            ),
+            Preference.PreferenceItem.SwitchPreference(
                 preference = playerPref.hideSystemBars,
                 title = stringResource(ANMR.strings.pref_player_fullscreen),
             ),

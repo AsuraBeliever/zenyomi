@@ -10,6 +10,14 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [Unreleased]
+### Added
+- **Un episodio abre el siguiente solo.** Al llegar a los créditos aparece abajo qué viene después, con una cuenta atrás que va con el vídeo: si pausas, se para; si vuelves atrás, desaparece. Al acabar el episodio, el siguiente empieza sin salir del reproductor. Se puede parar con Cancelar —solo para ese episodio— o apagar del todo en Ajustes → Reproductor. El siguiente episodio se resuelve durante los créditos, así que el salto no se hace esperar.
+- **Botones de episodio anterior y siguiente**, a los lados de la barra de búsqueda. En el primero y el último de la serie se ven apagados en vez de desaparecer, para que la barra no cambie de sitio.
+
+### Other
+- La resolución de un episodio —copia descargada, url reutilizada, fuente, y el motivo cuando no sale nada— vivía en la ficha y estaba copiada, con diferencias, en Novedades y en Historial. Ahora es una sola pieza que usan las tres pantallas y también el reproductor. La copia del historial no tenía ni la reutilización ni el motivo del fallo: reanudar desde ahí pagaba otra vez toda la cadena de peticiones y no decía nada cuando fallaba.
+
 ## [0.18.1] - 2026-09-18
 ### Fixed
 - **A half-watched episode shows where you left off, and goes back there.** The episode row now reads `12:34` where a chapter row reads `Page 12`. The position was being saved correctly the whole time — the row was formatting it as if it were milliseconds, so ten minutes of an episode came out as `0:00`, which looks exactly like progress that was never saved at all. Resuming already worked; nothing on screen said so.
