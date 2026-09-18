@@ -16,16 +16,13 @@ import dev.zacsweers.metro.AssistedInject
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactoryKey
-import eu.kanade.domain.anime.interactor.GetEpisodeVideos
+import eu.kanade.domain.anime.interactor.ResolveEpisodeVideo
 import eu.kanade.domain.anime.interactor.SyncEpisodesWithSource
 import eu.kanade.domain.anime.model.copyFrom
 import eu.kanade.domain.anime.model.downloadedFilter
 import eu.kanade.domain.anime.model.episodesFiltered
 import eu.kanade.domain.anime.model.toSAnime
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
-import eu.kanade.presentation.anime.AnimeSourceHealth
-import eu.kanade.presentation.anime.NoVideoFoundException
-import eu.kanade.presentation.anime.SourceOutdatedException
 import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
@@ -86,8 +83,7 @@ import tachiyomi.i18n.MR
 class AnimeDetailsViewModel(
     @Assisted private val animeId: Long,
     private val getAnimeWithEpisodesAndSeasons: GetAnimeWithEpisodesAndSeasons,
-    private val getEpisodeVideos: GetEpisodeVideos,
-    private val sourceHealth: AnimeSourceHealth,
+    private val resolveEpisodeVideo: ResolveEpisodeVideo,
     private val syncEpisodesWithSource: SyncEpisodesWithSource,
     private val sourceManager: AnimeSourceManager,
     private val updateAnime: UpdateAnime,
@@ -256,48 +252,17 @@ class AnimeDetailsViewModel(
         resolveJob?.cancel()
         _state.update { it.copy(resolvingEpisodeId = episode.id) }
         resolveJob = viewModelScope.launch {
-            // A downloaded copy wins: it plays offline and costs the source nothing.
-            // Off the main thread: looking for the file is a round trip to the storage
-            // provider, and this runs from a tap.
-            val source = sourceManager.get(anime.source)
-            val local = source?.let {
-                withIOContext { downloadManager.downloadedUri(anime, it, episode) }
-            }
-            if (local != null) {
-                _state.update { it.copy(resolvingEpisodeId = null) }
-                return@launch onResolved(PlaybackRequest.local(local))
-            }
-            // Lo que este episodio resolvio hace un momento sirve tal cual. Salir del
-            // reproductor y volver a entrar repetia toda la cadena de peticiones para acabar
-            // abriendo exactamente el mismo video.
-            getEpisodeVideos.cached(episode.id)?.let { known ->
-                _state.update { it.copy(resolvingEpisodeId = null, playbackError = null) }
-                return@launch onResolved(PlaybackRequest.from(known))
-            }
-            val result = runCatching { getEpisodeVideos.await(anime.source, episode) }
-                .onFailure { logcat(LogPriority.WARN, it) { "Could not resolve ${episode.name}" } }
-            val video = result.getOrDefault(emptyList())
-                .let { getEpisodeVideos.playable(anime.source, it) }
-
-            // Tapping an episode that resolves to nothing used to do nothing at all, which
-            // is indistinguishable from a tap that missed. Whatever went wrong is said out
-            // loud instead.
+            val resolved = resolveEpisodeVideo.await(anime, episode)
             _state.update {
                 it.copy(
                     resolvingEpisodeId = null,
-                    // The throwable travels, not a string: what the user should be told is a
-                    // presentation decision, and AnimeSourceError is where it is made.
-                    playbackError = when {
-                        video != null -> null
-                        result.isFailure -> result.exceptionOrNull()
-                        else -> noVideoReason(anime.source)
-                    },
+                    // Tapping an episode that resolves to nothing used to do nothing at all,
+                    // which is indistinguishable from a tap that missed. Whatever went wrong
+                    // is said out loud instead.
+                    playbackError = (resolved as? ResolveEpisodeVideo.Result.Failed)?.reason,
                 )
             }
-            video?.let { getEpisodeVideos.remember(episode.id, it) }
-            // The whole video travels, not just its url: the headers it was resolved with and
-            // any side-car subtitle track are as much a part of playing it as the url is.
-            onResolved(video?.let(PlaybackRequest::from))
+            onResolved((resolved as? ResolveEpisodeVideo.Result.Playable)?.request)
         }
     }
 
@@ -555,21 +520,6 @@ class AnimeDetailsViewModel(
         val anime = state.value.anime ?: return
         viewModelScope.launchIO { block(anime) }
     }
-
-    /**
-     * Why an episode produced no video: the episode, or the extension.
-     *
-     * Worth separating because the two ask opposite things of the user. Our last sweep of the
-     * installed sources already knows which ones stopped working; saying "no video found for
-     * this episode" about one of those sends people to try episode after episode of a source
-     * that will never answer.
-     */
-    private fun noVideoReason(sourceId: Long): Throwable =
-        if (sourceHealth.statusOf(sourceId) != null) {
-            SourceOutdatedException()
-        } else {
-            NoVideoFoundException()
-        }
 
     fun clearPlaybackError() = _state.update { it.copy(playbackError = null) }
 
