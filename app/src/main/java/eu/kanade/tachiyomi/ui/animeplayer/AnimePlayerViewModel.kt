@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import tachiyomi.core.common.util.lang.launchNonCancellable
 import tachiyomi.domain.episode.interactor.GetEpisode
 import tachiyomi.domain.episode.interactor.UpdateEpisode
 import tachiyomi.domain.episode.model.EpisodeUpdate
@@ -66,7 +67,11 @@ class AnimePlayerViewModel(
 
     fun saveProgress(positionSeconds: Int, durationSeconds: Int) {
         if (durationSeconds <= 0) return
-        viewModelScope.launch {
+        // launchNonCancellable, como hace el lector de manga al guardar la pagina: el ultimo
+        // guardado ocurre cuando el reproductor se desmonta, y para entonces la actividad ya
+        // se esta cerrando y viewModelScope esta cancelado. Con `launch` a secas ese guardado
+        // no llegaba a la base de datos, asi que salir de una pausa perdia el avance.
+        viewModelScope.launchNonCancellable {
             // History is what drives the recents list, so it is stamped on every save
             // rather than only when an episode finishes.
             upsertAnimeHistory.await(
@@ -85,7 +90,7 @@ class AnimePlayerViewModel(
 
             if (seen && !pushedToTrackers) {
                 pushedToTrackers = true
-                val episode = getEpisode.await(episodeId) ?: return@launch
+                val episode = getEpisode.await(episodeId) ?: return@launchNonCancellable
                 trackEpisode.await(episode.animeId, episode.episodeNumber)
             }
         }
