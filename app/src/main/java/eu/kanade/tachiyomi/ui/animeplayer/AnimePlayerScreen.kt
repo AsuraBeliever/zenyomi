@@ -141,6 +141,12 @@ fun AnimePlayerContent(
     // The chapters the file declares, or null until they have been asked for. Read once per
     // file, because a container's chapter list does not change while it plays.
     var chapters by remember { mutableStateOf<List<ZenyomiMPVView.Chapter>?>(null) }
+    // Whether this episode's opening has already been jumped for the viewer. Per file: the
+    // next episode gets its own.
+    var introSkipped by remember { mutableStateOf(false) }
+    // Shown for a moment after that happens, because an episode that jumps on its own with
+    // nothing said is indistinguishable from one that lost its place.
+    var skipNotice by remember { mutableStateOf(false) }
     // mpv has run out of file. The clock cannot say this: `keep-open` stops on the last frame
     // a second short of the duration, so the episode ends without the two ever meeting.
     var endReached by remember { mutableStateOf(false) }
@@ -236,6 +242,8 @@ fun AnimePlayerContent(
         playbackFailure = null
         loading = true
         chapters = null
+        introSkipped = false
+        skipNotice = false
         endReached = false
         autoAdvanceCancelled = false
         view.playFile(
@@ -370,12 +378,24 @@ fun AnimePlayerContent(
     // recap the card would otherwise be up for a tenth of it, and on a ten second clip it
     // would be up from the first frame.
     val endCardLead = minOf(END_CARD_LEAD_SECONDS, duration / 4)
+    // The credits are where the next episode is announced when AniSkip knows where they
+    // start; otherwise the last half minute of the episode stands in for them.
+    val creditsStarted = playerState.ending?.let { position >= it.first } == true
     val endCardVisible = nextEpisode != null && !inPictureInPicture && !loading &&
-        playbackFailure == null && (remaining <= endCardLead || endReached)
+        playbackFailure == null && (remaining <= endCardLead || creditsStarted || endReached)
 
-    // Where the opening ends, when the file says so. A release with a chapter called
-    // "Opening" has answered the question exactly; everything else gets the jump below.
-    val opening = remember(chapters) { openingChapter(chapters) }
+    // AniSkip answers for the episode, and needs its length to do it.
+    LaunchedEffect(playerState.playback?.serial, duration > 0) {
+        viewModel.loadSkipIntervals(duration)
+    }
+
+    // Where the opening ends, in order of how much the answer can be trusted: the file's own
+    // chapters first — a release that names them has said it about *this* file — then
+    // AniSkip, which knows the episode but not which cut of it is being played, and failing
+    // both, the fixed jump below.
+    val opening = remember(chapters, playerState.opening) {
+        openingChapter(chapters) ?: playerState.opening
+    }
     val skipIntroLength = remember { viewModel.preferences.skipIntroLength.get() }
     // Inside the opening when it is known, and otherwise early enough in the episode for an
     // opening to be what is on screen — capped against the episode's own length, so a five
@@ -383,7 +403,30 @@ fun AnimePlayerContent(
     val withinOpening = opening?.contains(position)
         ?: (position <= minOf(SKIP_WINDOW_SECONDS, duration / 4))
     val skipVisible = withinOpening && duration > 0 && !inPictureInPicture && !loading &&
-        playbackFailure == null && !endCardVisible
+        playbackFailure == null && !endCardVisible && !skipNotice
+
+    // Skipping it without being asked, for the viewer who turned that on. Once per episode,
+    // and only on an interval somebody actually knows: the fixed jump is never automatic,
+    // because a guess that moves the episode on its own is not a feature.
+    val autoSkipIntro = remember { viewModel.preferences.autoSkipIntro.get() }
+    LaunchedEffect(opening, withinOpening, introSkipped) {
+        if (!autoSkipIntro || introSkipped || opening == null || !withinOpening) {
+            return@LaunchedEffect
+        }
+        introSkipped = true
+        position = opening.last
+        seekTarget = opening.last
+        view.seekTo(opening.last)
+        skipNotice = true
+    }
+
+    // The notice is a flash, like the jump indicator: it says what happened and goes.
+    LaunchedEffect(skipNotice) {
+        if (skipNotice) {
+            delay(SKIP_NOTICE_MS)
+            skipNotice = false
+        }
+    }
 
     // Resolving the next episode costs what opening this one did, and the credits are exactly
     // the window in which to spend it unnoticed. Without this the countdown reaches zero and
@@ -808,6 +851,29 @@ fun AnimePlayerContent(
             }
         }
 
+        // What just happened, when the opening was skipped without being asked.
+        AnimatedVisibility(
+            visible = skipNotice && !inPictureInPicture,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .systemBarsPadding()
+                .padding(end = 16.dp, bottom = END_CARD_BOTTOM_MARGIN),
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.75f),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    text = stringResource(ANMR.strings.player_intro_skipped),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
+        }
+
         // What is coming next, while what is playing finishes. Shown whether or not the
         // controls are up: it is the one thing on this screen that has to be seen without
         // being asked for, because it is about to act on its own.
@@ -994,6 +1060,9 @@ private const val DEFAULT_ASPECT = 16f / 9f
  * before the countdown reaches zero.
  */
 private const val END_CARD_LEAD_SECONDS = 30
+
+/** How long the "opening skipped" notice stays up. */
+private const val SKIP_NOTICE_MS = 2_000L
 
 /** Enough to clear the seek bar, which is what the card sits above. */
 private val END_CARD_BOTTOM_MARGIN = 72.dp
