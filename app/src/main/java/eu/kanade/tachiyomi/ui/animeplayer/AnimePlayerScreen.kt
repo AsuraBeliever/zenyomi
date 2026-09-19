@@ -881,7 +881,8 @@ fun AnimePlayerContent(
                             // Remembered before the jump: the button is one press, and it
                             // only comes back if the viewer returns to before this point.
                             skippedFrom = position
-                            val target = opening?.last ?: (position + skipIntroLength)
+                            val target = opening?.last
+                                ?: fixedSkipTarget(position, skipIntroLength, duration)
                             // The bar moves with it, the same way a drag does: mpv keeps
                             // reporting where the episode was until it has decoded where it
                             // is going, and a button that appears to do nothing for a second
@@ -1088,6 +1089,32 @@ internal fun openingChapter(chapters: List<ZenyomiMPVView.Chapter>?): IntRange? 
  * the scene the episode starts with and leave the opening itself to play.
  */
 private val OPENING_TITLE = Regex("""\b(op|opening|intro)\b""", RegexOption.IGNORE_CASE)
+
+/**
+ * Where the button lands when nothing says where this episode's opening ends.
+ *
+ * Not "[length] seconds from here". An opening is [length] seconds long *counting from where
+ * it starts*, so jumping that much from wherever the button happens to be pressed lands past
+ * its end by however long the viewer took to press — ten seconds in, ten seconds of episode
+ * gone. Losing episode is the one thing this button must never do.
+ *
+ * With no interval to go by, the assumption is the one the button's own window already makes:
+ * that the opening runs from the start of the episode. Pressing at second five and at second
+ * fifty then land in the same place, which is what "skip the opening" means. It can leave a
+ * few seconds of opening playing — an episode that opens on a scene first — and that is the
+ * right way round to be wrong.
+ *
+ * Past [length] the assumption cannot hold: an opening that started with the episode would be
+ * over. A press there is read as an opening that starts late, there is nothing to anchor it
+ * to, and the jump goes back to being measured from the press.
+ *
+ * Never past the last second of the episode: a jump that runs off the end would hand over to
+ * the next episode, and the viewer asked to skip an opening, not an episode.
+ */
+internal fun fixedSkipTarget(position: Int, length: Int, duration: Int): Int {
+    val target = if (position < length) length else position + length
+    return target.coerceAtMost(duration - 1).coerceAtLeast(position)
+}
 
 /**
  * How long into an episode the skip button is offered when nothing says where the opening is.

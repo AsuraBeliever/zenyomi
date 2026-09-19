@@ -44,9 +44,21 @@ fija.** El fichero manda sobre la base de datos porque habla de la copia que se 
 viendo; la base de datos manda sobre la cifra fija porque habla del episodio.
 
 **El botón existe siempre.** Cuando hay un intervalo conocido, salta a su final
-exacto y solo se ofrece mientras el opening está en pantalla. Cuando no lo hay,
-salta la cantidad configurada durante los primeros minutos del episodio. Un usuario
-sin trackers, sin red o con una fuente sin capítulos sigue teniendo botón.
+exacto y solo se ofrece mientras el opening está en pantalla. Cuando no lo hay, se
+ofrece durante los primeros minutos del episodio. Un usuario sin trackers, sin red o
+con una fuente sin capítulos sigue teniendo botón.
+
+**La cantidad fija se mide desde donde empieza el opening, no desde donde se pulsa.**
+Un opening dura ~85 s *contados desde su principio*: saltar 85 s desde el momento de
+la pulsación aterriza pasado su final por todo lo que el espectador haya tardado en
+pulsar, y eso es episodio perdido. Sin intervalo conocido se asume lo mismo que ya
+asume la ventana en la que se ofrece el botón —que el opening empieza con el
+episodio—, así que pulsar en el segundo 5 y en el 50 aterriza en el mismo sitio.
+Puede dejar unos segundos de opening sonando cuando el episodio abre con una escena;
+ese es el lado correcto por el que equivocarse. Pasada esa cantidad la suposición ya
+no se sostiene —un opening que empezara con el episodio habría terminado—, así que
+ahí se vuelve a medir desde la pulsación, y nunca se aterriza después del último
+segundo del episodio.
 
 **El salto automático es opcional y viene apagado.** Actúa sobre un intervalo que ha
 enviado otra persona; cuando está mal, se lleva minuto y medio de episodio por
