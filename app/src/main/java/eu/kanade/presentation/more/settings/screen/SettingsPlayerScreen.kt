@@ -75,7 +75,7 @@ object SettingsPlayerScreen : SearchableSettings {
             Preference.PreferenceItem.SwitchPreference(
                 preference = playerPref.aniskipEnabled,
                 title = stringResource(ANMR.strings.pref_enable_aniskip),
-                subtitle = stringResource(ANMR.strings.pref_category_player_aniskip_info),
+                subtitle = stringResource(ANMR.strings.pref_player_aniskip_summary),
             ),
             Preference.PreferenceItem.SwitchPreference(
                 preference = playerPref.autoSkipIntro,

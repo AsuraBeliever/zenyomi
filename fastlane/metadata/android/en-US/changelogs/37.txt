@@ -1,0 +1,5 @@
+Fixed: the skip opening button no longer shows up at second zero of an anime whose opening does not start there. It appeared because nothing had told it where the opening was, so all it could offer was a fixed jump from wherever you pressed — and a press at the start landed in the middle of the opening instead of past it.
+
+AniSkip has the exact times, but it only answered for an anime linked to MyAnimeList or AniList, and nobody links a series before watching it. With no tracker, the anime is now identified by its title in AniList's catalogue, so the button shows up where the opening actually starts and lands where it ends. A title that does not match a single entry exactly is not taken: that still falls back to the fixed jump.
+
+Other: Settings → Player no longer says AniSkip needs the anime to be tracked, because it no longer does.
