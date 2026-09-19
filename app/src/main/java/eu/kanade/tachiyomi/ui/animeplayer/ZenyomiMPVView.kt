@@ -79,6 +79,23 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     /** Whether the source offered subtitles, for the "pick one rather than none" rule. */
     private var addedSubtitles = false
 
+    /**
+     * Told when the file was unloaded to give the surface back, with the second it was on.
+     *
+     * Only when the player is coming back — backgrounded, screen off, anything that takes the
+     * surface away without closing the player.
+     */
+    var onNeedsReload: ((resumeAt: Int) -> Unit)? = null
+
+    /**
+     * Whether the player is closing for good, as opposed to going to the background.
+     *
+     * The surface goes away in both cases and what has to happen to mpv is not the same:
+     * closing unloads the file, backgrounding only pauses it so that coming back resumes where
+     * it was. Set by [AnimePlayerActivity], which is the only place that knows the difference.
+     */
+    var finishing = false
+
     /** The viewer's language preferences, as codes, in order. */
     private var preferredAudio: List<String> = emptyList()
     private var preferredSubtitles: List<String> = emptyList()
@@ -91,6 +108,15 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      * player that is still loading, forever.
      */
     var onPlaybackError: ((String?) -> Unit)? = null
+
+    /**
+     * Held so it can be taken off again.
+     *
+     * MPVLib keeps its log observers in a list of its own that a destroy does not touch, so a
+     * second player added a second one and every line of mpv's log appeared twice — three
+     * times for the third, and so on for as long as the app was running.
+     */
+    private var logObserver: MPVLib.LogObserver? = null
 
     /** The last "HTTP error" mpv logged, which is the useful half of a failure. */
     private var lastHttpError: String? = null
@@ -119,6 +145,15 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
     var onPositionChanged: ((Int) -> Unit)? = null
     var onDurationChanged: ((Int) -> Unit)? = null
     var onPausedChanged: ((Boolean) -> Unit)? = null
+
+    /**
+     * Whether mpv has run out of file.
+     *
+     * The only honest "this episode is over": with `keep-open=always` mpv stops on the last
+     * frame without ever reporting a position equal to the duration, so anything that waits
+     * for the clock to run out waits through the credits and then keeps waiting.
+     */
+    var onEndReachedChanged: ((Boolean) -> Unit)? = null
 
     /** The two reasons there is nothing to show, tracked apart because they overlap. */
     private var restarting = true
@@ -203,10 +238,12 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             // crossing jni to be formatted and written to logcat while the episode plays.
             // Diagnosing is worth that; a release build on someone's phone is not.
             MPVLib.setOptionString("msg-level", "all=$LOG_LEVEL")
-            MPVLib.addLogObserver { prefix, _, text ->
+            val observer = MPVLib.LogObserver { prefix, _, text ->
                 if (text.contains("HTTP error")) lastHttpError = text.trim()
                 logcat(LogPriority.DEBUG) { "mpv [$prefix] $text".trim() }
             }
+            logObserver = observer
+            MPVLib.addLogObserver(observer)
             MPVLib.setOptionString("config", "yes")
             MPVLib.setOptionString("config-dir", configDir.path)
             // Hardware decoding where the device offers it, falling back to software.
@@ -296,6 +333,10 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             // Set while mpv has stopped to refill, which is the difference between "stalled"
             // and "paused" and the only one of the two worth showing a spinner for.
             MPVLib.observeProperty("paused-for-cache", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
+            // The end of the episode, which the clock cannot be asked for: `keep-open` leaves
+            // mpv sitting on the last frame with time-pos a second short of the duration, so
+            // waiting for the two to meet waits forever.
+            MPVLib.observeProperty("eof-reached", MPVLib.mpvFormat.MPV_FORMAT_FLAG)
             // How the language preferences get applied to tracks that arrive late; see
             // applyTrackPreferences.
             MPVLib.observeProperty("track-list/count", MPVLib.mpvFormat.MPV_FORMAT_INT64)
@@ -331,6 +372,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
                 onPosition = { value -> post { onPositionChanged?.invoke(value) } },
                 onDuration = { value -> post { onDurationChanged?.invoke(value) } },
                 onPaused = { value -> post { onPausedChanged?.invoke(value) } },
+                onEndReached = { value -> post { onEndReachedChanged?.invoke(value) } },
             ),
         )
 
@@ -419,10 +461,29 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         subtitleTracks: List<SourceTrack> = emptyList(),
         audioTracks: List<SourceTrack> = emptyList(),
         mpvArgs: List<Pair<String, String>> = emptyList(),
+        httpHeaders: List<String> = emptyList(),
     ) {
         pendingResumeAt = resumeAt
         externalSubtitles = subtitleTracks
         externalAudio = audioTracks
+        // Everything below belongs to the file that was playing, and the player now opens a
+        // second one without being torn down first — the next episode. Left alone, the new
+        // episode inherited the old one's deferred track lists in its picker, and its
+        // "the source offered subtitles" flag, which is what decides whether a file with no
+        // preferred language gets a subtitle forced on anyway.
+        pendingSubtitles = emptyList()
+        pendingAudio = emptyList()
+        addedSubtitles = false
+        viewerChoseSubtitle = false
+        viewerChoseAudio = false
+        lastHttpError = null
+        // As a property rather than an option, because by now mpv is initialised: the option
+        // form is read at startup and the second episode would have gone out with the first
+        // one's Referer. Cleared explicitly when the new file needs no headers, or the same
+        // staleness happens the other way round.
+        postToMpv {
+            MPVLib.setPropertyString("http-header-fields", httpHeaders.toMpvList())
+        }
         if (mpvArgs.isNotEmpty()) {
             postToMpv {
                 mpvArgs.forEach { (name, value) ->
@@ -576,6 +637,12 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             } else {
                 MPVLib.command(arrayOf("loadfile", target))
             }
+            // `keep-open` leaves mpv paused on the last frame when an episode ends, and pause
+            // is a property of the player, not of the file: the episode opened from there —
+            // which is every episode the player moves on to by itself — arrived already
+            // stopped on its first frame.
+            pausedForFocusLoss = false
+            MPVLib.setPropertyBoolean("pause", false)
         }
     }
 
@@ -725,6 +792,30 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         pendingAudio.mapIndexed { index, track -> track.placeholder(-(index + 1), "audio") } +
         pendingSubtitles.mapIndexed { index, track -> track.placeholder(-(index + 1), "sub") }
 
+    /**
+     * The chapters the file itself declares, in order.
+     *
+     * Worth asking for because of what the good ones are called: a release with a chapter
+     * named "Opening" has said exactly where the opening ends, which is more than any guess at
+     * a duration can do. Files without chapters — most streams — answer with nothing, and the
+     * skip button falls back to jumping a fixed length.
+     *
+     * A blocking read like [tracks]: from the polling loop, not from a button.
+     */
+    fun chapters(): List<Chapter> {
+        val count = MPVLib.getPropertyInt("chapter-list/count") ?: return emptyList()
+        return (0 until count).mapNotNull { index ->
+            // As a string and parsed here: the property is a double, and MPVLib's integer
+            // getter on a double property fails rather than rounding.
+            val start = MPVLib.getPropertyString("chapter-list/$index/time")?.toDoubleOrNull()
+                ?: return@mapNotNull null
+            Chapter(
+                title = MPVLib.getPropertyString("chapter-list/$index/title"),
+                start = start.toInt(),
+            )
+        }
+    }
+
     private fun SourceTrack.placeholder(id: Int, type: String) = Track(
         id = id,
         type = type,
@@ -872,7 +963,13 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         observers.clear()
 
         runOnMpvThread {
+            // Also here, and not only in surfaceDestroyed: which of the two comes first is
+            // Android's to decide, and a destroy that runs while a file is still being
+            // decoded is the same wait as the one above.
+            MPVLib.command(arrayOf("stop"))
             toRemove.forEach { MPVLib.removeObserver(it) }
+            logObserver?.let { MPVLib.removeLogObserver(it) }
+            logObserver = null
             MPVLib.destroy()
             fds.forEach { runCatching { it.close() } }
         }
@@ -907,7 +1004,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         postToMpv {
             MPVLib.attachSurface(surface)
             MPVLib.setOptionString("force-window", "yes")
-            MPVLib.setOptionString("vo", "gpu")
+            MPVLib.setPropertyString("vo", "gpu")
         }
         file?.let { load(it, pendingResumeAt) }
     }
@@ -923,9 +1020,36 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         // main thread, but mpv must stop drawing before the surface is gone, so the wait is
         // bounded rather than skipped.
         runOnMpvThread {
-            MPVLib.setOptionString("vo", "null")
-            MPVLib.setOptionString("force-window", "no")
+            // As a property, and without touching force-window. Asking for `force-window=no`
+            // here is what hung the whole player: mpv reconfigures its window on that option
+            // and the call never came back, so the wait below gave up, Android took the
+            // surface away underneath a mpv that was still holding it, and every later call
+            // on this thread — the destroy right after, and the create of the next player —
+            // queued behind one that will never finish. The player was then dead for the life
+            // of the process: opening another episode sat on "Loading episode…" forever.
+            //
+            // Dropping the video output and handing the surface back is all that is needed,
+            // and it is what mpv's own Android player does here.
+            // mpv has to stop drawing before the surface can be handed back, and asking it
+            // to drop the video output while it is mid-frame is what hung the player: the
+            // call never returned, the wait below gave up, Android took the surface away
+            // underneath a mpv still holding it, and everything queued on this thread
+            // afterwards — the destroy right after, and the create of the *next* player —
+            // waited behind a call that would never finish. Opening another episode then sat
+            // on "Loading episode…" for the life of the process.
+            //
+            // Unloading the file when the player is closing, and pausing when it is only
+            // going to the background: the detach that took longer than a second and a half
+            // now takes about thirty milliseconds either way.
+            val resumeAt = MPVLib.getPropertyInt("time-pos") ?: 0
+            MPVLib.command(arrayOf("stop"))
+            MPVLib.setPropertyString("vo", "null")
             MPVLib.detachSurface()
+            // Going to the background rather than closing: the episode has to come back, and
+            // it can only be put back once the surface is here again. Asking mpv to merely
+            // pause instead of unloading does not work — the detach hangs exactly as it did
+            // before — so the file is reopened where it was.
+            if (!finishing) post { onNeedsReload?.invoke(resumeAt) }
         }
     }
 
@@ -940,6 +1064,9 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
      */
     private fun List<String>.toMpvList(): String =
         joinToString(",") { it.replace(",", "\\,") }
+
+    /** One chapter of the file being played: where it starts, and what it is called. */
+    data class Chapter(val title: String?, val start: Int)
 
     /**
      * Watches for the two moments that matter: a file opening, and mpv giving up on one.
@@ -957,6 +1084,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         private val onPosition: (Int) -> Unit,
         private val onDuration: (Int) -> Unit,
         private val onPaused: (Boolean) -> Unit,
+        private val onEndReached: (Boolean) -> Unit,
     ) : MPVLib.EventObserver {
         override fun event(eventId: Int) {
             when (eventId) {
@@ -985,6 +1113,7 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
             when (property) {
                 "paused-for-cache" -> onBuffering(value)
                 "pause" -> onPaused(value)
+                "eof-reached" -> onEndReached(value)
             }
         }
         override fun eventProperty(property: String, value: String) = Unit

@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-18
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.18.1, tag en `main`
+**Última release:** v0.19.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** no por defecto — desde el 2026-09-18 las pruebas van al emulador
 y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
@@ -52,6 +52,10 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
 | Gestos del player | ✅ | toque simple verificado aquí; el doble toque, verificado por el cliente en el dispositivo (2026-09-16). El aviso del salto sale del lado del que viene |
+| Tiempos exactos del opening (AniSkip) | ✅ | para un anime vinculado a MAL o AniList, los segundos reales del opening y del ending salen de `api.aniskip.com`; el botón salta al final exacto y el salto automático es opcional (apagado por defecto). Verificado en el emulador contra el servicio real: 404 cuando la duración no casa, reintento sin ella, intervalo 54–145 aplicado, y salto automático con aviso. Ver ADR-0007 |
+| Omitir el opening | ✅ | botón durante el arranque del episodio: salto de 85 s configurable, y exacto cuando el contenedor trae un capítulo llamado «Opening» —ahí solo se ofrece mientras el opening está en pantalla—. Verificado en el emulador con un mkv de capítulos (salta a los 38 s justos) y con un mp4 sin ellos (+85 s). 7 tests sobre la lectura del título del capítulo |
+| Cerrar y reabrir el reproductor | ✅ | antes dejaba la app con un reproductor muerto: soltar la superficie mientras mpv seguía pintando no volvía nunca, y todo lo que se encolaba después —incluido el arranque del siguiente reproductor— esperaba detrás. Ahora se descarga el fichero antes de soltarla, y volver de segundo plano lo reabre donde estaba |
+| Siguiente episodio dentro del player | ✅ | botones de anterior y siguiente junto a la barra, y una tarjeta con cuenta atrás al final del episodio que abre el siguiente sola. Se puede parar con Cancelar, y el ajuste "Reproducir el siguiente episodio automáticamente" lo apaga del todo. El siguiente se resuelve durante los créditos, así que el salto es instantáneo. Verificado en el emulador: cadena de cuatro episodios seguidos, progreso e historial de cada uno en la BD, y vuelta atrás con el botón de anterior |
 | Controles del player | ✅ | play/pausa y saltos en el centro de la imagen, reloj de un segundo, barra que se queda donde se suelta y cubierta de carga con salida. Se ocultan a los 5 s y el toque en la imagen los muestra u oculta en vez de pausar |
 | Arranque de un episodio | ✅ | audio y controles ya no esperan a que se descarguen dieciséis idiomas de subtítulos: de 37 s de vídeo mudo y medio minuto de botones muertos, a 2 s |
 | PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
@@ -224,6 +228,7 @@ Técnicas:
 - ADR-0002 — Apache-2.0, no MIT (obligación legal)
 - ADR-0003 — portar desde `aniyomi/main`, con v0.18.1.2 como contraste
 - ADR-0004 — la BD de anime nace en la versión 1, sin las 26 migraciones de Aniyomi
+- ADR-0007 — de dónde salen los tiempos del opening, y qué sale del dispositivo al preguntarlo
 
 ## Siguiente paso
 

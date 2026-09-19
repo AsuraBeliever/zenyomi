@@ -41,6 +41,43 @@ class PlayerPreferences(
 
     val preferredSubtitleLanguages: Preference<String> = preferenceStore.getString("pref_player_sub_langs", "")
 
+    /**
+     * How much of an opening the skip button jumps when nothing says where it ends.
+     *
+     * Eighty-five seconds, which is what a television opening is: the standard cut is 90 s
+     * with a few of them spent on the first shots of the episode. Aniyomi settled on the same
+     * number. It is a setting because a series that runs a shorter one exists, and because a
+     * number that is nearly right is worse than one the viewer chose.
+     */
+    val skipIntroLength: Preference<Int> = preferenceStore.getInt("pref_player_skip_intro_length", 85)
+
+    /**
+     * Whether to ask AniSkip where this episode's opening is.
+     *
+     * On, because when it answers the button stops being a guess — but it only answers for an
+     * anime that is tracked with MyAnimeList or AniList, which is how it is keyed, and asking
+     * sends that id to a third party. Off is a setting for anyone who would rather it did not.
+     */
+    val aniskipEnabled: Preference<Boolean> = preferenceStore.getBoolean("pref_player_aniskip", true)
+
+    /**
+     * Whether a known opening is skipped without being asked.
+     *
+     * Off: it acts on an interval somebody else submitted, and when that is wrong it takes a
+     * minute and a half of the episode with it. The button is there for everyone; this is for
+     * the viewer who has decided they trust it.
+     */
+    val autoSkipIntro: Preference<Boolean> = preferenceStore.getBoolean("pref_player_auto_skip_intro", false)
+
+    /**
+     * Whether the end of an episode opens the next one on its own.
+     *
+     * On, because the alternative is what watching a season used to be: leave the player, find
+     * the row below, tap it, wait. The countdown on screen is what makes it safe to default to
+     * — it says what is about to happen and takes a tap to stop.
+     */
+    val autoplayNext: Preference<Boolean> = preferenceStore.getBoolean("pref_player_autoplay_next", true)
+
     /** Whether starting an episode goes fullscreen with the system bars hidden. */
     val hideSystemBars: Preference<Boolean> = preferenceStore.getBoolean("pref_player_hide_system_bars", true)
 }

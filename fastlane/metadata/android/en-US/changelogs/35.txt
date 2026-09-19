@@ -1,0 +1,9 @@
+Added: an episode opens the next one by itself. The credits bring up what comes next with a countdown that runs on the video's own clock — pause it and it stops, seek back and it goes away. Cancel stops it for that episode, and Settings → Player turns it off. The next episode is resolved while the credits run, so the switch does not hand over to a spinner.
+
+Added: buttons for the previous and next episode, either side of the seek bar.
+
+Added: a button that skips the opening. It jumps 85 seconds — the length is a setting — or exactly to the end of the opening when the file's own chapters say where that is, or when AniSkip does: for an anime tracked with MyAnimeList or AniList, the real times of that episode's opening and ending. Skipping without being asked is a setting, and it is off.
+
+Fixed: closing the player and opening another episode no longer leaves the app on "Loading episode…" for good. Giving the video surface back while mpv was still drawing into it never returned, and everything queued behind it — including the next player — waited forever.
+
+Fixed: leaving the player with the home button and coming back no longer returns to a black screen with the sound still running.

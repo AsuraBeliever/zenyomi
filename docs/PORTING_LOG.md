@@ -548,3 +548,27 @@ Diferencias deliberadas:
   (`Droid Sans Fallback`), así que el selector de fuente no tenía nada que elegir.
   Zenyomi copia seis caras de `/system/fonts` a la carpeta que lee libass.
 - La UI es propia, con los componentes de Mihon, no las tarjetas de Aniyomi.
+
+## 2026-09-18 — Saltar el opening (AniSkip)
+
+De Aniyomi viene la **idea y los parámetros**, no el código: que exista un botón de
+saltar opening con una longitud configurable, que 85 s sea el valor razonable por
+defecto, y que AniSkip (`api.aniskip.com/v2/skip-times/<malId>/<episodio>`) sea la
+fuente de los tiempos exactos para un anime vinculado a MAL o AniList.
+
+Referencia en Aniyomi @ `4b5b90a37`: `AniSkipApi.kt` y las preferencias
+`pref_enable_aniskip`, `pref_enable_auto_skip_ani_skip`, `pref_default_intro_length`.
+Sus cadenas ya estaban en `i18n-anime` y se reutilizan.
+
+Escrito aquí, no copiado:
+
+- `GetSkipIntervals` es un interactor del árbol de Zenyomi, con la resolución del id
+  de MAL propia: primero el tracker de MAL, y si el anime solo está en AniList se le
+  pregunta a AniList el `idMal`. Aniyomi hace esto en su capa de player.
+- La precedencia es nuestra: los capítulos del fichero mandan sobre AniSkip, y
+  AniSkip sobre la cantidad fija. Ver ADR-0007.
+- El reintento sin `episodeLength` cuando la primera consulta no encuentra nada no
+  existe en Aniyomi; sin él, un montaje unos segundos más largo que el cronometrado
+  se queda sin tiempos.
+- La UI es propia: un botón que solo aparece mientras el opening está en pantalla,
+  en vez de la cuenta atrás estilo Netflix de Aniyomi.
