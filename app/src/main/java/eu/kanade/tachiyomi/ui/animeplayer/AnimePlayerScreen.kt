@@ -141,9 +141,18 @@ fun AnimePlayerContent(
     // The chapters the file declares, or null until they have been asked for. Read once per
     // file, because a container's chapter list does not change while it plays.
     var chapters by remember { mutableStateOf<List<ZenyomiMPVView.Chapter>?>(null) }
-    // Whether this episode's opening has already been jumped for the viewer. Per file: the
-    // next episode gets its own.
-    var introSkipped by remember { mutableStateOf(false) }
+    // Whether the opening was skipped without being asked. Once per episode: seeking back
+    // into it means the viewer wants to watch it, and being dragged forward again would be
+    // the player arguing with them.
+    var autoSkippedIntro by remember { mutableStateOf(false) }
+    // Where the last skip was made from, or null if there has not been one.
+    //
+    // The button is a single action, not a fast-forward. Without this it stayed on screen
+    // after being pressed — the window it is offered in is minutes long — and pressing it
+    // again jumped another eighty-five seconds, and again, until half the episode was gone.
+    // It comes back if the viewer seeks to before where they skipped, because pressing it by
+    // accident should not cost them the option.
+    var skippedFrom by remember { mutableStateOf<Int?>(null) }
     // Shown for a moment after that happens, because an episode that jumps on its own with
     // nothing said is indistinguishable from one that lost its place.
     var skipNotice by remember { mutableStateOf(false) }
@@ -242,7 +251,8 @@ fun AnimePlayerContent(
         playbackFailure = null
         loading = true
         chapters = null
-        introSkipped = false
+        autoSkippedIntro = false
+        skippedFrom = null
         skipNotice = false
         endReached = false
         autoAdvanceCancelled = false
@@ -402,21 +412,23 @@ fun AnimePlayerContent(
     // minute recap does not carry the button through half of itself.
     val withinOpening = opening?.contains(position)
         ?: (position <= minOf(SKIP_WINDOW_SECONDS, duration / 4))
-    val skipVisible = withinOpening && duration > 0 && !inPictureInPicture && !loading &&
-        playbackFailure == null && !endCardVisible && !skipNotice
+    val skipUsed = skippedFrom?.let { position >= it } == true
+    val skipVisible = withinOpening && !skipUsed && duration > 0 && !inPictureInPicture &&
+        !loading && playbackFailure == null && !endCardVisible && !skipNotice
 
     // Skipping it without being asked, for the viewer who turned that on. Once per episode,
     // and only on an interval somebody actually knows: the fixed jump is never automatic,
     // because a guess that moves the episode on its own is not a feature.
     val autoSkipIntro = remember { viewModel.preferences.autoSkipIntro.get() }
-    LaunchedEffect(opening, withinOpening, introSkipped) {
-        if (!autoSkipIntro || introSkipped || opening == null || !withinOpening) {
+    LaunchedEffect(opening, withinOpening, autoSkippedIntro) {
+        if (!autoSkipIntro || autoSkippedIntro || opening == null || !withinOpening) {
             return@LaunchedEffect
         }
-        introSkipped = true
+        autoSkippedIntro = true
+        skippedFrom = position
         position = opening.last
         seekTarget = opening.last
-        view.seekTo(opening.last)
+        view.seekTo(opening.last, exact = true)
         skipNotice = true
     }
 
@@ -428,6 +440,34 @@ fun AnimePlayerContent(
         }
     }
 
+    // A known ending is a different promise from an unknown one. When AniSkip says where the
+    // credits start, the next episode begins *there* rather than three or four minutes later
+    // at the last frame — which is what a streaming app does, and the only way a long ending
+    // does not read as a countdown that is stuck. The clock is ours in that case rather than
+    // the video's, so it stops when the video does.
+    var creditsCountdown by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(
+        creditsStarted,
+        autoplayNext,
+        autoAdvanceCancelled,
+        paused,
+        playerState.playback?.serial,
+    ) {
+        if (!creditsStarted || !autoplayNext || autoAdvanceCancelled) {
+            creditsCountdown = null
+            return@LaunchedEffect
+        }
+        // Paused mid-credits: whatever the card says stays said until it plays again.
+        if (paused) return@LaunchedEffect
+        var left = creditsCountdown ?: AUTOPLAY_COUNTDOWN_SECONDS
+        while (left > 0) {
+            creditsCountdown = left
+            delay(1000)
+            left--
+        }
+        creditsCountdown = 0
+    }
+
     // Resolving the next episode costs what opening this one did, and the credits are exactly
     // the window in which to spend it unnoticed. Without this the countdown reaches zero and
     // hands over to a spinner, which is the thing it promised not to do.
@@ -435,10 +475,12 @@ fun AnimePlayerContent(
         if (endCardVisible) viewModel.prefetchNext()
     }
 
-    // The switch itself, and only once the episode has actually run out: the card is up for
-    // the last half minute so it can be seen coming, not so it can cut the ending short.
-    LaunchedEffect(endReached, autoAdvanceCancelled, playerState.switchError) {
-        if (endReached && autoplayNext && !autoAdvanceCancelled && playerState.switchError == null) {
+    // The switch itself: the end of the file, or the countdown running out over credits that
+    // are known to be credits. Never earlier — the card is up beforehand so it can be seen
+    // coming, not so it can cut the episode short.
+    LaunchedEffect(endReached, creditsCountdown, autoAdvanceCancelled, playerState.switchError) {
+        val due = endReached || creditsCountdown == 0
+        if (due && autoplayNext && !autoAdvanceCancelled && playerState.switchError == null) {
             nextEpisode?.let { viewModel.open(it, position, duration) }
         }
     }
@@ -836,6 +878,9 @@ fun AnimePlayerContent(
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier
                         .clickable {
+                            // Remembered before the jump: the button is one press, and it
+                            // only comes back if the viewer returns to before this point.
+                            skippedFrom = position
                             val target = opening?.last ?: (position + skipIntroLength)
                             // The bar moves with it, the same way a drag does: mpv keeps
                             // reporting where the episode was until it has decoded where it
@@ -843,7 +888,10 @@ fun AnimePlayerContent(
                             // gets pressed again.
                             position = target
                             seekTarget = target
-                            view.seekTo(target)
+                            // Exact: the button names where it is going, and a keyframe seek
+                            // lands before it — which on some files is back inside the
+                            // opening the viewer just asked to be rid of.
+                            view.seekTo(target, exact = true)
                             showControls()
                         }
                         .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -924,7 +972,7 @@ fun AnimePlayerContent(
                             autoplayNext && !autoAdvanceCancelled -> Text(
                                 text = stringResource(
                                     ANMR.strings.player_autoplay_in,
-                                    remaining.coerceAtLeast(0),
+                                    creditsCountdown ?: remaining.coerceAtLeast(0),
                                 ),
                                 color = Color.White.copy(alpha = 0.7f),
                                 style = MaterialTheme.typography.bodySmall,
@@ -1060,6 +1108,14 @@ private const val DEFAULT_ASPECT = 16f / 9f
  * before the countdown reaches zero.
  */
 private const val END_CARD_LEAD_SECONDS = 30
+
+/**
+ * The countdown over credits that are known to be credits.
+ *
+ * Ten seconds, the same as every streaming app: long enough to be read and stopped, short
+ * enough that it is the announcement and not the wait.
+ */
+private const val AUTOPLAY_COUNTDOWN_SECONDS = 10
 
 /** How long the "opening skipped" notice stays up. */
 private const val SKIP_NOTICE_MS = 2_000L
