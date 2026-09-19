@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-09-18
+**Actualizado:** 2026-09-19
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
 **Última release:** v0.19.1, tag en `main`
 **¿Compila?** sí
@@ -52,7 +52,7 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
 | Gestos del player | ✅ | toque simple verificado aquí; el doble toque, verificado por el cliente en el dispositivo (2026-09-16). El aviso del salto sale del lado del que viene |
-| Tiempos exactos del opening (AniSkip) | ✅ | para un anime vinculado a MAL o AniList, los segundos reales del opening y del ending salen de `api.aniskip.com`; el botón salta al final exacto y el salto automático es opcional (apagado por defecto). Verificado en el emulador contra el servicio real: 404 cuando la duración no casa, reintento sin ella, intervalo 54–145 aplicado, y salto automático con aviso. Ver ADR-0007 |
+| Tiempos exactos del opening (AniSkip) | ✅ | los segundos reales del opening y del ending salen de `api.aniskip.com`; el botón salta al final exacto y el salto automático es opcional (apagado por defecto). Ver ADR-0007. Desde la v0.19.2 **no hace falta vincular el anime a MAL ni a AniList**: si no tiene tracker se identifica por su título en el catálogo de AniList, y solo se acepta una coincidencia exacta con una única entrada. Verificado en el emulador contra los servicios reales: «Dandadan» sin tracker → id 57334, opening del episodio 2 en 121–208 s, el botón no sale al empezar, sale a los 2:49 y el salto aterriza en 3:28; un título inventado contesta «none» y se queda con el salto fijo |
 | Omitir el opening | ✅ | botón durante el arranque del episodio: salto de 85 s configurable, y exacto cuando el contenedor trae un capítulo llamado «Opening» —ahí solo se ofrece mientras el opening está en pantalla—. Verificado en el emulador con un mkv de capítulos (salta a los 38 s justos) y con un mp4 sin ellos (+85 s). 7 tests sobre la lectura del título del capítulo. Desde la v0.19.1 es **una sola pulsación** —antes se acumulaba y avanzaba el episodio— y el salto es exacto, no al fotograma clave anterior |
 | Cerrar y reabrir el reproductor | ✅ | antes dejaba la app con un reproductor muerto: soltar la superficie mientras mpv seguía pintando no volvía nunca, y todo lo que se encolaba después —incluido el arranque del siguiente reproductor— esperaba detrás. Ahora se descarga el fichero antes de soltarla, y volver de segundo plano lo reabre donde estaba |
 | Siguiente episodio dentro del player | ✅ | botones de anterior y siguiente junto a la barra, y una tarjeta con cuenta atrás al final del episodio que abre el siguiente sola. Se puede parar con Cancelar, y el ajuste "Reproducir el siguiente episodio automáticamente" lo apaga del todo. El siguiente se resuelve durante los créditos, así que el salto es instantáneo. Verificado en el emulador: cadena de cuatro episodios seguidos, progreso e historial de cada uno en la BD, y vuelta atrás con el botón de anterior |

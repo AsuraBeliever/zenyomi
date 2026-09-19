@@ -10,6 +10,13 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.19.2] - 2026-09-19
+### Fixed
+- **El botón de omitir opening ya no aparece en el segundo cero de un anime cualquiera.** Salía ahí porque nadie le había dicho dónde estaba el opening, y entonces se limitaba a ofrecer un salto fijo desde donde estuvieras: el opening no empieza en el segundo cero casi nunca, así que la pulsación caía en mitad de él. Los tiempos exactos los tiene AniSkip, pero solo respondía de un anime vinculado a MyAnimeList o AniList —y nadie vincula una serie antes de verla—. Ahora, cuando no hay tracker, el anime se identifica **por su título** en el catálogo de AniList, así que el botón sale donde empieza el opening de verdad y aterriza donde acaba. Un título que no coincide exactamente con una única entrada no se da por bueno: ahí se sigue con el salto fijo de siempre.
+
+### Other
+- Ajustes → Reproductor ya no dice que AniSkip necesite tener el anime vinculado, porque ha dejado de necesitarlo. Lo que sale del móvil al preguntar —ahora también el título, y solo cuando no hay tracker— está en `docs/adr/0007-de-donde-salen-los-tiempos-del-opening.md`.
+
 ## [0.19.1] - 2026-09-19
 ### Fixed
 - **El botón de omitir opening es un botón, no un avance rápido.** Se quedaba en pantalla después de pulsarlo —la ventana en la que se ofrece dura minutos— y cada pulsación saltaba otros 85 segundos, así que insistiendo se podía avanzar medio episodio. Ahora es una sola acción: al pulsarlo desaparece, y solo vuelve si se retrocede a antes de donde se saltó, para que una pulsación sin querer no cueste la opción.
