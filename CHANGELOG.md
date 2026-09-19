@@ -10,6 +10,13 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [Sin publicar]
+### Changed
+- **El botón de omitir opening solo aparece cuando alguien sabe dónde está el opening.** Antes existía siempre: si el episodio no traía capítulos y AniSkip no contestaba, salía igual en el primer fotograma y saltaba una cantidad fija. En un anime que abre con una escena de tres minutos eso era un botón mintiendo —el opening ni había empezado—, y pulsarlo caía en mitad del episodio. Ahora, sin capítulos y sin respuesta de AniSkip, no hay botón: el opening se salta con la barra, como en cualquier reproductor. A cambio, el botón que aparece significa siempre lo que dice.
+
+### Removed
+- **El ajuste «Longitud del opening»** (Ajustes → Reproductor), que solo servía para dimensionar ese salto a ciegas y ya no tiene nada que dimensionar.
+
 ## [0.19.3] - 2026-09-19
 ### Fixed
 - **El salto cae cinco segundos antes de que acabe el opening, y ya no pasado su final.** El final de un opening es un relevo, no un fotograma, así que el botón deja ese margen y el episodio arranca desde ahí en vez de con una escena ya empezada. Además esos cinco segundos se cuentan desde donde el opening acaba **de verdad**: los tiempos de AniSkip se midieron sobre otra copia del episodio —unos segundos de logo de más, un montaje cortado distinto— y venían corridos, así que el salto caía pasado el final llevándose episodio por delante. Ahora esa diferencia entre copias se resta también, con tope, y los capítulos del propio fichero no la necesitan porque hablan de la copia que se está viendo.

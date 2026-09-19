@@ -399,10 +399,9 @@ fun AnimePlayerContent(
         viewModel.loadSkipIntervals(duration)
     }
 
-    // Where the opening ends, in order of how much the answer can be trusted: the file's own
-    // chapters first — a release that names them has said it about *this* file — then
-    // AniSkip, which knows the episode but not which cut of it is being played, and failing
-    // both, the fixed jump below.
+    // Where the opening is, from whoever knows: the file's own chapters first — a release that
+    // names them has said it about *this* file — then AniSkip, which knows the episode but not
+    // which cut of it is being played.
     //
     // Either way the skip lands SKIP_LANDING_MARGIN_SECONDS short of the end, so the episode
     // picks up on the last bars of the opening rather than a moment into the scene. Where the
@@ -416,19 +415,17 @@ fun AnimePlayerContent(
                 Opening(it, slack = SKIP_LANDING_MARGIN_SECONDS + playerState.openingDrift)
             }
     }
-    val skipIntroLength = remember { viewModel.preferences.skipIntroLength.get() }
-    // Inside the opening when it is known, and otherwise early enough in the episode for an
-    // opening to be what is on screen — capped against the episode's own length, so a five
-    // minute recap does not carry the button through half of itself.
-    val withinOpening = opening?.range?.contains(position)
-        ?: (position <= minOf(SKIP_WINDOW_SECONDS, duration / 4))
+    // Only while the opening is actually on screen, and therefore only when somebody knows
+    // where it is. Nothing here guesses: a button offered at the first frame of an episode
+    // whose opening starts three minutes in is a button that lies about what it does, and
+    // pressing it would jump into the middle of the episode.
+    val withinOpening = opening?.range?.contains(position) == true
     val skipUsed = skippedFrom?.let { position >= it } == true
     val skipVisible = withinOpening && !skipUsed && duration > 0 && !inPictureInPicture &&
         !loading && playbackFailure == null && !endCardVisible && !skipNotice
 
-    // Skipping it without being asked, for the viewer who turned that on. Once per episode,
-    // and only on an interval somebody actually knows: the fixed jump is never automatic,
-    // because a guess that moves the episode on its own is not a feature.
+    // Skipping it without being asked, for the viewer who turned that on. Once per episode:
+    // seeking back into the opening is a viewer who wants to watch it.
     val autoSkipIntro = remember { viewModel.preferences.autoSkipIntro.get() }
     LaunchedEffect(opening, withinOpening, autoSkippedIntro) {
         if (!autoSkipIntro || autoSkippedIntro || opening == null || !withinOpening) {
@@ -892,8 +889,9 @@ fun AnimePlayerContent(
                             // Remembered before the jump: the button is one press, and it
                             // only comes back if the viewer returns to before this point.
                             skippedFrom = position
-                            val target = opening?.landing
-                                ?: fixedSkipTarget(position, skipIntroLength, duration)
+                            // Never null while the button is up: it is only offered on an
+                            // opening somebody has put a time on.
+                            val target = opening?.landing ?: return@clickable
                             // The bar moves with it, the same way a drag does: mpv keeps
                             // reporting where the episode was until it has decoded where it
                             // is going, and a button that appears to do nothing for a second
@@ -1114,32 +1112,6 @@ internal fun openingChapter(chapters: List<ZenyomiMPVView.Chapter>?): IntRange? 
 private val OPENING_TITLE = Regex("""\b(op|opening|intro)\b""", RegexOption.IGNORE_CASE)
 
 /**
- * Where the button lands when nothing says where this episode's opening ends.
- *
- * Not "[length] seconds from here". An opening is [length] seconds long *counting from where
- * it starts*, so jumping that much from wherever the button happens to be pressed lands past
- * its end by however long the viewer took to press — ten seconds in, ten seconds of episode
- * gone. Losing episode is the one thing this button must never do.
- *
- * With no interval to go by, the assumption is the one the button's own window already makes:
- * that the opening runs from the start of the episode. Pressing at second five and at second
- * fifty then land in the same place, which is what "skip the opening" means. It can leave a
- * few seconds of opening playing — an episode that opens on a scene first — and that is the
- * right way round to be wrong.
- *
- * Past [length] the assumption cannot hold: an opening that started with the episode would be
- * over. A press there is read as an opening that starts late, there is nothing to anchor it
- * to, and the jump goes back to being measured from the press.
- *
- * Never past the last second of the episode: a jump that runs off the end would hand over to
- * the next episode, and the viewer asked to skip an opening, not an episode.
- */
-internal fun fixedSkipTarget(position: Int, length: Int, duration: Int): Int {
-    val target = if (position < length) length else position + length
-    return target.coerceAtMost(duration - 1).coerceAtLeast(position)
-}
-
-/**
  * How short of the end of the opening the skip lands.
  *
  * Five seconds. The end of an opening is not a frame, it is a handover — the last bars of the
@@ -1149,14 +1121,6 @@ internal fun fixedSkipTarget(position: Int, length: Int, duration: Int): Int {
  * seeking. So the button lands just short and the episode carries on from there.
  */
 private const val SKIP_LANDING_MARGIN_SECONDS = 5
-
-/**
- * How long into an episode the skip button is offered when nothing says where the opening is.
- *
- * Five minutes: openings are at the start but not always at second zero — a cold open before
- * one is common — and past this the button is only in the way.
- */
-private const val SKIP_WINDOW_SECONDS = 300
 
 /** Used only until mpv reports the real one, which takes a moment after the file opens. */
 private const val DEFAULT_ASPECT = 16f / 9f
