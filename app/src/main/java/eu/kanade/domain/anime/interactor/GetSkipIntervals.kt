@@ -163,12 +163,12 @@ class GetSkipIntervals(
     }
 
     /**
-     * @param openingSlack how many seconds before [opening]'s end to land. See [slackFor].
+     * @param openingDrift how far [opening] may be from where it really is. See [driftFor].
      */
     data class Intervals(
         val opening: IntRange?,
         val ending: IntRange?,
-        val openingSlack: Int = 0,
+        val openingDrift: Int = 0,
     )
 
     private companion object {
@@ -207,39 +207,33 @@ internal fun parseSkipTimes(body: String, ourLengthSeconds: Int = 0): GetSkipInt
     GetSkipIntervals.Intervals(
         opening = opening?.interval?.toRange(),
         ending = response.results.firstOrNull { it.skipType == "ed" }?.interval?.toRange(),
-        openingSlack = slackFor(opening?.episodeLength, ourLengthSeconds),
+        openingDrift = driftFor(opening?.episodeLength, ourLengthSeconds),
     ).takeIf { it.opening != null || it.ending != null }
 }.getOrNull()
 
 /**
- * How many seconds before the end of the opening to land.
+ * How far these times may be from where the opening really is, in seconds.
  *
- * These times were measured on somebody else's copy of the episode. A stream that carries a
- * few seconds of logo the timed copy did not, or a release cut a moment differently, shifts
- * every second of the answer — the interval is the right length, in the wrong place. The two
- * ways of being wrong are not worth the same: landing early costs a moment of opening, and
- * landing late costs episode, which is the thing the viewer pressed the button to keep.
+ * They were measured on somebody else's copy of the episode. A stream that carries a few
+ * seconds of logo the timed copy did not, or a release cut a moment differently, shifts every
+ * second of the answer — the interval is the right length, in the wrong place. The answer
+ * carries the length of the copy it was measured on, and how far that is from this one is the
+ * only handle there is on how far apart the two are.
  *
- * So the landing is always a little short of what the times say, and the less the two copies
- * agree on how long the episode is, the shorter it lands. The answer carries the length of the
- * copy it was measured on, which is the only handle there is on how far apart they are.
  * Capped, because past a point the difference is somewhere else in the episode — a preview the
  * stream does not have, credits cut differently — and says nothing about the opening.
+ *
+ * The player subtracts this on top of the margin it always leaves, so that the seconds it
+ * lands short are counted from where the opening really ends and not from where a stranger's
+ * copy says it does.
  */
-internal fun slackFor(timedLengthSeconds: Double?, ourLengthSeconds: Int): Int {
-    val drift = if (timedLengthSeconds == null || timedLengthSeconds <= 0 || ourLengthSeconds <= 0) {
-        0
-    } else {
-        abs(timedLengthSeconds - ourLengthSeconds).roundToInt()
-    }
-    return (MINIMUM_SLACK_SECONDS + drift).coerceAtMost(MAXIMUM_SLACK_SECONDS)
+internal fun driftFor(timedLengthSeconds: Double?, ourLengthSeconds: Int): Int {
+    if (timedLengthSeconds == null || timedLengthSeconds <= 0 || ourLengthSeconds <= 0) return 0
+    return abs(timedLengthSeconds - ourLengthSeconds).roundToInt().coerceAtMost(MAXIMUM_DRIFT_SECONDS)
 }
 
-/** Enough to cover a second truncated away and a frame or two of imprecision. */
-private const val MINIMUM_SLACK_SECONDS = 2
-
-/** As early as this is ever allowed to land: eight seconds of opening is already a lot to sit through. */
-private const val MAXIMUM_SLACK_SECONDS = 8
+/** Past this the copies are not versions of the same file, and the difference is not the opening's. */
+private const val MAXIMUM_DRIFT_SECONDS = 7
 
 /** Both ends in whole seconds, which is the resolution the seek bar works in anyway. */
 private fun Interval.toRange(): IntRange? {

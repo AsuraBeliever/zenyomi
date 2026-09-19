@@ -48,18 +48,23 @@ exacto y solo se ofrece mientras el opening está en pantalla. Cuando no lo hay,
 ofrece durante los primeros minutos del episodio. Un usuario sin trackers, sin red o
 con una fuente sin capítulos sigue teniendo botón.
 
-**Un tiempo de AniSkip aterriza un poco antes de lo que dice.** Esos segundos se
-midieron sobre *otra* copia del episodio: un stream que trae unos segundos de logo
-que la copia cronometrada no traía, o un montaje cortado un poco distinto, desplaza
-toda la respuesta —el intervalo dura lo que debe, pero está corrido—. Las dos maneras
-de fallar no valen lo mismo: caer pronto cuesta un momento de opening, caer tarde
-cuesta episodio, que es justo lo que el espectador quería conservar al pulsar. Así que
-el salto aterriza siempre algo corto, y **cuanto menos se parezcan las dos copias, más
-corto**: la respuesta trae la duración del episodio sobre el que se midió, y esa
-diferencia es la única medida que hay de lo lejos que están. Con un tope, porque
-pasado cierto punto la diferencia está en otra parte del episodio —un avance que el
-stream no trae, unos créditos cortados de otra forma— y no dice nada del opening. Un
-capítulo del propio fichero no lleva margen: ese habla de esta copia.
+**El salto aterriza cinco segundos antes del final del opening, siempre.** El final de
+un opening no es un fotograma, es un relevo —los últimos compases sobre el primer plano
+de la escena—, y caer en el segundo exacto es fiarse de que ese segundo sea exacto,
+cosa que aquí no lo es nunca. Cinco segundos de música son un momento; cinco segundos
+de episodio son una escena que empieza sin ti y que no recuperas sin rebobinar. Así que
+el botón cae justo antes y el episodio sigue desde ahí.
+
+**Y esos cinco segundos se cuentan desde donde el opening acaba de verdad, no desde
+donde una copia ajena dice que acaba.** Los tiempos de AniSkip se midieron sobre *otro*
+fichero: un stream que trae unos segundos de logo que la copia cronometrada no traía, o
+un montaje cortado distinto, desplaza toda la respuesta —el intervalo dura lo que debe,
+pero está corrido—. La respuesta trae la duración del episodio sobre el que se midió, y
+lo que esa duración se aleje de la nuestra es la única medida que hay de lo lejos que
+están las dos copias: se resta también. Con un tope, porque pasado cierto punto la
+diferencia está en otra parte del episodio —un avance que el stream no trae, unos
+créditos cortados de otra forma— y no dice nada del opening. Un capítulo del propio
+fichero no lleva esa corrección: ese habla de esta copia.
 
 **La cantidad fija se mide desde donde empieza el opening, no desde donde se pulsa.**
 Un opening dura ~85 s *contados desde su principio*: saltar 85 s desde el momento de
