@@ -10,6 +10,15 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.19.1] - 2026-09-19
+### Fixed
+- **El botón de omitir opening es un botón, no un avance rápido.** Se quedaba en pantalla después de pulsarlo —la ventana en la que se ofrece dura minutos— y cada pulsación saltaba otros 85 segundos, así que insistiendo se podía avanzar medio episodio. Ahora es una sola acción: al pulsarlo desaparece, y solo vuelve si se retrocede a antes de donde se saltó, para que una pulsación sin querer no cueste la opción.
+- **El salto aterriza donde dice.** mpv saltaba al fotograma clave *anterior* al destino, que en un fichero con pocos fotogramas clave son decenas de segundos antes: el botón apuntaba al final del opening y caía dentro de él otra vez. El salto del botón es ahora exacto.
+- **Volver a un episodio no pierde sus tiempos de AniSkip.** Al cambiar de episodio se limpiaban, y la comprobación de «esto ya se preguntó» impedía volver a pedirlos, así que el episodio anterior se quedaba sin el salto exacto y sin créditos.
+
+### Changed
+- **El siguiente episodio empieza cuando empiezan los créditos, no en el último fotograma.** Cuando se sabe dónde empieza el ending —AniSkip lo dice—, la tarjeta aparece ahí con una cuenta atrás de diez segundos, como en cualquier app de streaming. Antes la cuenta atrás mostraba los minutos que quedaban de créditos, que parecía un contador atascado. Sin ese dato, sigue siendo la media hora final y el cambio al acabar el episodio.
+
 ## [0.19.0] - 2026-09-18
 ### Added
 - **Un episodio abre el siguiente solo.** Al llegar a los créditos aparece abajo qué viene después, con una cuenta atrás que va con el vídeo: si pausas, se para; si vuelves atrás, desaparece. Al acabar el episodio, el siguiente empieza sin salir del reproductor. Se puede parar con Cancelar —solo para ese episodio— o apagar del todo en Ajustes → Reproductor. El siguiente episodio se resuelve durante los créditos, así que el salto no se hace esperar.

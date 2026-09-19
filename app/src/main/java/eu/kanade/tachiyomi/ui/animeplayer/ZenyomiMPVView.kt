@@ -750,8 +750,16 @@ class ZenyomiMPVView(context: Context, attrs: AttributeSet? = null) :
         MPVLib.setPropertyBoolean("pause", paused)
     }
 
-    fun seekTo(seconds: Int) = postToMpv {
-        MPVLib.command(arrayOf("seek", seconds.toString(), "absolute"))
+    /**
+     * @param exact decode to the requested second instead of stopping at the keyframe before
+     * it. mpv's plain absolute seek lands on the nearest keyframe *behind* the target, which
+     * on a file with a long gap between them is tens of seconds early — the skip button aimed
+     * at the end of an opening and landed back inside it. It costs the decode between the two,
+     * so it is for the jumps that name a destination, not for dragging the bar.
+     */
+    fun seekTo(seconds: Int, exact: Boolean = false) = postToMpv {
+        val flags = if (exact) "absolute+exact" else "absolute"
+        MPVLib.command(arrayOf("seek", seconds.toString(), flags))
     }
 
     /** Relative, so a double tap never has to read time-pos to know where it started. */
