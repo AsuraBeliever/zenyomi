@@ -21,6 +21,7 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.track.anime.interactor.GetAnimeTracks
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -148,19 +149,27 @@ class GetSkipIntervals(
      * than the one somebody timed is the ordinary case.
      */
     private suspend fun fetch(malId: Long, episode: Int, episodeLengthSeconds: Int): Intervals? =
-        skipTimes(malId, episode, episodeLengthSeconds) ?: skipTimes(malId, episode, 0)
+        skipTimes(malId, episode, askedLength = episodeLengthSeconds, ourLength = episodeLengthSeconds)
+            ?: skipTimes(malId, episode, askedLength = 0, ourLength = episodeLengthSeconds)
 
-    private suspend fun skipTimes(malId: Long, episode: Int, episodeLengthSeconds: Int): Intervals? {
+    private suspend fun skipTimes(malId: Long, episode: Int, askedLength: Int, ourLength: Int): Intervals? {
         val url = "$ANISKIP_URL/v2/skip-times/$malId/$episode" +
-            "?types=op&types=ed&episodeLength=$episodeLengthSeconds"
+            "?types=op&types=ed&episodeLength=$askedLength"
         return networkHelper.client.newCall(GET(url)).await().use { response ->
             // 404 is the ordinary answer for an episode nobody has timed, not a failure.
             if (!response.isSuccessful) return null
-            parseSkipTimes(response.body.string())
+            parseSkipTimes(response.body.string(), ourLength)
         }
     }
 
-    data class Intervals(val opening: IntRange?, val ending: IntRange?)
+    /**
+     * @param openingDrift how far [opening] may be from where it really is. See [driftFor].
+     */
+    data class Intervals(
+        val opening: IntRange?,
+        val ending: IntRange?,
+        val openingDrift: Int = 0,
+    )
 
     private companion object {
         const val ANISKIP_URL = "https://api.aniskip.com"
@@ -191,14 +200,40 @@ class GetSkipIntervals(
  * expects at all — all of which mean the same thing to the player, which is to fall back to
  * the fixed jump rather than to seek somewhere invented.
  */
-internal fun parseSkipTimes(body: String): GetSkipIntervals.Intervals? = runCatching {
+internal fun parseSkipTimes(body: String, ourLengthSeconds: Int = 0): GetSkipIntervals.Intervals? = runCatching {
     val response = aniskipJson.decodeFromString<SkipTimesResponse>(body)
     if (!response.found) return null
+    val opening = response.results.firstOrNull { it.skipType == "op" }
     GetSkipIntervals.Intervals(
-        opening = response.results.firstOrNull { it.skipType == "op" }?.interval?.toRange(),
+        opening = opening?.interval?.toRange(),
         ending = response.results.firstOrNull { it.skipType == "ed" }?.interval?.toRange(),
+        openingDrift = driftFor(opening?.episodeLength, ourLengthSeconds),
     ).takeIf { it.opening != null || it.ending != null }
 }.getOrNull()
+
+/**
+ * How far these times may be from where the opening really is, in seconds.
+ *
+ * They were measured on somebody else's copy of the episode. A stream that carries a few
+ * seconds of logo the timed copy did not, or a release cut a moment differently, shifts every
+ * second of the answer — the interval is the right length, in the wrong place. The answer
+ * carries the length of the copy it was measured on, and how far that is from this one is the
+ * only handle there is on how far apart the two are.
+ *
+ * Capped, because past a point the difference is somewhere else in the episode — a preview the
+ * stream does not have, credits cut differently — and says nothing about the opening.
+ *
+ * The player subtracts this on top of the margin it always leaves, so that the seconds it
+ * lands short are counted from where the opening really ends and not from where a stranger's
+ * copy says it does.
+ */
+internal fun driftFor(timedLengthSeconds: Double?, ourLengthSeconds: Int): Int {
+    if (timedLengthSeconds == null || timedLengthSeconds <= 0 || ourLengthSeconds <= 0) return 0
+    return abs(timedLengthSeconds - ourLengthSeconds).roundToInt().coerceAtMost(MAXIMUM_DRIFT_SECONDS)
+}
+
+/** Past this the copies are not versions of the same file, and the difference is not the opening's. */
+private const val MAXIMUM_DRIFT_SECONDS = 7
 
 /** Both ends in whole seconds, which is the resolution the seek bar works in anyway. */
 private fun Interval.toRange(): IntRange? {
@@ -216,7 +251,12 @@ private data class SkipTimesResponse(
 )
 
 @Serializable
-private data class SkipResult(val interval: Interval, val skipType: String)
+private data class SkipResult(
+    val interval: Interval,
+    val skipType: String,
+    /** How long the copy these times were measured on was. Absent in older answers. */
+    val episodeLength: Double? = null,
+)
 
 @Serializable
 private data class Interval(val startTime: Double, val endTime: Double)

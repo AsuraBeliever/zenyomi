@@ -44,9 +44,39 @@ fija.** El fichero manda sobre la base de datos porque habla de la copia que se 
 viendo; la base de datos manda sobre la cifra fija porque habla del episodio.
 
 **El botón existe siempre.** Cuando hay un intervalo conocido, salta a su final
-exacto y solo se ofrece mientras el opening está en pantalla. Cuando no lo hay,
-salta la cantidad configurada durante los primeros minutos del episodio. Un usuario
-sin trackers, sin red o con una fuente sin capítulos sigue teniendo botón.
+exacto y solo se ofrece mientras el opening está en pantalla. Cuando no lo hay, se
+ofrece durante los primeros minutos del episodio. Un usuario sin trackers, sin red o
+con una fuente sin capítulos sigue teniendo botón.
+
+**El salto aterriza cinco segundos antes del final del opening, siempre.** El final de
+un opening no es un fotograma, es un relevo —los últimos compases sobre el primer plano
+de la escena—, y caer en el segundo exacto es fiarse de que ese segundo sea exacto,
+cosa que aquí no lo es nunca. Cinco segundos de música son un momento; cinco segundos
+de episodio son una escena que empieza sin ti y que no recuperas sin rebobinar. Así que
+el botón cae justo antes y el episodio sigue desde ahí.
+
+**Y esos cinco segundos se cuentan desde donde el opening acaba de verdad, no desde
+donde una copia ajena dice que acaba.** Los tiempos de AniSkip se midieron sobre *otro*
+fichero: un stream que trae unos segundos de logo que la copia cronometrada no traía, o
+un montaje cortado distinto, desplaza toda la respuesta —el intervalo dura lo que debe,
+pero está corrido—. La respuesta trae la duración del episodio sobre el que se midió, y
+lo que esa duración se aleje de la nuestra es la única medida que hay de lo lejos que
+están las dos copias: se resta también. Con un tope, porque pasado cierto punto la
+diferencia está en otra parte del episodio —un avance que el stream no trae, unos
+créditos cortados de otra forma— y no dice nada del opening. Un capítulo del propio
+fichero no lleva esa corrección: ese habla de esta copia.
+
+**La cantidad fija se mide desde donde empieza el opening, no desde donde se pulsa.**
+Un opening dura ~85 s *contados desde su principio*: saltar 85 s desde el momento de
+la pulsación aterriza pasado su final por todo lo que el espectador haya tardado en
+pulsar, y eso es episodio perdido. Sin intervalo conocido se asume lo mismo que ya
+asume la ventana en la que se ofrece el botón —que el opening empieza con el
+episodio—, así que pulsar en el segundo 5 y en el 50 aterriza en el mismo sitio.
+Puede dejar unos segundos de opening sonando cuando el episodio abre con una escena;
+ese es el lado correcto por el que equivocarse. Pasada esa cantidad la suposición ya
+no se sostiene —un opening que empezara con el episodio habría terminado—, así que
+ahí se vuelve a medir desde la pulsación, y nunca se aterriza después del último
+segundo del episodio.
 
 **El salto automático es opcional y viene apagado.** Actúa sobre un intervalo que ha
 enviado otra persona; cuando está mal, se lleva minuto y medio de episodio por

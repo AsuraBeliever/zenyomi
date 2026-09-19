@@ -63,4 +63,43 @@ class SkipTimesTest {
         assertNull(parseSkipTimes("<html>502 Bad Gateway</html>"))
         assertNull(parseSkipTimes(""))
     }
+
+    @Test
+    fun `times measured on this very copy are not out by anything`() {
+        assertEquals(0, driftFor(timedLengthSeconds = 1440.0, ourLengthSeconds = 1440))
+    }
+
+    @Test
+    fun `how far apart the two copies are, either way round`() {
+        assertEquals(4, driftFor(timedLengthSeconds = 1444.0, ourLengthSeconds = 1440))
+        assertEquals(4, driftFor(timedLengthSeconds = 1436.0, ourLengthSeconds = 1440))
+        assertEquals(1, driftFor(timedLengthSeconds = 1439.4, ourLengthSeconds = 1440))
+    }
+
+    @Test
+    fun `a copy that is wildly different says nothing about the opening`() {
+        // A preview this stream does not carry, credits cut differently: capped, because the
+        // difference is somewhere else in the episode.
+        assertEquals(7, driftFor(timedLengthSeconds = 1400.0, ourLengthSeconds = 1440))
+        assertEquals(7, driftFor(timedLengthSeconds = 1440.0, ourLengthSeconds = 1000))
+    }
+
+    @Test
+    fun `nothing to compare with is no drift at all`() {
+        assertEquals(0, driftFor(timedLengthSeconds = null, ourLengthSeconds = 1440))
+        assertEquals(0, driftFor(timedLengthSeconds = 1440.0, ourLengthSeconds = 0))
+        assertEquals(0, driftFor(timedLengthSeconds = 0.0, ourLengthSeconds = 1440))
+    }
+
+    @Test
+    fun `the drift comes back with the times`() {
+        val body = """
+            {"found":true,"results":[
+              {"interval":{"startTime":32.5,"endTime":122.5},"skipType":"op","skipId":"x","episodeLength":1435.0}
+            ],"message":"","statusCode":200}
+        """.trimIndent()
+        assertEquals(5, parseSkipTimes(body, ourLengthSeconds = 1440)?.openingDrift)
+        // Nothing of ours to compare against: no drift, just the margin the player leaves.
+        assertEquals(0, parseSkipTimes(body, ourLengthSeconds = 0)?.openingDrift)
+    }
 }
