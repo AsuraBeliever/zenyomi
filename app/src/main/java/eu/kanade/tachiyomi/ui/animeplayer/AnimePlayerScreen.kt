@@ -404,13 +404,17 @@ fun AnimePlayerContent(
     // AniSkip, which knows the episode but not which cut of it is being played, and failing
     // both, the fixed jump below.
     //
-    // The two carry different promises, so the landing is not the same. A chapter is about
-    // this file and the skip lands on its last second. AniSkip's times were measured on
-    // somebody else's copy, so the landing is pulled back by the slack that came with them:
-    // being a moment early costs opening, and being a moment late costs episode.
-    val opening = remember(chapters, playerState.opening, playerState.openingSlack) {
-        openingChapter(chapters)?.let { Opening(it, slack = 0) }
-            ?: playerState.opening?.let { Opening(it, slack = playerState.openingSlack) }
+    // Either way the skip lands SKIP_LANDING_MARGIN_SECONDS short of the end, so the episode
+    // picks up on the last bars of the opening rather than a moment into the scene. Where the
+    // two differ is what they know: a chapter is about this file, and AniSkip's times were
+    // measured on somebody else's copy — so for those the margin is counted from where the
+    // opening really ends, which is the reported end give or take the drift between copies.
+    val opening = remember(chapters, playerState.opening, playerState.openingDrift) {
+        openingChapter(chapters)
+            ?.let { Opening(it, slack = SKIP_LANDING_MARGIN_SECONDS) }
+            ?: playerState.opening?.let {
+                Opening(it, slack = SKIP_LANDING_MARGIN_SECONDS + playerState.openingDrift)
+            }
     }
     val skipIntroLength = remember { viewModel.preferences.skipIntroLength.get() }
     // Inside the opening when it is known, and otherwise early enough in the episode for an
@@ -1073,10 +1077,10 @@ private fun EpisodeStepButton(
 }
 
 /**
- * An opening somebody has put a time on, and how much that time is worth.
+ * An opening somebody has put a time on, and how short of its end to land.
  *
- * [slack] is how many seconds before [range]'s end the skip lands. Zero for an answer about
- * this exact file; a few seconds for one measured on another copy of the episode.
+ * [slack] is how many seconds before [range]'s end the skip goes: the margin the player always
+ * leaves, plus whatever the times may be out by when they were measured on another copy.
  */
 internal data class Opening(val range: IntRange, val slack: Int) {
 
@@ -1134,6 +1138,17 @@ internal fun fixedSkipTarget(position: Int, length: Int, duration: Int): Int {
     val target = if (position < length) length else position + length
     return target.coerceAtMost(duration - 1).coerceAtLeast(position)
 }
+
+/**
+ * How short of the end of the opening the skip lands.
+ *
+ * Five seconds. The end of an opening is not a frame, it is a handover — the last bars of the
+ * song over the first shot of the scene — and landing on the reported second means trusting
+ * it to be exactly right, which nothing here ever is. Five seconds of music is a moment; five
+ * seconds of episode is a scene starting without you, and you cannot get it back without
+ * seeking. So the button lands just short and the episode carries on from there.
+ */
+private const val SKIP_LANDING_MARGIN_SECONDS = 5
 
 /**
  * How long into an episode the skip button is offered when nothing says where the opening is.
