@@ -69,6 +69,24 @@ Ambos equipos en la **misma red Wi-Fi**.
 El emparejamiento persiste; el **puerto de conexión cambia** al reiniciar el
 teléfono o reconectar el Wi-Fi. Reconectar entonces solo requiere el paso 4.
 
+## Si el APK de debug no instala encima («signatures do not match»)
+
+Pasa cuando la clave de depuración del equipo no es la que firmó lo que hay instalado.
+No hay más salida que desinstalar, y eso se lleva la biblioteca del emulador **y dos
+permisos que hay que volver a dar a mano**:
+
+```sh
+adb shell "run-as app.zenyomi.dev tar cf - -C /data/data/app.zenyomi.dev databases shared_prefs files" > data.tar
+adb uninstall app.zenyomi.dev && ./gradlew :app:installDebug
+adb push data.tar /data/local/tmp/ && adb shell "run-as app.zenyomi.dev sh -c 'cd /data/data/app.zenyomi.dev && rm -rf databases shared_prefs && tar xf /data/local/tmp/data.tar'"
+adb shell appops set --uid app.zenyomi.dev MANAGE_EXTERNAL_STORAGE allow
+```
+
+El otro permiso es el de la carpeta de almacenamiento, que es un permiso SAF y muere con
+la instalación: **Más → Datos y almacenamiento → Ubicación de almacenamiento**, elegir
+`Documents` y *Permitir*. Hasta que no se hace, la fuente local dice «No results found»
+sin un solo error en el log, y hay que **reiniciar la app** para que la relea.
+
 ## Ciclo de trabajo por build
 
 ```
@@ -146,7 +164,8 @@ En `Documents/localanime/` del emulador, además de los clips sueltos:
 |---|---|
 | `SerieConCapitulos/Ep01.mkv` | 90 s con capítulos **«Avance» (0–8), «Opening» (8–38), «Episodio»**. El botón solo debe aparecer entre 0:08 y 0:38 y aterrizar en 0:38 |
 | `SerieAniSkip/Ep01.mp4` y `Ep02.mp4` | 200 s sin capítulos, con un tracker de **MyAnimeList falso apuntando a Jujutsu Kaisen (40748)** en `anime_sync`. AniSkip responde opening 54–145 y ending 170–260, así que sirve para el botón exacto, para el salto automático y para la cuenta atrás de los créditos |
-| `SerieDePrueba/Ep01–Ep05` | Clips de 10 s (y Ep04 de 10 min) **sin tracker**: es el caso del salto fijo de 85 s y de la cadena de episodios |
+| `SerieDePrueba/Ep01–Ep05` | Clips de 10 s (y Ep04 de 10 min) **sin tracker** y con un título que no es de ningún anime: es el caso del salto fijo de 85 s y de la cadena de episodios |
+| `Dandadan/Ep01.mp4` y `Ep02.mp4` | 250 s **sin tracker**, con el nombre de un anime real. Prueba la identificación por título: AniSkip contesta por el id 57334 y el opening del Ep02 va de 2:01 a 3:28, así que el botón **no** sale al empezar y sí en ese tramo. El código de tiempo grabado en la imagen dice dónde aterriza el salto |
 
 El tracker falso se inserta a mano; la app no lo distingue de uno real:
 
