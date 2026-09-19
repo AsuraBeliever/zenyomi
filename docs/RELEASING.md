@@ -228,7 +228,7 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.18.0 | 33 | **clave del proyecto** | Las descargas dejan de depender del formato; DASH en paralelo. Un solo intento |
 | 0.18.1 | 34 | **clave del proyecto** | El episodio recuerda dónde lo dejaste, y se abre al instante la segunda vez. **Workflow rojo por disco; release publicada a mano desde APK locales con `-Penable-updater`** |
 | 0.19.0 | 35 | **clave del proyecto** | Siguiente episodio dentro del reproductor, saltar el opening (capítulos + AniSkip), y el reproductor deja de morir al cerrarlo. **Un solo intento**, 9 min 7 s, los 6 assets subidos. El arreglo del disco de la v0.18.1 se estrenó aquí y el job `Build` pasó sin quejarse |
-| 0.19.1 | 36 | **clave del proyecto** | El botón de omitir opening deja de acumularse, el salto es exacto y el siguiente episodio empieza con los créditos |
+| 0.19.1 | 36 | **clave del proyecto** | El botón de omitir opening deja de acumularse, el salto es exacto y el siguiente episodio empieza con los créditos. **Un solo intento**, los 6 assets subidos |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es
