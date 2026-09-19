@@ -76,8 +76,16 @@ class AnimePlayerViewModel(
     /** Its episodes in the order the entry screen lists them, which is what "next" means. */
     private var episodes: List<Episode> = emptyList()
 
-    /** Episodes AniSkip has already been asked about, answer or not. */
-    private val askedForSkipIntervals = mutableSetOf<Long>()
+    /**
+     * What AniSkip answered for each episode, answer or not, for as long as the player is
+     * open.
+     *
+     * A map rather than a set of "already asked": switching episode clears the intervals from
+     * the state, so going back to one — with the previous-episode button, or round a loop of
+     * two — has to put them back. Remembering only that the question had been asked meant the
+     * button lost its exact answer and the credits stopped being credits.
+     */
+    private val skipIntervals = mutableMapOf<Long, GetSkipIntervals.Intervals?>()
 
     private var switchJob: Job? = null
     private var prefetchJob: Job? = null
@@ -213,17 +221,29 @@ class AnimePlayerViewModel(
     fun loadSkipIntervals(durationSeconds: Int) {
         if (durationSeconds <= 0 || !playerPreferences.aniskipEnabled.get()) return
         val episodeId = state.value.playback?.episodeId ?: return
-        if (!askedForSkipIntervals.add(episodeId)) return
+        if (skipIntervals.containsKey(episodeId)) {
+            apply(episodeId, skipIntervals[episodeId])
+            return
+        }
+        // Claimed before the request so a second call while it is in flight does not make a
+        // second one; the answer replaces this.
+        skipIntervals[episodeId] = null
         viewModelScope.launch {
             val episode = getEpisode.await(episodeId) ?: return@launch
             val intervals = getSkipIntervals.await(episode.animeId, episode.episodeNumber, durationSeconds)
-            // Still the same episode: a slow answer must not land on the one after it.
-            _state.update {
-                if (it.playback?.episodeId != episodeId) {
-                    it
-                } else {
-                    it.copy(opening = intervals?.opening, ending = intervals?.ending)
-                }
+            skipIntervals[episodeId] = intervals
+            apply(episodeId, intervals)
+        }
+    }
+
+    /** Puts intervals on the state, unless the player has moved on to another episode. */
+    private fun apply(episodeId: Long, intervals: GetSkipIntervals.Intervals?) {
+        _state.update {
+            // A slow answer must not land on the episode after the one it was asked about.
+            if (it.playback?.episodeId != episodeId) {
+                it
+            } else {
+                it.copy(opening = intervals?.opening, ending = intervals?.ending)
             }
         }
     }

@@ -1,0 +1,7 @@
+Fixed: the skip opening button is a button, not a fast forward. It stayed on screen after being pressed — the window it is offered in is minutes long — and each press jumped another 85 seconds, so holding at it moved half the episode. It is one action now: it goes away when pressed, and only comes back if you seek to before where you skipped.
+
+Fixed: the skip lands where it says. mpv was seeking to the keyframe before the target, which on some files is tens of seconds early — the button aimed at the end of the opening and landed back inside it.
+
+Fixed: going back to an episode no longer loses its AniSkip times, so its exact skip and its credits work the second time too.
+
+Changed: the next episode starts when the credits start, not at the last frame. When AniSkip says where the ending is, the card appears there with a ten second countdown, the way a streaming app does it. Without that data it is still the last half minute of the episode.

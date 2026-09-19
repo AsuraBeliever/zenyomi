@@ -138,6 +138,26 @@ ffmpeg -f lavfi -i testsrc2=size=640x360:rate=24:duration=10 \
 El código de tiempo grabado en la imagen permite comprobar que la posición que muestra la
 barra coincide con el fotograma real, sin fiarse solo de lo que reporta la app.
 
+## Fixtures para el botón de omitir opening y el final del episodio
+
+En `Documents/localanime/` del emulador, además de los clips sueltos:
+
+| Carpeta | Qué prueba |
+|---|---|
+| `SerieConCapitulos/Ep01.mkv` | 90 s con capítulos **«Avance» (0–8), «Opening» (8–38), «Episodio»**. El botón solo debe aparecer entre 0:08 y 0:38 y aterrizar en 0:38 |
+| `SerieAniSkip/Ep01.mp4` y `Ep02.mp4` | 200 s sin capítulos, con un tracker de **MyAnimeList falso apuntando a Jujutsu Kaisen (40748)** en `anime_sync`. AniSkip responde opening 54–145 y ending 170–260, así que sirve para el botón exacto, para el salto automático y para la cuenta atrás de los créditos |
+| `SerieDePrueba/Ep01–Ep05` | Clips de 10 s (y Ep04 de 10 min) **sin tracker**: es el caso del salto fijo de 85 s y de la cadena de episodios |
+
+El tracker falso se inserta a mano; la app no lo distingue de uno real:
+
+```sh
+sqlite3 anime.db "INSERT INTO anime_sync (anime_id, sync_id, remote_id, library_id, title,
+  last_episode_seen, total_episodes, status, score, remote_url, start_date, finish_date)
+  VALUES (<animeId>, 1, 40748, NULL, 'Jujutsu Kaisen', 0, 0, 1, 0, '', 0, 0);"
+```
+
+`sync_id` 1 es MyAnimeList y 2 AniList, los ids que reparte `TrackerManager`.
+
 ## Lo que adb no puede probar
 
 `adb shell input tap` tarda entre 100 y 300 ms por evento, por encima de la ventana de
