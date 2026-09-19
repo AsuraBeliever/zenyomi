@@ -3,10 +3,13 @@
 El ecosistema de Aniyomi se degrada solo: los sitios cambian y las extensiones no lo hacen.
 Esto **se mide**, no se opina. La medición la produce un arnés que vive en los builds de debug.
 
-**Última pasada: 2026-09-17** (antes de la v0.17.0), emulador Pixel 10 Pro XL, 24 fuentes
-instaladas. Repite exactamente el resultado del 2026-09-16: 6 fuentes reproducen vídeo
-—AnimeOnsen, Jkanime, KickAssAnime, Latanime, TioAnime y TioHentai— y las mismas nueve
-fallan por causa propia, que son las que `anime-source-health.json` marca dentro de la app.
+**Última pasada: 2026-09-19** (antes de la v0.19.2), emulador Pixel 10 Pro XL, 24 fuentes
+instaladas. **Las nueve que fallan por causa propia son exactamente las mismas** que el
+2026-09-17 y el 2026-09-16, con los mismos síntomas, así que `anime-source-health.json` no
+cambia de contenido. La única diferencia: **Latanime** agotó los 45 s resolviendo el vídeo en
+vez de entregarlo, así que esta vez reproducen cinco —AnimeOnsen, Jkanime, KickAssAnime,
+TioAnime y TioHentai— y no seis. Un *timeout* no entra en la lista de rotas por la misma
+razón que el resto: vuelve, y marcarlo se equivocaría más veces de las que acertaría.
 
 ---
 
