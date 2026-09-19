@@ -443,7 +443,7 @@
     <string name="pref_player_aniskip_summary">Asks aniskip.com where this episode\'s opening is. The anime is identified by its MyAnimeList or AniList link, or failing that by its title.</string>
     <string name="pref_player_auto_skip_intro_summary">Only when the opening's exact position is known. The button is always there.</string>
     <string name="pref_player_skip_intro_length">Opening length</string>
-    <string name="pref_player_skip_intro_length_summary">How much the skip button jumps when the episode does not say where its opening ends</string>
+    <string name="pref_player_skip_intro_length_summary">How long an opening is, for the episodes that do not say. The button lands there, counting from the start of the episode.</string>
     <string name="pref_player_autoplay_next">Play the next episode automatically</string>
     <string name="pref_player_autoplay_next_summary">A countdown at the end of an episode opens the next one. It can be stopped from the player.</string>
     <string name="sort_anime_last_update_check">Last update check</string>
