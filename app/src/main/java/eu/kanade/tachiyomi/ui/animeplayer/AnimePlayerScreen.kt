@@ -403,14 +403,20 @@ fun AnimePlayerContent(
     // chapters first — a release that names them has said it about *this* file — then
     // AniSkip, which knows the episode but not which cut of it is being played, and failing
     // both, the fixed jump below.
-    val opening = remember(chapters, playerState.opening) {
-        openingChapter(chapters) ?: playerState.opening
+    //
+    // The two carry different promises, so the landing is not the same. A chapter is about
+    // this file and the skip lands on its last second. AniSkip's times were measured on
+    // somebody else's copy, so the landing is pulled back by the slack that came with them:
+    // being a moment early costs opening, and being a moment late costs episode.
+    val opening = remember(chapters, playerState.opening, playerState.openingSlack) {
+        openingChapter(chapters)?.let { Opening(it, slack = 0) }
+            ?: playerState.opening?.let { Opening(it, slack = playerState.openingSlack) }
     }
     val skipIntroLength = remember { viewModel.preferences.skipIntroLength.get() }
     // Inside the opening when it is known, and otherwise early enough in the episode for an
     // opening to be what is on screen — capped against the episode's own length, so a five
     // minute recap does not carry the button through half of itself.
-    val withinOpening = opening?.contains(position)
+    val withinOpening = opening?.range?.contains(position)
         ?: (position <= minOf(SKIP_WINDOW_SECONDS, duration / 4))
     val skipUsed = skippedFrom?.let { position >= it } == true
     val skipVisible = withinOpening && !skipUsed && duration > 0 && !inPictureInPicture &&
@@ -426,9 +432,10 @@ fun AnimePlayerContent(
         }
         autoSkippedIntro = true
         skippedFrom = position
-        position = opening.last
-        seekTarget = opening.last
-        view.seekTo(opening.last, exact = true)
+        val target = opening.landing
+        position = target
+        seekTarget = target
+        view.seekTo(target, exact = true)
         skipNotice = true
     }
 
@@ -881,7 +888,7 @@ fun AnimePlayerContent(
                             // Remembered before the jump: the button is one press, and it
                             // only comes back if the viewer returns to before this point.
                             skippedFrom = position
-                            val target = opening?.last
+                            val target = opening?.landing
                                 ?: fixedSkipTarget(position, skipIntroLength, duration)
                             // The bar moves with it, the same way a drag does: mpv keeps
                             // reporting where the episode was until it has decoded where it
@@ -1063,6 +1070,18 @@ private fun EpisodeStepButton(
             tint = Color.White.copy(alpha = if (episode != null) 1f else 0.3f),
         )
     }
+}
+
+/**
+ * An opening somebody has put a time on, and how much that time is worth.
+ *
+ * [slack] is how many seconds before [range]'s end the skip lands. Zero for an answer about
+ * this exact file; a few seconds for one measured on another copy of the episode.
+ */
+internal data class Opening(val range: IntRange, val slack: Int) {
+
+    /** Where the skip button goes, never back past the start of the opening itself. */
+    val landing: Int get() = (range.last - slack).coerceAtLeast(range.first + 1)
 }
 
 /**

@@ -164,6 +164,7 @@ class AnimePlayerViewModel(
                     switching = false,
                     title = episode.name,
                     opening = null,
+                    openingSlack = 0,
                     ending = null,
                     playback = Playback(
                         episodeId = episode.id,
@@ -243,7 +244,11 @@ class AnimePlayerViewModel(
             if (it.playback?.episodeId != episodeId) {
                 it
             } else {
-                it.copy(opening = intervals?.opening, ending = intervals?.ending)
+                it.copy(
+                    opening = intervals?.opening,
+                    openingSlack = intervals?.openingSlack ?: 0,
+                    ending = intervals?.ending,
+                )
             }
         }
     }
@@ -308,6 +313,8 @@ class AnimePlayerViewModel(
         val switchError: Throwable? = null,
         /** Where AniSkip says the opening is, in seconds. Null when nobody knows. */
         val opening: IntRange? = null,
+        /** How many seconds before [opening]'s end to land. See `GetSkipIntervals.slackFor`. */
+        val openingSlack: Int = 0,
         /** The same for the ending, which is where the next episode is announced. */
         val ending: IntRange? = null,
     )

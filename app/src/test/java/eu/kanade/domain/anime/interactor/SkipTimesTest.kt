@@ -63,4 +63,44 @@ class SkipTimesTest {
         assertNull(parseSkipTimes("<html>502 Bad Gateway</html>"))
         assertNull(parseSkipTimes(""))
     }
+
+    @Test
+    fun `times measured on this very copy still land a moment short`() {
+        // Two seconds: a truncated second and a frame or two, not a guess about the copy.
+        assertEquals(2, slackFor(timedLengthSeconds = 1440.0, ourLengthSeconds = 1440))
+    }
+
+    @Test
+    fun `the further the timed copy is from this one, the earlier it lands`() {
+        assertEquals(6, slackFor(timedLengthSeconds = 1444.0, ourLengthSeconds = 1440))
+        assertEquals(6, slackFor(timedLengthSeconds = 1436.0, ourLengthSeconds = 1440))
+        assertEquals(3, slackFor(timedLengthSeconds = 1439.4, ourLengthSeconds = 1440))
+    }
+
+    @Test
+    fun `a copy that is wildly different says nothing about the opening`() {
+        // A preview this stream does not carry, credits cut differently: capped, because the
+        // difference is somewhere else in the episode.
+        assertEquals(8, slackFor(timedLengthSeconds = 1400.0, ourLengthSeconds = 1440))
+        assertEquals(8, slackFor(timedLengthSeconds = 1440.0, ourLengthSeconds = 1000))
+    }
+
+    @Test
+    fun `nothing to compare is not a reason to land late`() {
+        assertEquals(2, slackFor(timedLengthSeconds = null, ourLengthSeconds = 1440))
+        assertEquals(2, slackFor(timedLengthSeconds = 1440.0, ourLengthSeconds = 0))
+        assertEquals(2, slackFor(timedLengthSeconds = 0.0, ourLengthSeconds = 1440))
+    }
+
+    @Test
+    fun `the slack comes back with the times`() {
+        val body = """
+            {"found":true,"results":[
+              {"interval":{"startTime":32.5,"endTime":122.5},"skipType":"op","skipId":"x","episodeLength":1435.0}
+            ],"message":"","statusCode":200}
+        """.trimIndent()
+        assertEquals(7, parseSkipTimes(body, ourLengthSeconds = 1440)?.openingSlack)
+        // Asked without a length, there is still the length the answer was measured on.
+        assertEquals(2, parseSkipTimes(body, ourLengthSeconds = 0)?.openingSlack)
+    }
 }

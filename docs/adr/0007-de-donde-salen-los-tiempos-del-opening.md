@@ -48,6 +48,19 @@ exacto y solo se ofrece mientras el opening está en pantalla. Cuando no lo hay,
 ofrece durante los primeros minutos del episodio. Un usuario sin trackers, sin red o
 con una fuente sin capítulos sigue teniendo botón.
 
+**Un tiempo de AniSkip aterriza un poco antes de lo que dice.** Esos segundos se
+midieron sobre *otra* copia del episodio: un stream que trae unos segundos de logo
+que la copia cronometrada no traía, o un montaje cortado un poco distinto, desplaza
+toda la respuesta —el intervalo dura lo que debe, pero está corrido—. Las dos maneras
+de fallar no valen lo mismo: caer pronto cuesta un momento de opening, caer tarde
+cuesta episodio, que es justo lo que el espectador quería conservar al pulsar. Así que
+el salto aterriza siempre algo corto, y **cuanto menos se parezcan las dos copias, más
+corto**: la respuesta trae la duración del episodio sobre el que se midió, y esa
+diferencia es la única medida que hay de lo lejos que están. Con un tope, porque
+pasado cierto punto la diferencia está en otra parte del episodio —un avance que el
+stream no trae, unos créditos cortados de otra forma— y no dice nada del opening. Un
+capítulo del propio fichero no lleva margen: ese habla de esta copia.
+
 **La cantidad fija se mide desde donde empieza el opening, no desde donde se pulsa.**
 Un opening dura ~85 s *contados desde su principio*: saltar 85 s desde el momento de
 la pulsación aterriza pasado su final por todo lo que el espectador haya tardado en
