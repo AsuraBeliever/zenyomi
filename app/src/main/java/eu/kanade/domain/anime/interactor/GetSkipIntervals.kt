@@ -104,23 +104,28 @@ class GetSkipIntervals(
      * the languages it carries, *is* the one being played, and only an unambiguous single
      * survivor is used.
      */
-    private suspend fun searchMalId(title: String): Result<Long?> {
+    private suspend fun searchMalId(title: String): Result<Long?> = runCatching {
+        search(searchTermFor(title), title)
+            ?: openingWordsOf(title)
+                ?.let { shorter -> search(shorter, title) }
+    }
+        .onFailure { logcat(LogPriority.DEBUG, it) { "No MAL id for the title $title" } }
+
+    /** One search, matched against [title] however long the term that found it was. */
+    private suspend fun search(term: String, title: String): Long? {
         val query = "query(${'$'}search:String){Page(perPage:$SEARCH_RESULTS)" +
             "{media(search:${'$'}search,type:ANIME){idMal title{romaji english native} synonyms}}}"
         val payload = buildJsonObject {
             put("query", query)
-            putJsonObject("variables") { put("search", searchTermFor(title)) }
+            putJsonObject("variables") { put("search", term) }
         }
         val request = POST(
             url = ANILIST_URL,
             body = payload.toString().toRequestBody("application/json".toMediaType()),
         )
-        return runCatching {
-            networkHelper.client.newCall(request).await().use { response ->
-                if (!response.isSuccessful) null else malIdForTitle(title, response.body.string())
-            }
+        return networkHelper.client.newCall(request).await().use { response ->
+            if (!response.isSuccessful) null else malIdForTitle(title, response.body.string())
         }
-            .onFailure { logcat(LogPriority.DEBUG, it) { "No MAL id for the title $title" } }
     }
 
     /** AniList holds the MyAnimeList id of everything it knows, and says so without an account. */
@@ -274,29 +279,140 @@ private data class AnilistData(
 private data class AnilistMedia(val idMal: Long? = null)
 
 /**
- * The MAL id of the single AniList entry that is called exactly this, or null.
+ * The MAL id of the single AniList entry that is called this, or null.
  *
  * Separate from the request so it can be tested against real payloads, and because this is
- * the part that decides whether a minute and a half of somebody's episode disappears. The
- * rule is deliberately unforgiving:
+ * the part that decides whether a minute and a half of somebody's episode disappears. Two
+ * titles are the same name when they are made of the same words — see [titleKey] — and that
+ * is the whole rule. It is an equality, not a similarity: a word more or a word less is a
+ * different anime, so "One Piece" never answers for "One Piece Film: Red".
  *
- * - the match is against the entry's own titles — romaji, English, native and synonyms — so
- *   a Spanish or fan-made title on the source side simply finds nothing;
- * - it is an equality after [normalizeAnimeTitle], not a similarity, so "Season 2" never
- *   matches season one;
- * - two entries matching is no match at all, because there is then nothing to choose between
- *   a series and the recap that shares its name.
+ * The match is against every name AniList holds for the entry — romaji, English, native and
+ * synonyms — which is where most of the agreement between a source and a catalogue lives.
  *
- * Finding nothing is a fine outcome: the button falls back to the fixed jump.
+ * Two entries answering is normally no answer at all: there is nothing to choose between a
+ * series and the recap that shares its name. The exception is when one of them is called
+ * *exactly* this, character for character. Gintama's seasons are "Gintama", "Gintama'",
+ * "Gintama°" and "Gintama." — an apostrophe and a full stop are the whole difference, and
+ * they are the first thing a comparison of words throws away. When the raw title settles it,
+ * it settles it.
+ *
+ * Finding nothing is a fine outcome: no times, and therefore no button.
  */
 internal fun malIdForTitle(title: String, body: String): Long? = runCatching {
-    val wanted = normalizeAnimeTitle(title).takeIf { it.isNotEmpty() } ?: return@runCatching null
-    aniskipJson.decodeFromString<AnilistSearchResponse>(body).data.page.media
-        .filter { media -> media.names().any { normalizeAnimeTitle(it) == wanted } }
+    val wanted = titleKey(title).takeIf { it.isNotEmpty() } ?: return@runCatching null
+    val tight = tightTitleKey(title)
+    val matches = aniskipJson.decodeFromString<AnilistSearchResponse>(body).data.page.media
+        .filter { media -> media.names().any { titleKey(it) == wanted || tightTitleKey(it) == tight } }
+    matches.mapNotNull { it.idMal }.distinct().singleOrNull()
+        ?: matches.exactlyNamed(title)
+}.getOrNull()
+
+/** The one entry that carries this title character for character, when only one does. */
+private fun List<AnilistSearchMedia>.exactlyNamed(title: String): Long? {
+    val raw = title.trim().lowercase()
+    return filter { media -> media.names().any { it.trim().lowercase() == raw } }
         .mapNotNull { it.idMal }
         .distinct()
         .singleOrNull()
-}.getOrNull()
+}
+
+/**
+ * The first words of a title, for asking again when the whole of it found nothing.
+ *
+ * AniList's search is the part of this that is *not* strict, and it gives up on the titles a
+ * light novel brings: forty characters of subtitle after a colon and it answers with nothing
+ * at all. The name is at the front, before the first colon or comma, so that is what gets
+ * asked the second time — and whatever comes back is still matched against the full title,
+ * word for word. A shorter question, not a lower bar.
+ *
+ * Null when it would be the same question twice.
+ */
+internal fun openingWordsOf(title: String): String? {
+    val front = searchTermFor(title).split(*TITLE_BREAKS).first().trim()
+    val shorter = front.split(' ').filter { it.isNotEmpty() }.take(SEARCH_WORDS).joinToString(" ")
+    return shorter.takeIf { it.isNotEmpty() && !it.equals(searchTermFor(title), ignoreCase = true) }
+}
+
+/**
+ * Where a title stops being a name and starts being a sentence about the plot.
+ *
+ * Not the hyphen: romaji is full of them inside single words —"Tenkou-saki", "Bouken-roku"—
+ * and breaking there asks the catalogue about half a word.
+ */
+private val TITLE_BREAKS = charArrayOf(':', ',', '~', '?', '!', '(', '"', '\u2014', '\u2013')
+
+/** Enough of a name to find it, few enough that the search has something to work with. */
+private const val SEARCH_WORDS = 6
+
+/**
+ * A title reduced to the words it is made of, so that two spellings of one name compare equal.
+ *
+ * Case, punctuation and the labels a source hangs off a name go first — "Fate/Zero", "Fate
+ * Zero" and "FATE ZERO" are one anime. The order of the words stays: it is the difference
+ * between a name and the same words in a bag, and two catalogues naming one anime have never
+ * disagreed about it.
+ *
+ * Then the part that carries meaning and is spelt six ways: which season this is. A source
+ * saying "4th Season", a catalogue saying "Season 4" and another saying plain "4" are all the
+ * fourth one, so ordinals become digits, a trailing roman numeral becomes a digit, and the
+ * word for "season" itself is dropped — it is punctuation between the name and the number.
+ * The number stays, always: dropping *that* is what would make a season answer for the first
+ * one, and skipping into the wrong episode of the wrong year is the failure this whole file
+ * is built to avoid.
+ */
+internal fun titleKey(title: String): List<String> = canonicalWords(title)
+
+/** The words of a title once the season is spelt the one way. See [titleKey]. */
+private fun canonicalWords(title: String): List<String> {
+    val words = normalizeAnimeTitle(title).split(' ').filter { it.isNotEmpty() }
+    return words
+        .mapIndexed { index, word ->
+            when {
+                word in ORDINALS -> ORDINALS.getValue(word)
+                // Only at the end, and never as the whole name: "V" is a season, "V" alone is
+                // a series called V.
+                word in ROMAN_NUMERALS && index == words.lastIndex && words.size > 1 ->
+                    ROMAN_NUMERALS.getValue(word)
+                SEASON_SHORTHAND.matches(word) -> word.drop(1)
+                else -> word
+            }
+        }
+        .filterNot { it in SEASON_WORDS }
+}
+
+/**
+ * The same title with the spacing rubbed out: letters and digits, in order, nothing between.
+ *
+ * Romaji is written by hand and hyphenated by taste. One catalogue has "Bouken-roku" where a
+ * source has "Boukenroku", "Hai Settei" where it has "Haisettei", "Gin Tama" where it has
+ * "Gintama". As words those are different titles; as letters they are the same one, and the
+ * order still has to match, so this is far from a similarity — it is the same equality with
+ * one fewer thing to disagree about.
+ */
+internal fun tightTitleKey(title: String): String = canonicalWords(title).joinToString("")
+
+/** "3rd" and "3" are the same season, in every source that has ever named one. */
+private val ORDINALS = mapOf(
+    "1st" to "1", "2nd" to "2", "3rd" to "3", "4th" to "4", "5th" to "5",
+    "6th" to "6", "7th" to "7", "8th" to "8", "9th" to "9", "10th" to "10",
+    "first" to "1", "second" to "2", "third" to "3", "fourth" to "4", "fifth" to "5",
+    "primera" to "1", "segunda" to "2", "tercera" to "3", "cuarta" to "4", "quinta" to "5",
+)
+
+/** Up to ten, which is further than any anime has ever counted its seasons in numerals. */
+private val ROMAN_NUMERALS = mapOf(
+    "ii" to "2", "iii" to "3", "iv" to "4", "v" to "5",
+    "vi" to "6", "vii" to "7", "viii" to "8", "ix" to "9", "x" to "10",
+)
+
+/** "S2", the way a release names a season when it is in a hurry. */
+private val SEASON_SHORTHAND = Regex("""s\d{1,2}""")
+
+/** The word between the name and the season number, in the languages a source might use it. */
+private val SEASON_WORDS = setOf(
+    "season", "seasons", "temporada", "saison", "staffel", "stagione", "cour", "part", "parte",
+)
 
 /**
  * What is sent to AniList's search, which is the title with the decorations taken off.

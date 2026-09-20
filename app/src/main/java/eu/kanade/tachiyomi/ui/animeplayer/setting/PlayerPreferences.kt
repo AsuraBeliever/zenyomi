@@ -42,21 +42,12 @@ class PlayerPreferences(
     val preferredSubtitleLanguages: Preference<String> = preferenceStore.getString("pref_player_sub_langs", "")
 
     /**
-     * How much of an opening the skip button jumps when nothing says where it ends.
-     *
-     * Eighty-five seconds, which is what a television opening is: the standard cut is 90 s
-     * with a few of them spent on the first shots of the episode. Aniyomi settled on the same
-     * number. It is a setting because a series that runs a shorter one exists, and because a
-     * number that is nearly right is worse than one the viewer chose.
-     */
-    val skipIntroLength: Preference<Int> = preferenceStore.getInt("pref_player_skip_intro_length", 85)
-
-    /**
      * Whether to ask AniSkip where this episode's opening is.
      *
-     * On, because when it answers the button stops being a guess — but it only answers for an
-     * anime that is tracked with MyAnimeList or AniList, which is how it is keyed, and asking
-     * sends that id to a third party. Off is a setting for anyone who would rather it did not.
+     * On, because it is the only thing that knows: without an answer from it — or a chapter in
+     * the file itself — the skip button is not offered at all, since nothing would know where
+     * the opening is to skip it. Asking sends the anime's id, or its title, to a third party,
+     * so it is a setting for anyone who would rather it did not.
      */
     val aniskipEnabled: Preference<Boolean> = preferenceStore.getBoolean("pref_player_aniskip", true)
 

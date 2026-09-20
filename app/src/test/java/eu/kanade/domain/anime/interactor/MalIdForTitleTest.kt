@@ -40,6 +40,54 @@ class MalIdForTitleTest {
     }
 
     @Test
+    fun `a season spelt six ways is the same season`() {
+        // Measured against the real catalogue: sources say "4th Season", AniList says "4",
+        // its English title says "Season 4", and all three are the fourth one.
+        val body =
+            search(
+                entry(
+                    60310,
+                    romaji = "Mairimashita! Iruma-kun 4",
+                    english = "Welcome to Demon School! Iruma-kun Season 4",
+                ),
+            )
+        assertEquals(60310L, malIdForTitle("Mairimashita! Iruma-kun 4th Season", body))
+        assertEquals(60310L, malIdForTitle("Mairimashita! Iruma-kun S4", body))
+        assertEquals(60310L, malIdForTitle("Welcome to Demon School! Iruma-kun 4", body))
+    }
+
+    @Test
+    fun `a trailing roman numeral is a season number`() {
+        val body = search(entry(37430, romaji = "Youjo Senki II"))
+        assertEquals(37430L, malIdForTitle("Youjo Senki 2", body))
+        assertEquals(37430L, malIdForTitle("Youjo Senki Season 2", body))
+    }
+
+    @Test
+    fun `dropping the season number is not the same anime`() {
+        val body = search(
+            entry(48549, romaji = "Dr. STONE: NEW WORLD"),
+            entry(55644, romaji = "Dr. STONE: NEW WORLD Part 2"),
+        )
+        assertEquals(48549L, malIdForTitle("Dr. Stone New World", body))
+        assertEquals(55644L, malIdForTitle("Dr. Stone New World Part 2", body))
+    }
+
+    @Test
+    fun `an apostrophe can be the whole difference between two seasons`() {
+        // Gintama's seasons are told apart by punctuation, which comparing words throws
+        // away. Four entries answer to "gintama"; only one is called exactly that.
+        val body = search(
+            entry(918, romaji = "Gintama", english = "Gintama"),
+            entry(9969, romaji = "Gintama'", english = "Gintama Season 2"),
+            entry(28977, romaji = "Gintama°", english = "Gintama Season 3"),
+            entry(34096, romaji = "Gintama.", english = "Gintama Season 4"),
+        )
+        assertEquals(918L, malIdForTitle("Gintama", body))
+        assertEquals(9969L, malIdForTitle("Gintama'", body))
+    }
+
+    @Test
     fun `a later season is not the first one`() {
         val body = search(
             entry(30276, romaji = "One Punch Man", english = "One-Punch Man"),
@@ -101,4 +149,61 @@ class MalIdForTitleTest {
     }
 
     private fun String?.json() = if (this == null) "null" else "\"$this\""
+
+    @Test
+    fun `romaji hyphenated one way and another is one name`() {
+        // Measured against the real catalogue: sources and AniList disagree on where the
+        // hyphens and spaces go, and on nothing else.
+        val body =
+            search(
+                entry(
+                    1,
+                    romaji = "Rakudai Kenja no Gakuin Musou: Nidome no Tensei, S-Rank Cheat Majutsushi Bouken-roku",
+                ),
+            )
+        assertEquals(
+            1L,
+            malIdForTitle(
+                "Rakudai Kenja no Gakuin Musou: Nidome no Tensei, S-Rank Cheat Majutsushi Boukenroku",
+                body,
+            ),
+        )
+        assertEquals(
+            1L,
+            malIdForTitle(
+                "Let's Go Kaiki-gumi",
+                search(entry(2, romaji = "Let's Go Kaikigumi")).replace("\"idMal\":2", "\"idMal\":1"),
+            ),
+        )
+    }
+
+    @Test
+    fun `rubbing out the spacing is not a licence to match anything`() {
+        val body = search(entry(21, romaji = "ONE PIECE"))
+        assertNull(malIdForTitle("One Piece Film: Red", body))
+        assertNull(malIdForTitle("Piece One", body))
+    }
+
+    @Test
+    fun `asking again with the front of the title, when the whole of it is too long`() {
+        assertEquals(
+            "Rakudai Kenja no Gakuin Musou",
+            openingWordsOf("Rakudai Kenja no Gakuin Musou: Nidome no Tensei, S-Rank Cheat Majutsushi Boukenroku"),
+        )
+        assertEquals(
+            "Hell Mode",
+            openingWordsOf("Hell Mode: Yarikomizuki no Gamer wa Hai Settei no Isekai de Musou suru"),
+        )
+        // Six words is the most it ever asks for.
+        assertEquals(
+            "Tenkou-saki no Seiso Karen na Bishoujo",
+            openingWordsOf("Tenkou-saki no Seiso Karen na Bishoujo ga, Mukashi Danshi to Omotte Issho ni Asonda"),
+        )
+    }
+
+    @Test
+    fun `a title that is already short is not asked for twice`() {
+        assertNull(openingWordsOf("One Piece"))
+        assertNull(openingWordsOf("Dandadan"))
+    }
 }

@@ -10,6 +10,16 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.19.4] - 2026-09-19
+### Improved
+- **Más animes con tiempos exactos de opening.** Identificar el anime por su título fallaba en cuanto la fuente y AniList lo escribían distinto sin querer decir nada distinto: «4th Season» contra «Season 4» contra un «4» a secas, «Bouken-roku» contra «Boukenroku», «Gin Tama» contra «Gintama». Ahora eso se iguala antes de comparar, sin aflojar la regla —las palabras siguen teniendo que ser las mismas y en el mismo orden—, y cuando la búsqueda de AniList se rinde ante un título de novela ligera de cuarenta caracteres se le pregunta otra vez por el principio del nombre. Medido sobre 105 títulos reales de una biblioteca: de 73% a 85%. Y sobre otros 485 animes nunca probados, cada uno con su id conocido de antemano: de 459 aciertos a 469, **y ninguno resuelto al anime equivocado**, que es el fallo que costaría episodio.
+
+### Changed
+- **El botón de omitir opening solo aparece cuando alguien sabe dónde está el opening.** Antes existía siempre: si el episodio no traía capítulos y AniSkip no contestaba, salía igual en el primer fotograma y saltaba una cantidad fija. En un anime que abre con una escena de tres minutos eso era un botón mintiendo —el opening ni había empezado—, y pulsarlo caía en mitad del episodio. Ahora, sin capítulos y sin respuesta de AniSkip, no hay botón: el opening se salta con la barra, como en cualquier reproductor. A cambio, el botón que aparece significa siempre lo que dice.
+
+### Removed
+- **El ajuste «Longitud del opening»** (Ajustes → Reproductor), que solo servía para dimensionar ese salto a ciegas y ya no tiene nada que dimensionar.
+
 ## [0.19.3] - 2026-09-19
 ### Fixed
 - **El salto cae cinco segundos antes de que acabe el opening, y ya no pasado su final.** El final de un opening es un relevo, no un fotograma, así que el botón deja ese margen y el episodio arranca desde ahí en vez de con una escena ya empezada. Además esos cinco segundos se cuentan desde donde el opening acaba **de verdad**: los tiempos de AniSkip se midieron sobre otra copia del episodio —unos segundos de logo de más, un montaje cortado distinto— y venían corridos, así que el salto caía pasado el final llevándose episodio por delante. Ahora esa diferencia entre copias se resta también, con tope, y los capítulos del propio fichero no la necesitan porque hablan de la copia que se está viendo.
