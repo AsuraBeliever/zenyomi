@@ -114,7 +114,7 @@ class GetSkipIntervals(
     /** One search, matched against [title] however long the term that found it was. */
     private suspend fun search(term: String, title: String): Long? {
         val query = "query(${'$'}search:String){Page(perPage:$SEARCH_RESULTS)" +
-            "{media(search:${'$'}search,type:ANIME){idMal title{romaji english native} synonyms}}}"
+            "{media(search:${'$'}search,type:ANIME){idMal format title{romaji english native} synonyms}}}"
         val payload = buildJsonObject {
             put("query", query)
             putJsonObject("variables") { put("search", term) }
@@ -290,32 +290,54 @@ private data class AnilistMedia(val idMal: Long? = null)
  * The match is against every name AniList holds for the entry — romaji, English, native and
  * synonyms — which is where most of the agreement between a source and a catalogue lives.
  *
- * Two entries answering is normally no answer at all: there is nothing to choose between a
- * series and the recap that shares its name. The exception is when one of them is called
- * *exactly* this, character for character. Gintama's seasons are "Gintama", "Gintama'",
- * "Gintama°" and "Gintama." — an apostrophe and a full stop are the whole difference, and
- * they are the first thing a comparison of words throws away. When the raw title settles it,
- * it settles it.
+ * Two entries answering is normally no answer at all, and when it is not, see [pickOne] for
+ * the two things allowed to settle it.
  *
  * Finding nothing is a fine outcome: no times, and therefore no button.
  */
 internal fun malIdForTitle(title: String, body: String): Long? = runCatching {
     val wanted = titleKey(title).takeIf { it.isNotEmpty() } ?: return@runCatching null
     val tight = tightTitleKey(title)
-    val matches = aniskipJson.decodeFromString<AnilistSearchResponse>(body).data.page.media
+    aniskipJson.decodeFromString<AnilistSearchResponse>(body).data.page.media
         .filter { media -> media.names().any { titleKey(it) == wanted || tightTitleKey(it) == tight } }
-    matches.mapNotNull { it.idMal }.distinct().singleOrNull()
-        ?: matches.exactlyNamed(title)
+        .pickOne(title)
 }.getOrNull()
 
-/** The one entry that carries this title character for character, when only one does. */
-private fun List<AnilistSearchMedia>.exactlyNamed(title: String): Long? {
+/**
+ * The one entry this title means, out of everything that answers to it.
+ *
+ * One is the ordinary case and needs no deciding. When several answer, two things are allowed
+ * to settle it, in this order, and nothing else is:
+ *
+ * 1. **Being called exactly this, character for character.** Gintama's seasons are "Gintama",
+ *    "Gintama'", "Gintama°" and "Gintama." — an apostrophe and a full stop are the whole
+ *    difference between them, and they are the first thing a comparison of words throws away.
+ *
+ * 2. **Being the series rather than something around it.** A special, an OVA or a recap
+ *    routinely carries the series' name as a synonym: "Assassination Classroom" is both a
+ *    show and a ten minute thing from a 2013 convention. A source listing episodes means the
+ *    show. This is only ever reached among entries that already agree on the name.
+ *
+ * Still tied after both, or tied among two series, and there is no answer — which costs a
+ * button and never costs episode.
+ */
+private fun List<AnilistSearchMedia>.pickOne(title: String): Long? {
+    val ids = mapNotNull { it.idMal }.distinct()
+    if (ids.size <= 1) return ids.singleOrNull()
+
     val raw = title.trim().lowercase()
-    return filter { media -> media.names().any { it.trim().lowercase() == raw } }
+    val named = filter { media -> media.names().any { it.trim().lowercase() == raw } }
+    val narrowed = named.ifEmpty { this }
+    narrowed.mapNotNull { it.idMal }.distinct().singleOrNull()?.let { return it }
+
+    return narrowed.filter { it.format in SERIES_FORMATS }
         .mapNotNull { it.idMal }
         .distinct()
         .singleOrNull()
 }
+
+/** What a source is listing episodes of. Anything else is around the series, not the series. */
+private val SERIES_FORMATS = setOf("TV", "TV_SHORT", "ONA")
 
 /**
  * The first words of a title, for asking again when the whole of it found nothing.
@@ -465,6 +487,8 @@ private data class AnilistPage(val media: List<AnilistSearchMedia> = emptyList()
 @Serializable
 private data class AnilistSearchMedia(
     val idMal: Long? = null,
+    /** TV, ONA, SPECIAL, MOVIE… — what kind of thing this entry is. */
+    val format: String? = null,
     val title: AnilistTitles = AnilistTitles(),
     val synonyms: List<String> = emptyList(),
 ) {
