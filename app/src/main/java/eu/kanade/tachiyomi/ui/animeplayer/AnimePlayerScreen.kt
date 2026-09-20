@@ -156,6 +156,9 @@ fun AnimePlayerContent(
     // Shown for a moment after that happens, because an episode that jumps on its own with
     // nothing said is indistinguishable from one that lost its place.
     var skipNotice by remember { mutableStateOf(false) }
+    // The same for the ending, kept apart from the opening's: an episode has both, and one
+    // button having been pressed says nothing about the other.
+    var endingSkippedFrom by remember { mutableStateOf<Int?>(null) }
     // mpv has run out of file. The clock cannot say this: `keep-open` stops on the last frame
     // a second short of the duration, so the episode ends without the two ever meeting.
     var endReached by remember { mutableStateOf(false) }
@@ -254,6 +257,7 @@ fun AnimePlayerContent(
         autoSkippedIntro = false
         skippedFrom = null
         skipNotice = false
+        endingSkippedFrom = null
         endReached = false
         autoAdvanceCancelled = false
         view.playFile(
@@ -388,38 +392,66 @@ fun AnimePlayerContent(
     // recap the card would otherwise be up for a tenth of it, and on a ten second clip it
     // would be up from the first frame.
     val endCardLead = minOf(END_CARD_LEAD_SECONDS, duration / 4)
-    // The credits are where the next episode is announced when AniSkip knows where they
-    // start; otherwise the last half minute of the episode stands in for them.
-    val creditsStarted = playerState.ending?.let { position >= it.first } == true
-    val endCardVisible = nextEpisode != null && !inPictureInPicture && !loading &&
-        playbackFailure == null && (remaining <= endCardLead || creditsStarted || endReached)
 
     // AniSkip answers for the episode, and needs its length to do it.
     LaunchedEffect(playerState.playback?.serial, duration > 0) {
         viewModel.loadSkipIntervals(duration)
     }
 
-    // Where the opening is, from whoever knows: the file's own chapters first — a release that
-    // names them has said it about *this* file — then AniSkip, which knows the episode but not
-    // which cut of it is being played.
+    // Where the opening and the ending are, from whoever knows: the file's own chapters first
+    // — a release that names them has said it about *this* file — then AniSkip, which knows
+    // the episode but not which cut of it is being played.
     //
     // Either way the skip lands SKIP_LANDING_MARGIN_SECONDS short of the end, so the episode
     // picks up on the last bars of the opening rather than a moment into the scene. Where the
     // two differ is what they know: a chapter is about this file, and AniSkip's times were
     // measured on somebody else's copy — so for those the margin is counted from where the
     // opening really ends, which is the reported end give or take the drift between copies.
-    val opening = remember(chapters, playerState.opening, playerState.openingDrift) {
+    val opening = remember(chapters, playerState.opening, playerState.drift) {
         openingChapter(chapters)
-            ?.let { Opening(it, slack = SKIP_LANDING_MARGIN_SECONDS) }
+            ?.let { Skip(it, slack = SKIP_LANDING_MARGIN_SECONDS) }
             ?: playerState.opening?.let {
-                Opening(it, slack = SKIP_LANDING_MARGIN_SECONDS + playerState.openingDrift)
+                Skip(it, slack = SKIP_LANDING_MARGIN_SECONDS + playerState.drift)
             }
     }
+    val ending = remember(chapters, duration, playerState.ending, playerState.drift) {
+        endingChapter(chapters, duration)
+            ?.let { Skip(it, slack = SKIP_LANDING_MARGIN_SECONDS) }
+            ?: playerState.ending?.let {
+                Skip(it, slack = SKIP_LANDING_MARGIN_SECONDS + playerState.drift)
+            }
+    }
+
+    // Whether there is anything on the other side of the credits, which is the only reason
+    // the ending button exists: the scene after the ending, or the preview of the next
+    // episode, that the credits sit in front of. When they run to the last frame there is
+    // nothing there, and a button offering to jump to the end of the episode is the next
+    // episode by another name — which the card below already is, with a countdown.
+    val afterCredits = ending != null && duration > 0 &&
+        duration - ending.range.last >= POST_CREDITS_MINIMUM_SECONDS
+    // Same rule as the opening's: only while the credits are actually on screen, only when
+    // somebody has put a time on them, and one press rather than a fast-forward.
+    val withinEnding = ending?.offersAt(position) == true
+    val endingSkipUsed = endingSkippedFrom?.let { position >= it } == true
+    val skipEndingVisible = withinEnding && afterCredits && !endingSkipUsed && duration > 0 &&
+        !inPictureInPicture && !loading && playbackFailure == null
+
+    // The credits are where the next episode is announced when somebody knows where they
+    // start; otherwise the last half minute of the episode stands in for them. Not when
+    // something comes after them: credits with a scene behind them are not the end of the
+    // episode, and announcing the next one over them — counting down to it, on autoplay — is
+    // precisely what takes that scene away. There the card waits for the last half minute
+    // like it does on an episode nobody has timed.
+    val creditsStarted = ending != null && position >= ending.range.first && !afterCredits
+    val endCardVisible = nextEpisode != null && !inPictureInPicture && !loading &&
+        playbackFailure == null && !skipEndingVisible &&
+        (remaining <= endCardLead || creditsStarted || endReached)
+
     // Only while the opening is actually on screen, and therefore only when somebody knows
     // where it is. Nothing here guesses: a button offered at the first frame of an episode
     // whose opening starts three minutes in is a button that lies about what it does, and
     // pressing it would jump into the middle of the episode.
-    val withinOpening = opening?.range?.contains(position) == true
+    val withinOpening = opening?.offersAt(position) == true
     val skipUsed = skippedFrom?.let { position >= it } == true
     val skipVisible = withinOpening && !skipUsed && duration > 0 && !inPictureInPicture &&
         !loading && playbackFailure == null && !endCardVisible && !skipNotice
@@ -909,6 +941,45 @@ fun AnimePlayerContent(
             }
         }
 
+        // Skipping the ending, so that whatever the credits are sitting in front of — a last
+        // scene, the preview of the next episode — is not lost to them. Only offered when
+        // there is something there; see `afterCredits`.
+        AnimatedVisibility(
+            visible = skipEndingVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .systemBarsPadding()
+                .padding(end = 16.dp, bottom = END_CARD_BOTTOM_MARGIN),
+        ) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.75f),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    text = stringResource(ANMR.strings.player_skip_ending),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier
+                        .clickable {
+                            // One press, like the opening's: it only comes back if the viewer
+                            // seeks to before where they skipped from.
+                            endingSkippedFrom = position
+                            // Never null while the button is up.
+                            val target = ending?.landing ?: return@clickable
+                            position = target
+                            seekTarget = target
+                            // Exact, for the same reason: a keyframe seek lands wherever it
+                            // pleases, and here that is back inside the credits.
+                            view.seekTo(target, exact = true)
+                            showControls()
+                        }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
+        }
+
         // What just happened, when the opening was skipped without being asked.
         AnimatedVisibility(
             visible = skipNotice && !inPictureInPicture,
@@ -1075,15 +1146,26 @@ private fun EpisodeStepButton(
 }
 
 /**
- * An opening somebody has put a time on, and how short of its end to land.
+ * A stretch of the episode somebody has put a time on — an opening, an ending — and how short
+ * of its end to land.
  *
  * [slack] is how many seconds before [range]'s end the skip goes: the margin the player always
  * leaves, plus whatever the times may be out by when they were measured on another copy.
  */
-internal data class Opening(val range: IntRange, val slack: Int) {
+internal data class Skip(val range: IntRange, val slack: Int) {
 
-    /** Where the skip button goes, never back past the start of the opening itself. */
+    /** Where the skip button goes, never back past the start of the stretch itself. */
     val landing: Int get() = (range.last - slack).coerceAtLeast(range.first + 1)
+
+    /**
+     * Whether the button belongs on screen at [position]: inside the stretch, and with
+     * something still ahead of it.
+     *
+     * The second half is the margin's doing. The skip lands [slack] seconds short of the end,
+     * so in those last seconds the button would be a jump *backwards* — pressing "skip" and
+     * being put back where you were a moment ago, which is worse than there being no button.
+     */
+    fun offersAt(position: Int): Boolean = position in range && position < landing
 }
 
 /**
@@ -1112,6 +1194,33 @@ internal fun openingChapter(chapters: List<ZenyomiMPVView.Chapter>?): IntRange? 
 private val OPENING_TITLE = Regex("""\b(op|opening|intro)\b""", RegexOption.IGNORE_CASE)
 
 /**
+ * The stretch of the episode a chapter calls the ending, or null if nothing does.
+ *
+ * Unlike the opening, this one may be the last chapter of the file: credits that run to the
+ * last frame are the ordinary case, and [durationSeconds] is where they end. That costs
+ * nothing, because a skip is only ever offered when something comes *after* the credits — an
+ * ending that reaches the end of the file has nothing on the other side of it.
+ */
+internal fun endingChapter(chapters: List<ZenyomiMPVView.Chapter>?, durationSeconds: Int): IntRange? {
+    if (chapters == null) return null
+    val index = chapters.indexOfFirst { ENDING_TITLE.containsMatchIn(it.title.orEmpty()) }
+    if (index < 0) return null
+    val start = chapters[index].start
+    val end = chapters.getOrNull(index + 1)?.start ?: durationSeconds
+    return if (end > start) start..end else null
+}
+
+/**
+ * What a chapter calls an ending, in the releases that name their chapters at all.
+ *
+ * Whole words, so that "Ending" is read and "Bad Ending" in the title of a scene is too —
+ * there is no reading of a chapter named that which is not the credits. Not "end card" and
+ * not "preview": those are what comes *after* the credits, which is the thing the button
+ * exists to reach.
+ */
+private val ENDING_TITLE = Regex("""\b(ed|ending|outro|credits)\b""", RegexOption.IGNORE_CASE)
+
+/**
  * How short of the end of the opening the skip lands.
  *
  * Five seconds. The end of an opening is not a frame, it is a handover — the last bars of the
@@ -1121,6 +1230,20 @@ private val OPENING_TITLE = Regex("""\b(op|opening|intro)\b""", RegexOption.IGNO
  * seeking. So the button lands just short and the episode carries on from there.
  */
 private const val SKIP_LANDING_MARGIN_SECONDS = 5
+
+/**
+ * How much has to come after the credits before skipping them is offered.
+ *
+ * Fifteen seconds. Less than that and there is nothing on the other side worth jumping to —
+ * a logo, a few frames of black, the reported end of the credits being a second out — and the
+ * button would be promising a scene that is not there. More than that and it is a scene, a
+ * stinger or the preview of the next episode, which is exactly what this is for.
+ *
+ * When what follows is shorter than the card's own lead the two want the same corner, and
+ * the button wins it for as long as it is up: it is an offer the viewer can still take, and
+ * the card comes back the moment they take it.
+ */
+private const val POST_CREDITS_MINIMUM_SECONDS = 15
 
 /** Used only until mpv reports the real one, which takes a moment after the file opens. */
 private const val DEFAULT_ASPECT = 16f / 9f

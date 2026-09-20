@@ -156,7 +156,7 @@ ffmpeg -f lavfi -i testsrc2=size=640x360:rate=24:duration=10 \
 El código de tiempo grabado en la imagen permite comprobar que la posición que muestra la
 barra coincide con el fotograma real, sin fiarse solo de lo que reporta la app.
 
-## Fixtures para el botón de omitir opening y el final del episodio
+## Fixtures para los botones de omitir y el final del episodio
 
 En `Documents/localanime/` del emulador, además de los clips sueltos:
 
@@ -166,6 +166,8 @@ En `Documents/localanime/` del emulador, además de los clips sueltos:
 | `SerieAniSkip/Ep01.mp4` y `Ep02.mp4` | 200 s sin capítulos, con un tracker de **MyAnimeList falso apuntando a Jujutsu Kaisen (40748)** en `anime_sync`. AniSkip responde opening 54–145 y ending 170–260, así que sirve para el botón exacto, para el salto automático y para la cuenta atrás de los créditos |
 | `SerieDePrueba/Ep01–Ep05` | Clips de 10 s (y Ep04 de 10 min) **sin tracker** y con un título que no es de ningún anime: es el caso del salto fijo de 85 s y de la cadena de episodios |
 | `Dandadan/Ep01.mp4` y `Ep02.mp4` | 250 s **sin tracker**, con el nombre de un anime real. Prueba la identificación por título: AniSkip contesta por el id 57334 y el opening del Ep02 va de 2:01 a 3:28, así que el botón **no** sale al empezar y sí en ese tramo. El código de tiempo grabado en la imagen dice dónde aterriza el salto |
+| `SerieFinal/Ep01.mkv` y `Ep02.mkv` | 120 s con capítulos **«Episodio» (0–50), «Ending» (50–85), «Escena final» (85–120)**. El botón de omitir el ending solo debe aparecer entre 0:50 y 1:20 y aterrizar en el 1:20.000; y la tarjeta de siguiente episodio no debe salir con los créditos, sino en el último medio minuto, ya sobre la escena final |
+| `SerieAniSkip/Ep03.mp4` | 24 min sin capítulos, bajo el mismo tracker falso de Jujutsu Kaisen. AniSkip contesta opening 191–282 y **ending 1274–1364 sobre una copia de 1435 s**, así que prueba la ruta de AniSkip para el ending con deriva entre copias: botón durante los créditos y aterrizaje en el 22:34.000 (1364 − 5 − 5) |
 | `Mairimashita! Iruma-kun 4th Season/Ep01.mp4` | Un título que la fuente escribe con «4th Season» y AniList con «4». Prueba el emparejado por palabras con la temporada canonizada: debe resolver al id 60310. **Ojo:** `/sdcard` no admite `:` en un nombre, así que los títulos con dos puntos no se pueden montar como fixture local; ese camino se comprueba contra la API |
 
 El tracker falso se inserta a mano; la app no lo distingue de uno real:

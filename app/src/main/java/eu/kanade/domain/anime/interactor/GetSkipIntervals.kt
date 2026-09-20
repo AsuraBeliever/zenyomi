@@ -168,12 +168,13 @@ class GetSkipIntervals(
     }
 
     /**
-     * @param openingDrift how far [opening] may be from where it really is. See [driftFor].
+     * @param drift how far [opening] and [ending] may be from where they really are.
+     * See [driftFor].
      */
     data class Intervals(
         val opening: IntRange?,
         val ending: IntRange?,
-        val openingDrift: Int = 0,
+        val drift: Int = 0,
     )
 
     private companion object {
@@ -209,15 +210,18 @@ internal fun parseSkipTimes(body: String, ourLengthSeconds: Int = 0): GetSkipInt
     val response = aniskipJson.decodeFromString<SkipTimesResponse>(body)
     if (!response.found) return null
     val opening = response.results.firstOrNull { it.skipType == "op" }
+    val ending = response.results.firstOrNull { it.skipType == "ed" }
     GetSkipIntervals.Intervals(
         opening = opening?.interval?.toRange(),
-        ending = response.results.firstOrNull { it.skipType == "ed" }?.interval?.toRange(),
-        openingDrift = driftFor(opening?.episodeLength, ourLengthSeconds),
+        ending = ending?.interval?.toRange(),
+        // Whichever of the two carries it: it is the length of the copy both were measured
+        // on, so an episode answered with only an ending is as entitled to the correction.
+        drift = driftFor(opening?.episodeLength ?: ending?.episodeLength, ourLengthSeconds),
     ).takeIf { it.opening != null || it.ending != null }
 }.getOrNull()
 
 /**
- * How far these times may be from where the opening really is, in seconds.
+ * How far these times may be from where the opening and the ending really are, in seconds.
  *
  * They were measured on somebody else's copy of the episode. A stream that carries a few
  * seconds of logo the timed copy did not, or a release cut a moment differently, shifts every
@@ -226,7 +230,7 @@ internal fun parseSkipTimes(body: String, ourLengthSeconds: Int = 0): GetSkipInt
  * only handle there is on how far apart the two are.
  *
  * Capped, because past a point the difference is somewhere else in the episode — a preview the
- * stream does not have, credits cut differently — and says nothing about the opening.
+ * stream does not have, credits cut differently — and says nothing about either of them.
  *
  * The player subtracts this on top of the margin it always leaves, so that the seconds it
  * lands short are counted from where the opening really ends and not from where a stranger's
