@@ -98,8 +98,22 @@ class SkipTimesTest {
               {"interval":{"startTime":32.5,"endTime":122.5},"skipType":"op","skipId":"x","episodeLength":1435.0}
             ],"message":"","statusCode":200}
         """.trimIndent()
-        assertEquals(5, parseSkipTimes(body, ourLengthSeconds = 1440)?.openingDrift)
+        assertEquals(5, parseSkipTimes(body, ourLengthSeconds = 1440)?.drift)
         // Nothing of ours to compare against: no drift, just the margin the player leaves.
-        assertEquals(0, parseSkipTimes(body, ourLengthSeconds = 0)?.openingDrift)
+        assertEquals(0, parseSkipTimes(body, ourLengthSeconds = 0)?.drift)
+    }
+
+    @Test
+    fun `an episode with only an ending still gets its drift`() {
+        // The length belongs to the copy the times were measured on, not to the opening, so
+        // an answer that carries only the ending is as entitled to the correction.
+        val body = """
+            {"found":true,"results":[
+              {"interval":{"startTime":1300.0,"endTime":1390.0},"skipType":"ed","skipId":"x","episodeLength":1435.0}
+            ],"message":"","statusCode":200}
+        """.trimIndent()
+        val intervals = parseSkipTimes(body, ourLengthSeconds = 1440)
+        assertEquals(1300..1390, intervals?.ending)
+        assertEquals(5, intervals?.drift)
     }
 }

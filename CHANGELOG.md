@@ -11,6 +11,15 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Other` - for technical stuff.
 
 ## [Sin publicar]
+### Added
+- **Botón para omitir el ending.** Funciona igual que el del opening: aparece solo mientras los créditos están en pantalla —cuando lo dicen los capítulos del propio fichero o AniSkip—, es una sola pulsación y aterriza cinco segundos antes de que acaben, contados desde donde acaban de verdad y no desde donde lo dice una copia ajena. Y solo se ofrece **cuando hay algo detrás de los créditos**: una escena final, el avance del siguiente episodio. Si los créditos llegan al último fotograma no hay nada al otro lado, y ahí el botón sería la tarjeta de siguiente episodio con otro nombre.
+
+### Changed
+- **Unos créditos con una escena detrás ya no anuncian el siguiente episodio.** Cuando se sabía dónde empezaban los créditos, la tarjeta del siguiente salía justo ahí con su cuenta atrás de diez segundos, y en un episodio con escena post-créditos eso se la llevaba por delante sin darte opción. Ahora, si detrás de los créditos queda episodio, la tarjeta espera al último medio minuto —como en cualquier episodio del que no se sabe nada— y durante los créditos lo que hay es el botón para saltarlos.
+
+### Fixed
+- **Los botones de omitir ya no saltan hacia atrás.** El salto aterriza cinco segundos antes del final del opening o del ending, así que pulsarlos en esos últimos segundos rebobinaba en vez de saltar. Ahora dejan de ofrecerse cuando ya no queda nada que saltar.
+
 ### Improved
 - **La serie gana al special que le robó el nombre.** Un special, un OVA o un recopilatorio llevan de sinónimo el nombre de la serie —«Assassination Classroom» es el anime y también una cosa de diez minutos de una convención de 2013—, y al haber dos candidatos la app prefería no elegir y quedarse sin tiempos. Ahora, entre entradas que ya coinciden en el nombre, se queda con la serie. Medido sobre 485 animes con su id conocido de antemano: de 469 aciertos a 476 (98%), y **sigue sin resolver ninguno al anime equivocado**.
 
