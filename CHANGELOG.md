@@ -10,6 +10,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [Sin publicar]
+### Improved
+- **La serie gana al special que le robó el nombre.** Un special, un OVA o un recopilatorio llevan de sinónimo el nombre de la serie —«Assassination Classroom» es el anime y también una cosa de diez minutos de una convención de 2013—, y al haber dos candidatos la app prefería no elegir y quedarse sin tiempos. Ahora, entre entradas que ya coinciden en el nombre, se queda con la serie. Medido sobre 485 animes con su id conocido de antemano: de 469 aciertos a 476 (98%), y **sigue sin resolver ninguno al anime equivocado**.
+
 ## [0.19.4] - 2026-09-19
 ### Improved
 - **Más animes con tiempos exactos de opening.** Identificar el anime por su título fallaba en cuanto la fuente y AniList lo escribían distinto sin querer decir nada distinto: «4th Season» contra «Season 4» contra un «4» a secas, «Bouken-roku» contra «Boukenroku», «Gin Tama» contra «Gintama». Ahora eso se iguala antes de comparar, sin aflojar la regla —las palabras siguen teniendo que ser las mismas y en el mismo orden—, y cuando la búsqueda de AniList se rinde ante un título de novela ligera de cuarenta caracteres se le pregunta otra vez por el principio del nombre. Medido sobre 105 títulos reales de una biblioteca: de 73% a 85%. Y sobre otros 485 animes nunca probados, cada uno con su id conocido de antemano: de 459 aciertos a 469, **y ninguno resuelto al anime equivocado**, que es el fallo que costaría episodio.

@@ -54,9 +54,18 @@ sin querer decir nada distinto, medido sobre 105 títulos reales de una bibliote
   «Gintama». Se comparan también las letras seguidas, sin separadores y en orden.
 
 Dos entradas que coinciden no son respuesta —no hay nada que elegir entre una serie y
-su recopilatorio—, **salvo que una se llame exactamente así, carácter por carácter**:
-las temporadas de Gintama son «Gintama», «Gintama'», «Gintama°» y «Gintama.», y ese
-apóstrofo es toda la diferencia, justo lo primero que tira una comparación de palabras.
+su recopilatorio— salvo por dos desempates, en este orden y ningún otro:
+
+1. **Llamarse exactamente así, carácter por carácter.** Las temporadas de Gintama son
+   «Gintama», «Gintama'», «Gintama°» y «Gintama.», y ese apóstrofo es toda la
+   diferencia, justo lo primero que tira una comparación de palabras.
+2. **Ser la serie y no lo que la rodea.** Un special, un OVA o un recopilatorio llevan
+   de sinónimo el nombre de la serie: «Assassination Classroom» es a la vez el anime y
+   una cosa de diez minutos de una convención de 2013. Una fuente que lista episodios
+   se refiere al anime. Solo se llega aquí entre entradas que ya coinciden en el nombre.
+
+Empatadas después de los dos —dos series con el mismo nombre— no hay respuesta, que
+cuesta un botón y nunca cuesta episodio.
 
 **Y si la búsqueda no devuelve nada, se pregunta una segunda vez con el principio del
 título.** La parte no estricta de todo esto es el buscador de AniList, que se rinde ante
@@ -65,8 +74,11 @@ contesta vacío. El nombre está delante, así que se pregunta por él —hasta 
 corte fuerte, seis palabras como mucho— y lo que venga se compara igual contra el
 título entero. Una pregunta más corta, no un listón más bajo.
 
-De 105 títulos reales, resuelven **90 (85%)**; con la igualdad literal anterior
-resolvían 77 (73%). Lo que queda sin resolver es casi todo anime que AniList no tiene,
+De 105 títulos reales resuelven **90 (85%)**, frente a 77 (73%) con la igualdad literal
+anterior. Y sobre 485 animes cuyo id se conocía de antemano —población más limpia, de
+nombres de catálogo— aciertan **476 (98%)** frente a 459, **sin que ninguno resuelva al
+anime equivocado**, que es el fallo que costaría episodio y la razón de que cada
+desempate esté acotado. Lo que queda sin resolver es casi todo anime que AniList no tiene,
 o títulos donde la fuente pone una palabra que el catálogo no. No encontrar nada es un
 resultado correcto: no hay botón.
 
