@@ -35,13 +35,40 @@ que importa en la práctica: casi nadie vincula un anime *antes* de verlo, y sin
 el botón era una cantidad fija para toda la biblioteca.
 
 Un título es una conjetura donde un id es un hecho, así que solo se cree cuando
-**coincide exactamente con una única entrada**: la comparación es una igualdad, no un
-parecido, después de quitar mayúsculas, puntuación y las etiquetas que la fuente
-cuelga del nombre —`(Dub)`, `[1080p]`—; se compara contra todos los nombres que
-AniList tiene de esa entrada (romaji, inglés, nativo y sinónimos); y dos entradas que
-coinciden no son respuesta, porque entonces no hay nada que elegir entre una serie y
-su recopilatorio. Una temporada nunca casa con la primera: «2nd Season» forma parte
-del nombre y no se toca. No encontrar nada es un resultado correcto: no hay botón.
+**coincide exactamente con una única entrada**. La comparación es una igualdad, no un
+parecido, y lo que se iguala son las palabras del nombre **en orden**, contra todos los
+nombres que AniList tiene de esa entrada (romaji, inglés, nativo y sinónimos). Una
+palabra de más o de menos es otro anime: «One Piece» no contesta por «One Piece Film:
+Red».
+
+Lo que sí se normaliza antes de comparar es aquello en lo que dos catálogos discrepan
+sin querer decir nada distinto, medido sobre 105 títulos reales de una biblioteca:
+
+- **Mayúsculas, puntuación y las etiquetas de la fuente** —`(Dub)`, `[1080p]`—.
+- **Cómo se escribe la temporada.** «4th Season», «Season 4», «S4» y un «4» a secas son
+  la cuarta; los ordinales pasan a dígito, un número romano final también, y la palabra
+  «season» se cae porque es puntuación entre el nombre y el número. **El número no se
+  cae nunca**: eso es lo que haría que una temporada contestara por la primera.
+- **Dónde caen los espacios y los guiones.** El romaji se parte a gusto de cada
+  catálogo: «Bouken-roku» y «Boukenroku», «Hai Settei» y «Haisettei», «Gin Tama» y
+  «Gintama». Se comparan también las letras seguidas, sin separadores y en orden.
+
+Dos entradas que coinciden no son respuesta —no hay nada que elegir entre una serie y
+su recopilatorio—, **salvo que una se llame exactamente así, carácter por carácter**:
+las temporadas de Gintama son «Gintama», «Gintama'», «Gintama°» y «Gintama.», y ese
+apóstrofo es toda la diferencia, justo lo primero que tira una comparación de palabras.
+
+**Y si la búsqueda no devuelve nada, se pregunta una segunda vez con el principio del
+título.** La parte no estricta de todo esto es el buscador de AniList, que se rinde ante
+los títulos de novela ligera: cuarenta caracteres de subtítulo tras los dos puntos y
+contesta vacío. El nombre está delante, así que se pregunta por él —hasta el primer
+corte fuerte, seis palabras como mucho— y lo que venga se compara igual contra el
+título entero. Una pregunta más corta, no un listón más bajo.
+
+De 105 títulos reales, resuelven **90 (85%)**; con la igualdad literal anterior
+resolvían 77 (73%). Lo que queda sin resolver es casi todo anime que AniList no tiene,
+o títulos donde la fuente pone una palabra que el catálogo no. No encontrar nada es un
+resultado correcto: no hay botón.
 
 **Las dos conviven, en ese orden de confianza: capítulos → AniSkip.** El fichero manda
 sobre la base de datos porque habla de la copia que se está viendo.
