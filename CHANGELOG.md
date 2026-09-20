@@ -11,6 +11,9 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Other` - for technical stuff.
 
 ## [Sin publicar]
+### Improved
+- **Más animes con tiempos exactos de opening.** Identificar el anime por su título fallaba en cuanto la fuente y AniList lo escribían distinto sin querer decir nada distinto: «4th Season» contra «Season 4» contra un «4» a secas, «Bouken-roku» contra «Boukenroku», «Gin Tama» contra «Gintama». Ahora eso se iguala antes de comparar, sin aflojar la regla —las palabras siguen teniendo que ser las mismas y en el mismo orden—, y cuando la búsqueda de AniList se rinde ante un título de novela ligera de cuarenta caracteres se le pregunta otra vez por el principio del nombre. Medido sobre 105 títulos reales de una biblioteca: de 73% a 85%.
+
 ### Changed
 - **El botón de omitir opening solo aparece cuando alguien sabe dónde está el opening.** Antes existía siempre: si el episodio no traía capítulos y AniSkip no contestaba, salía igual en el primer fotograma y saltaba una cantidad fija. En un anime que abre con una escena de tres minutos eso era un botón mintiendo —el opening ni había empezado—, y pulsarlo caía en mitad del episodio. Ahora, sin capítulos y sin respuesta de AniSkip, no hay botón: el opening se salta con la barra, como en cualquier reproductor. A cambio, el botón que aparece significa siempre lo que dice.
 
