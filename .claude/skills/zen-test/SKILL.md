@@ -61,14 +61,26 @@ los datos. No desinstales a ciegas.
 
 ### Navegar y capturar
 
-Para cada criterio del «Hecho cuando», lleva la app al estado que lo demuestra y captura:
+Para cada criterio del «Hecho cuando», lleva la app al estado que lo demuestra y captura.
+Con las ayudas de `scripts/zen-ui.sh` (`export OUT=…` **antes** del `source`):
 
 ```sh
-adb -s emulator-5554 shell uiautomator dump /sdcard/ui.xml && adb -s emulator-5554 pull /sdcard/ui.xml $OUT/ui.xml
-# bounds="[x1,y1][x2,y2]" del nodo por text/content-desc → centro → tap
-adb -s emulator-5554 shell input tap <x> <y>
-adb -s emulator-5554 exec-out screencap -p > $OUT/<n>-<qué>.png
+export OUT; source scripts/zen-ui.sh
+zen_launch                      # abre la app desde cero
+ui_tapdesc Browse               # barra inferior: siempre por content-desc
+ui_tap "Add to library"         # el resto, por texto o content-desc exactos
+ui_texts                        # qué hay en pantalla
+ui_shot 1-biblioteca            # captura
 ```
+
+Trampas conocidas:
+
+- **Chips y barra inferior se llaman igual** («Manga», «Anime»). `ui_tap` puede tocar el
+  chip; la barra se toca con `ui_tapdesc`.
+- **Volver a tocar la pestaña en la que ya estás** abre la hoja de filtros de la biblioteca.
+  Es comportamiento de Mihon, no un fallo.
+- **Un BACK de más cierra la app** y lo siguiente que se lee es el launcher. `ui_tap` se
+  niega a tocar si la app no tiene el foco.
 
 **Abre cada captura con Read y mírala de verdad**: textos, que no haya nada cortado ni
 solapado, que el tema sea coherente y que el estado sea el esperado. Que una captura exista
@@ -83,8 +95,7 @@ informe. Nunca se da por bueno.
 ### Crashes
 
 ```sh
-adb -s emulator-5554 logcat -d > $OUT/logcat.txt
-grep -cE 'Fatal signal|FATAL EXCEPTION|NoSuchMethodError|Abort message' $OUT/logcat.txt   # debe dar 0
+zen_crashes      # deja $OUT/logcat.txt y cuenta Fatal signal|FATAL EXCEPTION|NoSuchMethodError|Abort message; debe dar 0
 ```
 
 ### Regresión de manga (siempre)

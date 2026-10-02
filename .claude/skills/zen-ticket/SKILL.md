@@ -19,7 +19,9 @@ project = KAN AND statusCategory != Done AND text ~ "<2-3 palabras clave>"
 ```
 
 Si existe una tarea que cubre lo mismo, **úsala**: añade un comentario con lo que el
-cliente acaba de decir y devuelve esa clave.
+cliente acaba de decir y devuelve esa clave. Si esa tarea no tiene «Hecho cuando», como las
+creadas antes de este flujo, añádeselo antes de seguir: sin él, `zen-test` y `zen-review`
+no tienen contra qué comprobar.
 
 ## 2. Entender antes de escribir
 
