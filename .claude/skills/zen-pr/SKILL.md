@@ -56,7 +56,8 @@ gh pr create --base develop --head <rama> --title "<título>" --body-file <fiche
 
 - El workflow `Build & Test` corre solo en el PR. Espera sobre **el run**, no sobre el PR:
   `gh pr checks --watch` sale en el acto con «no checks reported» mientras el run está en
-  cola. Toma el id con `gh run list --branch <rama> -L 1 --json databaseId -q '.[0].databaseId'`
+  cola. Toma el id del run **de ese commit**, que GitHub tarda unos segundos en crear:
+  `gh run list --commit $(git rev-parse HEAD) -L 1 --json databaseId -q '.[0].databaseId'`
   y lanza `gh run watch <id> --exit-status` con `run_in_background`. Sigue con la revisión
   mientras tanto: `zen-merge` espera el resultado. Tras cada push hay que vigilar el run
   del último commit, no el anterior.

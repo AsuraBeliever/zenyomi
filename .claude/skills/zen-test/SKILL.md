@@ -62,7 +62,8 @@ los datos. No desinstales a ciegas.
 ### Navegar y capturar
 
 Para cada criterio del «Hecho cuando», lleva la app al estado que lo demuestra y captura.
-Con las ayudas de `scripts/zen-ui.sh` (`export OUT=…` **antes** del `source`):
+Con las ayudas de `scripts/zen-ui.sh` (`export OUT=…` **antes** del `source`). Cada llamada a
+Bash es un shell nuevo: el `export OUT; source scripts/zen-ui.sh` va en **todas**.
 
 ```sh
 export OUT; source scripts/zen-ui.sh
