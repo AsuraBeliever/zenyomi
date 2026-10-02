@@ -132,6 +132,25 @@ sqlite3 live.db "SELECT ..."   # sqlite3 reaplica el wal al abrir
 ``` El emulador conserva ahora una entrada `Anime de prueba (fixture)` con tres
 episodios.
 
+## Fixture de manga
+
+La regresión de manga de cada cambio (regla dura 1, paso `zen-test`) se hace sobre
+**«Manga de prueba (fixture)»**, de la fuente local: tres capítulos en CBZ de seis páginas
+cada uno, con portada y `details.json`. Cada página lleva grabados su capítulo y su número
+(«Capítulo 2 · 4 / 6»), así que una captura dice en qué página está el lector sin fiarse
+de la app.
+
+```sh
+scripts/fixtures/manga-local.sh            # genera y sube a Documents/local/ del emulador
+```
+
+El script borra y vuelve a crear la carpeta, así que se puede relanzar siempre. Después,
+si el manga no está ya en la biblioteca: **Browse → Sources → Manga → Local source →
+Manga de prueba (fixture) → Add to library**.
+
+La carpeta `MangaDePrueba` que hay al lado es anterior: un capítulo suelto de dos páginas
+sin metadatos. No se usa para la regresión.
+
 ## Vídeos de prueba generados con FFmpeg
 
 Para probar el reproductor sin depender de ninguna fuente, se generan clips locales y se
