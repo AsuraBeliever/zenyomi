@@ -80,7 +80,9 @@ class TorrentAddon(private val context: Context) {
                                 version = msg.data.getString(KEY_VERSION).orEmpty(),
                                 close = { Handler(Looper.getMainLooper()).post(::unbind) },
                             )
-                            continuation.resume(connection)
+                            // If the caller is cancelled before it gets this, nobody else
+                            // will close it and TorrServer would live on until the app dies.
+                            continuation.resume(connection) { _, unclaimed, _ -> unclaimed.close() }
                         }
                     }
                     true

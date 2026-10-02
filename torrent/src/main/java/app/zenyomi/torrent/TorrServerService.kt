@@ -39,7 +39,9 @@ class TorrServerService : Service() {
 
     private val messenger = Messenger(
         Handler(Looper.getMainLooper()) { msg ->
-            if (msg.what == MSG_START) {
+            // After onDestroy the worker refuses work; a late request gets no reply, and the
+            // client sees the binding drop instead.
+            if (msg.what == MSG_START && !worker.isShutdown) {
                 val replyTo = msg.replyTo
                 worker.execute { reply(replyTo, start()) }
             }
