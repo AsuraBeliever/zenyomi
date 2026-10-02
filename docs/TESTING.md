@@ -214,6 +214,19 @@ En `Documents/localanime/` del emulador, además de los clips sueltos:
 | `SerieAniSkip/Ep03.mp4` | 24 min sin capítulos, bajo el mismo tracker falso de Jujutsu Kaisen. AniSkip contesta opening 191–282 y **ending 1274–1364 sobre una copia de 1435 s**, así que prueba la ruta de AniSkip para el ending con deriva entre copias: botón durante los créditos y aterrizaje en el 22:34.000 (1364 − 5 − 5) |
 | `Mairimashita! Iruma-kun 4th Season/Ep01.mp4` | Un título que la fuente escribe con «4th Season» y AniList con «4». Prueba el emparejado por palabras con la temporada canonizada: debe resolver al id 60310. **Ojo:** `/sdcard` no admite `:` en un nombre, así que los títulos con dos puntos no se pueden montar como fixture local; ese camino se comprueba contra la API |
 
+| `TorrentBigBuckBunny/Big Buck Bunny.torrent` | El `.torrent` de WebTorrent (*Big Buck Bunny*, Blender, CC BY 3.0): tres ficheros, y el vídeo es el **segundo**, detrás de un `.srt` de 140 bytes. Prueba la reproducción por torrent y que se elige el episodio y no el primero de la lista. Necesita el complemento instalado (`./gradlew :torrent:installDebug`) y red: lo sirven decenas de seeders y la web semilla de webtorrent.io. Se baja con `curl -L https://webtorrent.io/torrents/big-buck-bunny.torrent` |
+
+Para el camino del **magnet**, que es como entregan el vídeo las extensiones, la sonda de debug
+abre el reproductor con cualquier url:
+
+```sh
+adb shell "am start -S -n app.zenyomi.dev/eu.kanade.tachiyomi.debug.AnimeSourceProbeActivity \
+  --es playurl 'magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F'"
+```
+
+`-S` hace falta si la sonda ya estaba abierta: sin él, Android trae la ventana vieja al frente y
+el intent nuevo no llega.
+
 El tracker falso se inserta a mano; la app no lo distingue de uno real:
 
 ```sh
