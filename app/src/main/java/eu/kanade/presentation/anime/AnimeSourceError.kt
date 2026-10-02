@@ -1,6 +1,11 @@
 package eu.kanade.presentation.anime
 
 import dev.icerock.moko.resources.StringResource
+import eu.kanade.tachiyomi.data.torrent.EmptyTorrentException
+import eu.kanade.tachiyomi.data.torrent.TorrentAddon
+import eu.kanade.tachiyomi.data.torrent.TorrentAddonException
+import eu.kanade.tachiyomi.data.torrent.TorrentAddonUnavailableException
+import eu.kanade.tachiyomi.data.torrent.TorrentNoPeersException
 import eu.kanade.tachiyomi.network.HttpException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.serialization.SerializationException
@@ -70,6 +75,19 @@ object AnimeSourceError {
         error is SourceOutdatedException -> Message(ANMR.strings.anime_error_outdated)
 
         error is NoVideoFoundException -> Message(ANMR.strings.anime_error_no_video)
+
+        // Before the generic cases: a torrent fails for reasons of its own, and a timeout here
+        // means no peers, not a slow site.
+        error is TorrentAddonUnavailableException -> when (error.state) {
+            TorrentAddon.State.Untrusted -> Message(ANMR.strings.anime_error_torrent_addon_untrusted)
+            else -> Message(ANMR.strings.anime_error_torrent_addon_missing)
+        }
+
+        error is TorrentAddonException -> Message(ANMR.strings.anime_error_torrent_addon_failed)
+
+        error is TorrentNoPeersException -> Message(ANMR.strings.anime_error_torrent_no_peers)
+
+        error is EmptyTorrentException -> Message(ANMR.strings.anime_error_torrent_empty)
 
         error is TimeoutCancellationException -> Message(ANMR.strings.anime_error_timeout)
 

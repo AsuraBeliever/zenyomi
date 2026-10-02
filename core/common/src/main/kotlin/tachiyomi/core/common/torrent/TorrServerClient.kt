@@ -52,9 +52,15 @@ class TorrServerClient(
 
     suspend fun get(hash: String): Torrent = torrents(TorrentRequest(action = "get", hash = hash))
 
-    /** Stops the torrent and forgets it: nothing more is downloaded or kept for it. */
-    suspend fun drop(hash: String) {
-        client.newCall(POST("$baseUrl/torrents", body = encode(TorrentRequest(action = "drop", hash = hash))))
+    /**
+     * Stops the torrent and forgets it: nothing more is downloaded or kept for it.
+     *
+     * `rem`, not `drop`. A dropped torrent stops downloading but stays in TorrServer's
+     * database — even an uploaded one, whatever `save` said — and is listed again after a
+     * restart. Measured on MatriX.145.1.
+     */
+    suspend fun remove(hash: String) {
+        client.newCall(POST("$baseUrl/torrents", body = encode(TorrentRequest(action = "rem", hash = hash))))
             .awaitSuccess()
             .close()
     }

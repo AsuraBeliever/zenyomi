@@ -740,6 +740,11 @@
     <string name="anime_error_no_video">No video found for this episode.</string>
     <string name="anime_error_unknown">This source failed. Try again, or use another one.</string>
     <string name="anime_error_playback">This video would not open. The host is probably down or the link has expired — try another source.</string>
+    <string name="anime_error_torrent_addon_missing">This episode is a torrent. Playing it needs the Zenyomi Torrent add-on, which is not installed.</string>
+    <string name="anime_error_torrent_addon_untrusted">The installed torrent add-on is not signed by Zenyomi, so it is not used.</string>
+    <string name="anime_error_torrent_addon_failed">The torrent add-on did not start.</string>
+    <string name="anime_error_torrent_no_peers">Nobody is sharing this torrent right now, so it cannot start.</string>
+    <string name="anime_error_torrent_empty">This torrent has no file to play.</string>
     <string name="anime_source_health_gone">Checked %1$s: the site this source uses no longer exists.</string>
     <string name="anime_source_health_outdated">Checked %1$s: the site changed and this extension could not read it.</string>
     <string name="anime_category_move_up">Move up</string>

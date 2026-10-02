@@ -109,6 +109,9 @@ fun AnimePlayerContent(
     var tracks by remember { mutableStateOf(emptyList<ZenyomiMPVView.Track>()) }
     var seekFeedback by remember { mutableStateOf<SeekFeedback?>(null) }
     var playbackFailure by remember { mutableStateOf<String?>(null) }
+    // Replaces the generic "the host is probably down" when the reason is known and is not
+    // the host: a torrent without the add-on would otherwise send the viewer to another source.
+    var failureHeadline by remember { mutableStateOf<String?>(null) }
     // Starts true: from the tap until mpv shows a frame there is nothing on screen, and on a
     // stream that takes eight seconds to open, a bare black rectangle reads as a player that
     // is not going to work.
@@ -252,6 +255,7 @@ fun AnimePlayerContent(
         seekTarget = null
         scrubbing = null
         playbackFailure = null
+        failureHeadline = null
         loading = true
         chapters = null
         autoSkippedIntro = false
@@ -349,6 +353,17 @@ fun AnimePlayerContent(
     LaunchedEffect(playerState.playback?.serial) {
         val playback = playerState.playback ?: return@LaunchedEffect
         startPlayback(playback, playback.resumeAt)
+    }
+
+    // An episode that never reached mpv — a torrent without the add-on, one nobody is
+    // sharing — is reported where mpv's own failures are, instead of spinning forever.
+    val openError = playerState.openError?.let { animeSourceErrorText(it) }
+    LaunchedEffect(openError) {
+        if (openError != null) {
+            failureHeadline = openError
+            playbackFailure = ""
+            loading = false
+        }
     }
 
     // What is left to poll for, now that position, duration and pause arrive as events: the
@@ -703,7 +718,7 @@ fun AnimePlayerContent(
                     .padding(32.dp),
             ) {
                 Text(
-                    text = stringResource(ANMR.strings.anime_error_playback),
+                    text = failureHeadline ?: stringResource(ANMR.strings.anime_error_playback),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyLarge,
                 )
