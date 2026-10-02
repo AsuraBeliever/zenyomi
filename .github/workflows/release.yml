@@ -59,8 +59,8 @@ jobs:
       # --stacktrace porque sin él Gradle corta la causa: la v0.18.1 solo dijo "A failure
       # occurred while executing PackageAndroidArtifact$IncrementalSplitterRunnable" y hubo
       # que deducir el motivo. Un release rojo tiene que decir por qué a la primera.
-      # Solo :app: el complemento de torrent (torrent/) aún no se publica, y construirlo
-      # aquí solo gastaría el disco de este job. Se añade cuando se publique (KAN-32).
+      # Solo :app: el complemento de torrent (torrent/) aún no se publica, así que
+      # construirlo aquí solo alargaría el job firmado. Se añade cuando se publique (KAN-32).
       - name: Build
         run: .github/scripts/gradle-with-retry.sh :app:assembleRelease -Penable-updater --stacktrace
         env:
