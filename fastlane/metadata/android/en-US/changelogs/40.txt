@@ -1,0 +1,9 @@
+Added: a button to skip the ending. It works like the opening one: it shows only while the credits are on screen, it is a single press, and it lands five seconds before they end. It is only offered when something comes after the credits, such as a final scene or the next episode's preview.
+
+Changed: credits with a scene after them no longer announce the next episode. The next episode card now waits for the last half minute, so the post-credits scene is not skipped.
+
+Fixed: the skip buttons no longer jump backwards when pressed in the last seconds of the opening or ending.
+
+Fixed: the anime extensions header counts the extensions waiting to be trusted. A fresh install read 0 above a list of 21.
+
+Improved: when a special shares its name with the series, the series wins. Over 485 anime with their id known in advance, 469 correct to 476, and still none resolved to the wrong anime.

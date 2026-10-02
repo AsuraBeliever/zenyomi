@@ -10,6 +10,20 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.19.5] - 2026-10-01
+### Added
+- **Botón para omitir el ending.** Funciona igual que el del opening: aparece solo mientras los créditos están en pantalla —cuando lo dicen los capítulos del propio fichero o AniSkip—, es una sola pulsación y aterriza cinco segundos antes de que acaben, contados desde donde acaban de verdad y no desde donde lo dice una copia ajena. Y solo se ofrece **cuando hay algo detrás de los créditos**: una escena final, el avance del siguiente episodio. Si los créditos llegan al último fotograma no hay nada al otro lado, y ahí el botón sería la tarjeta de siguiente episodio con otro nombre.
+
+### Changed
+- **Unos créditos con una escena detrás ya no anuncian el siguiente episodio.** Cuando se sabía dónde empezaban los créditos, la tarjeta del siguiente salía justo ahí con su cuenta atrás de diez segundos, y en un episodio con escena post-créditos eso se la llevaba por delante sin darte opción. Ahora, si detrás de los créditos queda episodio, la tarjeta espera al último medio minuto —como en cualquier episodio del que no se sabe nada— y durante los créditos lo que hay es el botón para saltarlos.
+
+### Fixed
+- **Los botones de omitir ya no saltan hacia atrás.** El salto aterriza cinco segundos antes del final del opening o del ending, así que pulsarlos en esos últimos segundos rebobinaba en vez de saltar. Ahora dejan de ofrecerse cuando ya no queda nada que saltar.
+- **El contador de extensiones de anime cuenta las que esperan a que confíes en ellas.** En Explorar → Extensiones, con «Both», la cabecera «Anime extensions» sumaba las instaladas y las disponibles y se dejaba las no confiadas, así que una instalación recién hecha decía «0» encima de una lista de veintiuna. Ahora el número es el de las filas que hay debajo, igual que en la cabecera de manga.
+
+### Improved
+- **La serie gana al special que le robó el nombre.** Un special, un OVA o un recopilatorio llevan de sinónimo el nombre de la serie —«Assassination Classroom» es el anime y también una cosa de diez minutos de una convención de 2013—, y al haber dos candidatos la app prefería no elegir y quedarse sin tiempos. Ahora, entre entradas que ya coinciden en el nombre, se queda con la serie. Medido sobre 485 animes con su id conocido de antemano: de 469 aciertos a 476 (98%), y **sigue sin resolver ninguno al anime equivocado**.
+
 ## [0.19.4] - 2026-09-19
 ### Improved
 - **Más animes con tiempos exactos de opening.** Identificar el anime por su título fallaba en cuanto la fuente y AniList lo escribían distinto sin querer decir nada distinto: «4th Season» contra «Season 4» contra un «4» a secas, «Bouken-roku» contra «Boukenroku», «Gin Tama» contra «Gintama». Ahora eso se iguala antes de comparar, sin aflojar la regla —las palabras siguen teniendo que ser las mismas y en el mismo orden—, y cuando la búsqueda de AniList se rinde ante un título de novela ligera de cuarenta caracteres se le pregunta otra vez por el principio del nombre. Medido sobre 105 títulos reales de una biblioteca: de 73% a 85%. Y sobre otros 485 animes nunca probados, cada uno con su id conocido de antemano: de 459 aciertos a 469, **y ninguno resuelto al anime equivocado**, que es el fallo que costaría episodio.

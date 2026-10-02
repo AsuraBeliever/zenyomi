@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-09-19
+**Actualizado:** 2026-09-20
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
 **Última release:** v0.19.4, tag en `main`
 **¿Compila?** sí
@@ -20,7 +20,7 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | Releases 0.5.x – 0.17.0 | ✅ | hasta `v0.17.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
-| Prueba de humo sobre el APK **publicado** | ✅ | en la v0.19.0, sobre `zenyomi-x86_64-v0.19.0.apk` descargado de la release: se instaló **encima** del local sin desinstalar —la prueba de que la clave es la misma—, firma `24:5E:D5:…:5D:BF`, `app.zenyomi` 0.19.0, cero `ic_mihon`. Abre, lista extensiones de anime con el repo añadido desde la app, reproduce vídeo pasado el primer fotograma, entra en PiP, encadena cuatro episodios solo y el botón de omitir opening salta. Cero `Fatal signal` y cero `FATAL EXCEPTION`. En la v0.19.1, sobre el APK publicado: se instaló encima de la 0.19.0, y el botón de omitir opening pulsado tres veces movió el episodio **una vez** y exactos 85 s. En la v0.19.2 y la v0.19.3, sobre los APK publicados: instalan encima de la anterior sin desinstalar, abren, listan fuentes de anime, reproducen, entran en PiP y cero `Fatal signal`/`FATAL EXCEPTION`. La v0.19.3 se comprobó además **contra R8** en lo que cambió: el salto del opening del episodio 3 cae en el 3:14.000 exacto |
+| Prueba de humo sobre el APK **publicado** | ✅ | en la v0.19.0, sobre `zenyomi-x86_64-v0.19.0.apk` descargado de la release: se instaló **encima** del local sin desinstalar —la prueba de que la clave es la misma—, firma `24:5E:D5:…:5D:BF`, `app.zenyomi` 0.19.0, cero `ic_mihon`. Abre, lista extensiones de anime con el repo añadido desde la app, reproduce vídeo pasado el primer fotograma, entra en PiP, encadena cuatro episodios solo y el botón de omitir opening salta. Cero `Fatal signal` y cero `FATAL EXCEPTION`. En la v0.19.1, sobre el APK publicado: se instaló encima de la 0.19.0, y el botón de omitir opening pulsado tres veces movió el episodio **una vez** y exactos 85 s. En la v0.19.2 y la v0.19.3, sobre los APK publicados: instalan encima de la anterior sin desinstalar, abren, listan fuentes de anime, reproducen, entran en PiP y cero `Fatal signal`/`FATAL EXCEPTION`. La v0.19.3 se comprobó además **contra R8** en lo que cambió: el salto del opening del episodio 3 cae en el 3:14.000 exacto. En la v0.19.4, sobre `zenyomi-x86_64-v0.19.4.apk` del CI: instala encima de la 0.19.3, abre, y **contra R8** se comprueba lo que cambia — un fixture llamado «Mairimashita! Iruma-kun 4th Season», que la regla anterior no sabía identificar, resuelve, no ofrece botón en el segundo 19 y lo ofrece a los 1:53; pulsado ahí aterriza en el 2:28.000 exacto (160 − 5 − 7). Cero crashes |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
 | PiP del player | ✅ | Activity propia |
@@ -52,10 +52,11 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Reproductor (núcleo) | ✅ | mpv decodifica y pinta; play/pausa y barra de búsqueda verificados |
 | Pistas de audio y subtítulos | ✅ | selector propio; verificado con un vídeo de 2 audios y 2 subtítulos |
 | Gestos del player | ✅ | toque simple verificado aquí; el doble toque, verificado por el cliente en el dispositivo (2026-09-16). El aviso del salto sale del lado del que viene |
-| Tiempos exactos del opening (AniSkip) | ✅ | los segundos reales del opening y del ending salen de `api.aniskip.com`; el botón salta al final exacto y el salto automático es opcional (apagado por defecto). Ver ADR-0007. Desde la v0.19.2 **no hace falta vincular el anime a MAL ni a AniList**: si no tiene tracker se identifica por su título en el catálogo de AniList, y solo se acepta una coincidencia exacta con una única entrada. Verificado en el emulador contra los servicios reales: «Dandadan» sin tracker → id 57334, opening del episodio 2 en 121–208 s, el botón no sale al empezar, sale a los 2:49 y el salto aterriza en 3:28; un título inventado contesta «none» y se queda con el salto fijo. Desde la v0.19.3 el salto **aterriza 5 s antes del final**, y esos 5 s se cuentan desde donde el opening acaba de verdad: los tiempos se midieron sobre otra copia, así que se resta además lo que esa copia se aleje de la nuestra en duración, con tope. Verificado en el emulador con el código de tiempo grabado: AniSkip da 203 s para el episodio 3, la copia cronometrada dura 1437 s y la nuestra 1441, y el salto cae en el 3:14.000 exacto —203 menos 5 menos 4— en vez de en el 3:23. Desde la v0.19.4 el emparejado por título iguala lo que dos catálogos escriben distinto sin querer decir nada distinto —«4th Season»/«Season 4»/«4», «Bouken-roku»/«Boukenroku»— y repregunta con el principio del nombre cuando la búsqueda de AniList se rinde ante un título largo. Medido sobre 105 títulos reales de la biblioteca del emulador: **de 73% a 85%** que resuelven, sin que ninguno cambie de id. Medido además sobre 485 animes nunca probados con su id conocido: 469 aciertos (96%) frente a 459, y **cero resueltos al anime equivocado**. Lo que aún no contesta es casi todo el mismo caso: una serie y un *special* que se llaman igual, y la regla se niega a elegir |
+| Tiempos exactos del opening (AniSkip) | ✅ | los segundos reales del opening y del ending salen de `api.aniskip.com`; el botón salta al final exacto y el salto automático es opcional (apagado por defecto). Ver ADR-0007. Desde la v0.19.2 **no hace falta vincular el anime a MAL ni a AniList**: si no tiene tracker se identifica por su título en el catálogo de AniList, y solo se acepta una coincidencia exacta con una única entrada. Verificado en el emulador contra los servicios reales: «Dandadan» sin tracker → id 57334, opening del episodio 2 en 121–208 s, el botón no sale al empezar, sale a los 2:49 y el salto aterriza en 3:28; un título inventado contesta «none» y se queda con el salto fijo. Desde la v0.19.3 el salto **aterriza 5 s antes del final**, y esos 5 s se cuentan desde donde el opening acaba de verdad: los tiempos se midieron sobre otra copia, así que se resta además lo que esa copia se aleje de la nuestra en duración, con tope. Verificado en el emulador con el código de tiempo grabado: AniSkip da 203 s para el episodio 3, la copia cronometrada dura 1437 s y la nuestra 1441, y el salto cae en el 3:14.000 exacto —203 menos 5 menos 4— en vez de en el 3:23. Desde la v0.19.4 el emparejado por título iguala lo que dos catálogos escriben distinto sin querer decir nada distinto —«4th Season»/«Season 4»/«4», «Bouken-roku»/«Boukenroku»— y repregunta con el principio del nombre cuando la búsqueda de AniList se rinde ante un título largo. Medido sobre 105 títulos reales de la biblioteca del emulador: **de 73% a 85%** que resuelven, sin que ninguno cambie de id. Medido además sobre 485 animes nunca probados con su id conocido: 469 aciertos (96%) frente a 459, y **cero resueltos al anime equivocado**. **Desde la v0.19.5**, entre entradas que coinciden en el nombre se prefiere la serie al *special* que se lo pide prestado, lo que sube esa medición a 476 (98%) manteniendo el cero de errores |
 | Omitir el opening | ✅ | botón durante el arranque del episodio: salto de 85 s configurable, y exacto cuando el contenedor trae un capítulo llamado «Opening» —ahí solo se ofrece mientras el opening está en pantalla—. Verificado en el emulador con un mkv de capítulos (salta a los 38 s justos) y con un mp4 sin ellos (+85 s). 7 tests sobre la lectura del título del capítulo. Desde la v0.19.1 es **una sola pulsación** —antes se acumulaba y avanzaba el episodio— y el salto es exacto, no al fotograma clave anterior. Desde la v0.19.3 la cantidad fija **se mide desde donde empieza el opening, no desde donde se pulsa**: pulsar tarde ya no aterriza pasado su final llevándose episodio por delante, y el salto nunca cae después del último segundo. Verificado en el emulador con el código de tiempo grabado: pulsado en el 0:52, aterriza en el 1:25 exacto. Desde la v0.19.4 el botón deja de ofrecerse cuando nadie sabe dónde está el opening —ni capítulos ni AniSkip—, en vez de salir en el primer fotograma con un salto fijo; desaparece con él el ajuste «Longitud del opening». Verificado en el emulador: con un mkv de capítulos sale a los 0:13 y aterriza en el 0:33 (38 − 5); en un episodio sin datos no sale ni al principio ni a los 2:30 |
+| Omitir el ending | ✅ | **Desde la v0.19.5:** botón durante los créditos, con las mismas reglas que el del opening: solo mientras están en pantalla —capítulo del fichero llamado «Ending»/«ED»/«Outro»/«Créditos», o el intervalo `ed` de AniSkip—, una sola pulsación y aterrizaje cinco segundos antes de su final, menos la diferencia entre copias. Solo se ofrece cuando **queda algo detrás de los créditos** (15 s o más): si llegan al último fotograma no hay escena que rescatar. Verificado en el emulador con el código de tiempo grabado: fixture `SerieFinal` (capítulos «Episodio» 0–50, «Ending» 50–85, «Escena final» 85–120) → no hay botón en el 0:43, sí entre 0:50 y 1:20, y pulsado en el 0:52 aterriza en el **1:20.000 exacto**; y ruta AniSkip con `SerieAniSkip/Ep03` (24 min, tracker falso de Jujutsu Kaisen) → ending 1274–1364 con 5 s de deriva, botón en los créditos y aterrizaje en el **22:34.000 exacto**. 12 tests nuevos. El botón del opening no cambia salvo en que tampoco se ofrece ya en sus últimos cinco segundos, donde saltaba hacia atrás |
 | Cerrar y reabrir el reproductor | ✅ | antes dejaba la app con un reproductor muerto: soltar la superficie mientras mpv seguía pintando no volvía nunca, y todo lo que se encolaba después —incluido el arranque del siguiente reproductor— esperaba detrás. Ahora se descarga el fichero antes de soltarla, y volver de segundo plano lo reabre donde estaba |
-| Siguiente episodio dentro del player | ✅ | botones de anterior y siguiente junto a la barra, y una tarjeta con cuenta atrás al final del episodio que abre el siguiente sola. Se puede parar con Cancelar, y el ajuste "Reproducir el siguiente episodio automáticamente" lo apaga del todo. El siguiente se resuelve durante los créditos, así que el salto es instantáneo. Verificado en el emulador: cadena de cuatro episodios seguidos, progreso e historial de cada uno en la BD, y vuelta atrás con el botón de anterior |
+| Siguiente episodio dentro del player | ✅ | botones de anterior y siguiente junto a la barra, y una tarjeta con cuenta atrás al final del episodio que abre el siguiente sola. **Desde la v0.19.5**, cuando detrás de los créditos queda episodio —una escena final, un avance—, la tarjeta ya no sale con ellos: espera al último medio minuto, porque anunciar el siguiente sobre unos créditos que no son el final es lo que se llevaba esa escena por delante. Se puede parar con Cancelar, y el ajuste "Reproducir el siguiente episodio automáticamente" lo apaga del todo. El siguiente se resuelve durante los créditos, así que el salto es instantáneo. Verificado en el emulador: cadena de cuatro episodios seguidos, progreso e historial de cada uno en la BD, y vuelta atrás con el botón de anterior |
 | Controles del player | ✅ | play/pausa y saltos en el centro de la imagen, reloj de un segundo, barra que se queda donde se suelta y cubierta de carga con salida. Se ocultan a los 5 s y el toque en la imagen los muestra u oculta en vez de pausar |
 | Arranque de un episodio | ✅ | audio y controles ya no esperan a que se descarguen dieciséis idiomas de subtítulos: de 37 s de vídeo mudo y medio minuto de botones muertos, a 2 s |
 | PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
@@ -78,7 +79,7 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Descargas de anime | ✅ | cola persistente, worker en primer plano, notificaciones y borrado. Vídeo real desde la 0.15.0; desde la 0.17.0 los segmentos se bajan en paralelo (~3× más rápido), se elige la calidad y se ve velocidad, tamaño y cola. Tras la 0.17.0: el botón responde al primer toque, cancelar cancela de verdad, la pulsación larga vuelve a preguntar la calidad, y el audio ya no va detrás del vídeo sino a la vez (verificado en el emulador con KickAssAnime: 76 MB en mkv, vídeo y audio avanzando en paralelo, cancelación sin restos en disco ni en la caché) |
 | Descargas independientes del formato | ✅ | Ver `docs/adr/0006-descargas-por-contenido-no-por-formato.md`. Se decide por el contenido (binario → disco, texto → ffmpeg, página/JSON → rechazo), ffprobe dice qué calidades hay dentro y cuál mapear, y nada se llama episodio sin comprobar que es un contenedor con vídeo y duración. Verificado en el emulador: **DASH** (AnimeOnsen, que antes guardaba 8 KB de XML) baja un mkv real de 155 MB con un único stream de vídeo, su audio y 16 subtítulos; **HLS** (KickAssAnime) sigue igual, 81 MB por el camino rápido. 12 tests cubren el clasificador |
 | Camino rápido de DASH | ✅ | El lector de MPD cubre `SegmentTemplate` (por número y por línea de tiempo), `SegmentList` y representación de un solo fichero; declina lo que no reconoce y entonces lo baja ffmpeg. Medido en el emulador con AnimeOnsen: **7 min → 52 s**, y el fichero sale igual (mismo vídeo, audio, 16 subtítulos y duración). 14 tests |
-| Velocidad de formatos sin lector propio | ⚠️ | Queda como en el ADR-0006 para lo que no sea HLS ni DASH: ffmpeg pide los segmentos de uno en uno. Correcto, lento, y se arregla con un lector más |
+| Velocidad de formatos sin lector propio | ✅ | Lo que no sea HLS ni DASH sigue bajándolo ffmpeg segmento a segmento, como dice el ADR-0006. **Medido el 2026-10-01 (KAN-11): ninguna fuente que funcione lo usa.** Las cinco que reproducen entregan HLS, DASH o un MP4 directo, que va al disco sin ffmpeg. Si aparece un formato nuevo, la medición se repite con la receta del ADR |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ✅ | MyAnimeList, AniList y **Kitsu** verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación, progreso, puntuación, privado y desvincular, comprobado en los servidores de cada servicio. En Kitsu además se comprobó que la entrada cae en la biblioteca de anime y no en la de manga |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
@@ -139,7 +140,8 @@ Dos cosas que salieron al hacerlo y que están en el código por algo:
   limpia la cabecera dice «Anime extensions 0» mientras debajo hay veintiuna esperando
   a que se confíen; la de manga sí cuenta la suya. Solo es el número: la lista y el
   botón *Trust* funcionan. Mihon es la referencia, así que el número debería incluirlas.
-  Visto al verificar la v0.11.0.
+  Visto al verificar la v0.11.0. **Corregido en la v0.19.5** (KAN-9); la cabecera cuenta
+  las no confiadas, igual que la de manga.
 
 ## La prueba de humo de la v0.14.3 encontró un fallo, y para eso está
 
@@ -194,15 +196,35 @@ backup grande de Mihon, con una biblioteca real de cientos de títulos.
 
 ## Aviso conocido: alineación de 16 KB
 
-En el emulador (Pixel 10 Pro XL, página de 16 KB) Android muestra un diálogo de
-compatibilidad: varias librerías nativas no están alineadas a 16 KB y la app corre en
-modo compatible. **No es algo que hayamos introducido**: en la lista aparecen también
-librerías propias de Mihon (`libconscrypt_jni`, `libsqliteJni`, `libquickjs`,
-`libimagedecoder2`, `libwebgpu_c_bundled`), junto a las nuevas de mpv y FFmpeg.
+En un dispositivo con páginas de 16 KB (el emulador Pixel 10 Pro XL) Android avisa de que
+hay librerías nativas sin alinear y la app corre en modo compatible. En uno de 4 KB, como el
+Galaxy S25 Ultra del cliente, no pasa nada.
 
-Hoy solo es un aviso y la app funciona. A futuro conviene vigilarlo, porque Google Play
-acabará exigiendo alineación de 16 KB. La parte que depende de nosotros son mpv y
-FFmpeg-kit; el resto se arregla siguiendo a upstream.
+**Medido el 2026-10-01 (KAN-13)** sobre el APK, leyendo el `p_align` de los segmentos LOAD
+de cada `.so`, en arm64-v8a y x86_64: **22 de las 24 librerías ya están a 16 KB**, incluidas
+las de mpv y las de Mihon que aparecían en el diálogo al principio (`libconscrypt_jni`,
+`libsqliteJni`, `libquickjs`, `libimagedecoder2`, `libwebgpu_c_bundled`). No hay una medición
+anterior con la que comparar; lo que consta es que hoy están alineadas. El empaquetado del APK también pasa `zipalign -c -P 16`. Solo quedan dos, las dos
+de FFmpegKit:
+
+| Librería | Alineación |
+|---|---|
+| `libffmpegkit.so` | 4 KB (`0x1000`) |
+| `libffmpegkit_abidetect.so` | 4 KB (`0x1000`) |
+
+FFmpegKit es `com.github.jmir1:ffmpeg-kit` 1.18, el fork de Aniyomi, sin releases ni
+commits desde el 2025-10-02. No hay versión nueva a la que subir: arreglarlo es **compilar
+FFmpegKit desde su código** con `-Wl,-z,max-page-size=16384` y mantener ese build.
+Zenyomi no se distribuye por Google Play, que es quien acabará exigiéndolo, así que hoy no
+corre prisa; el plan está en KAN-13.
+
+Para repetir la medición:
+
+```sh
+rm -rf /tmp/so && unzip -q app/build/outputs/apk/debug/app-arm64-v8a-debug.apk 'lib/*' -d /tmp/so
+for f in /tmp/so/lib/*/*.so; do echo "$(basename $f) $(readelf -lW $f | awk '/LOAD/{print $NF}' | sort -u)"; done
+$ANDROID_HOME/build-tools/37.0.0/zipalign -c -P 16 4 app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+```
 
 ## Hechos medidos (2026-09-08)
 
@@ -232,12 +254,15 @@ Técnicas:
 
 ## Siguiente paso
 
+Desde el 2026-10-01 el trabajo pendiente vive en Jira (espacio `KAN`,
+https://alansethmanjarrez.atlassian.net). Lo de abajo es el resumen; el estado al día está allí.
+
 Fase 4. Lo que queda, por orden:
 
 | Pieza | Estado |
 |---|---|
 | Afinado de R8 | pendiente; el baseline profile ya cubre el anime |
-| Alineación de librerías nativas a 16 KB | vigilando; hoy solo es un aviso |
+| Alineación de librerías nativas a 16 KB | solo falta FFmpegKit (2 de 24 librerías); hay que compilarlo nosotros, ver KAN-13 |
 | Streaming por torrent (torrserver) | opcional, decisión del cliente |
 
 La interfaz de anime está completa y en uso: pestañas Anime/Manga, biblioteca,

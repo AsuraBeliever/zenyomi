@@ -132,6 +132,30 @@ sqlite3 live.db "SELECT ..."   # sqlite3 reaplica el wal al abrir
 ``` El emulador conserva ahora una entrada `Anime de prueba (fixture)` con tres
 episodios.
 
+## Fixture de manga
+
+La regresión de manga de cada cambio (regla dura 1, paso `zen-test`) se hace sobre
+**«Manga de prueba (fixture)»**, de la fuente local: tres capítulos en CBZ de seis páginas
+cada uno, con portada y `details.json`. Cada página lleva grabados su capítulo y su número
+(«Capítulo 2» y, debajo, «4 / 6»), así que una captura dice en qué página está el lector sin fiarse
+de la app.
+
+```sh
+scripts/fixtures/manga-local.sh            # genera y sube a Documents/local/ del emulador
+```
+
+El script borra y vuelve a crear la carpeta, así que se puede relanzar siempre. Después,
+si el manga no está ya en la biblioteca: **Browse → Sources → Manga → Local source →
+Manga de prueba (fixture) → Add to library**.
+
+El lector de Mihon va por defecto **de derecha a izquierda**, como un manga: para pasar a
+la página siguiente por adb, el gesto es de izquierda a derecha
+(`input swipe 200 1500 1100 1500 200`). El contrario vuelve a la página anterior, y
+desde la primera página, al capítulo anterior.
+
+La carpeta `MangaDePrueba` que hay al lado es anterior: un capítulo suelto de dos páginas
+sin metadatos. No se usa para la regresión.
+
 ## Vídeos de prueba generados con FFmpeg
 
 Para probar el reproductor sin depender de ninguna fuente, se generan clips locales y se
@@ -156,7 +180,7 @@ ffmpeg -f lavfi -i testsrc2=size=640x360:rate=24:duration=10 \
 El código de tiempo grabado en la imagen permite comprobar que la posición que muestra la
 barra coincide con el fotograma real, sin fiarse solo de lo que reporta la app.
 
-## Fixtures para el botón de omitir opening y el final del episodio
+## Fixtures para los botones de omitir y el final del episodio
 
 En `Documents/localanime/` del emulador, además de los clips sueltos:
 
@@ -166,6 +190,8 @@ En `Documents/localanime/` del emulador, además de los clips sueltos:
 | `SerieAniSkip/Ep01.mp4` y `Ep02.mp4` | 200 s sin capítulos, con un tracker de **MyAnimeList falso apuntando a Jujutsu Kaisen (40748)** en `anime_sync`. AniSkip responde opening 54–145 y ending 170–260, así que sirve para el botón exacto, para el salto automático y para la cuenta atrás de los créditos |
 | `SerieDePrueba/Ep01–Ep05` | Clips de 10 s (y Ep04 de 10 min) **sin tracker** y con un título que no es de ningún anime: es el caso del salto fijo de 85 s y de la cadena de episodios |
 | `Dandadan/Ep01.mp4` y `Ep02.mp4` | 250 s **sin tracker**, con el nombre de un anime real. Prueba la identificación por título: AniSkip contesta por el id 57334 y el opening del Ep02 va de 2:01 a 3:28, así que el botón **no** sale al empezar y sí en ese tramo. El código de tiempo grabado en la imagen dice dónde aterriza el salto |
+| `SerieFinal/Ep01.mkv` y `Ep02.mkv` | 120 s con capítulos **«Episodio» (0–50), «Ending» (50–85), «Escena final» (85–120)**. El botón de omitir el ending solo debe aparecer entre 0:50 y 1:20 y aterrizar en el 1:20.000; y la tarjeta de siguiente episodio no debe salir con los créditos, sino en el último medio minuto, ya sobre la escena final |
+| `SerieAniSkip/Ep03.mp4` | 24 min sin capítulos, bajo el mismo tracker falso de Jujutsu Kaisen. AniSkip contesta opening 191–282 y **ending 1274–1364 sobre una copia de 1435 s**, así que prueba la ruta de AniSkip para el ending con deriva entre copias: botón durante los créditos y aterrizaje en el 22:34.000 (1364 − 5 − 5) |
 | `Mairimashita! Iruma-kun 4th Season/Ep01.mp4` | Un título que la fuente escribe con «4th Season» y AniList con «4». Prueba el emparejado por palabras con la temporada canonizada: debe resolver al id 60310. **Ojo:** `/sdcard` no admite `:` en un nombre, así que los títulos con dos puntos no se pueden montar como fixture local; ese camino se comprueba contra la API |
 
 El tracker falso se inserta a mano; la app no lo distingue de uno real:
@@ -177,6 +203,13 @@ sqlite3 anime.db "INSERT INTO anime_sync (anime_id, sync_id, remote_id, library_
 ```
 
 `sync_id` 1 es MyAnimeList y 2 AniList, los ids que reparte `TrackerManager`.
+
+## Manejar la app por adb
+
+`scripts/zen-ui.sh` reúne lo necesario para navegar sin tocar el emulador: abrir la app,
+tocar por texto o por `content-desc`, leer la pantalla, capturar y contar crashes. Se carga
+con `export OUT=<carpeta>; source scripts/zen-ui.sh`, y lo usa la skill `zen-test`. La
+cabecera del script explica cada función y las trampas conocidas están en la skill.
 
 ## Lo que adb no puede probar
 

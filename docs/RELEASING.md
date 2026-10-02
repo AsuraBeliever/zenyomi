@@ -60,6 +60,7 @@ está fuera.
 | Síntoma | Qué era | Qué hacer |
 |---|---|---|
 | `:app:packageRelease` / `packageFoss` FAILED sin causa en el log | El runner quedándose sin disco empaquetando 5 APK, ~640 MB en total | Relanzar el job. Desde la v0.18.1 el workflow libera disco antes de compilar y pasa `--stacktrace`, así que si vuelve a pasar el log **dirá** el motivo |
+| *Dependency Review*: «Dependency review is not supported on this repository» | El paso solo corre en pull requests y necesita el *dependency graph* del repo. Se activó el 2026-10-01, con el primer PR | Si vuelve a salir: `gh api -X PUT repos/AsuraBeliever/zenyomi/vulnerability-alerts` (activa las alertas de Dependabot, que encienden el grafo) y relanzar |
 | `Could not find flexible-adapter-<rev>.jar` | JitPack sirviendo el POM a medias. El artefacto es un **`.aar`**, no un `.jar`: si Gradle pide un `.jar` es que recibió un POM sin `packaging` y asumió el valor por defecto | Comprobar que JitPack sirve las dos cosas y relanzar |
 
 ```sh
@@ -231,6 +232,7 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.19.1 | 36 | **clave del proyecto** | El botón de omitir opening deja de acumularse, el salto es exacto y el siguiente episodio empieza con los créditos. **Un solo intento**, los 6 assets subidos |
 | 0.19.2 | 37 | **clave del proyecto** | AniSkip responde de un anime sin tracker, identificándolo por su título. **Un solo intento**, los 6 assets subidos |
 | 0.19.3 | 38 | **clave del proyecto** | Tres arreglos del botón de omitir: el salto fijo se mide desde donde empieza el opening, los tiempos de AniSkip se corrigen por la diferencia entre copias, y el salto aterriza 5 s antes del final. **Un solo intento**, los 6 assets subidos |
+| 0.19.4 | 39 | **clave del proyecto** | El botón de omitir deja de aparecer cuando nadie sabe dónde está el opening, y el emparejado por título entiende cómo escribe cada catálogo una temporada. **Un solo intento**, los 6 assets subidos |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es

@@ -142,10 +142,11 @@ class MalIdForTitleTest {
         romaji: String,
         english: String? = null,
         synonyms: List<String> = emptyList(),
+        format: String = "TV",
     ): String {
         val titles = """{"romaji":${romaji.json()},"english":${english.json()},"native":null}"""
         val alternatives = synonyms.joinToString(",") { it.json() }
-        return """{"idMal":${idMal ?: "null"},"title":$titles,"synonyms":[$alternatives]}"""
+        return """{"idMal":${idMal ?: "null"},"format":"$format","title":$titles,"synonyms":[$alternatives]}"""
     }
 
     private fun String?.json() = if (this == null) "null" else "\"$this\""
@@ -205,5 +206,39 @@ class MalIdForTitleTest {
     fun `a title that is already short is not asked for twice`() {
         assertNull(openingWordsOf("One Piece"))
         assertNull(openingWordsOf("Dandadan"))
+    }
+
+    @Test
+    fun `the series, not the ten minute thing that borrowed its name`() {
+        // Both of these really do answer to "Assassination Classroom" in the catalogue.
+        val body = search(
+            entry(24833, romaji = "Ansatsu Kyoushitsu", english = "Assassination Classroom"),
+            entry(
+                19759,
+                romaji = "Ansatsu Kyoushitsu: Jump Festa 2013 Special",
+                synonyms = listOf("Assassination Classroom"),
+                format = "SPECIAL",
+            ),
+        )
+        assertEquals(24833L, malIdForTitle("Assassination Classroom", body))
+    }
+
+    @Test
+    fun `two series of the same name are still no answer`() {
+        val body = search(
+            entry(1, romaji = "Bleach", english = "Bleach"),
+            entry(2, romaji = "Bleach", english = "Bleach"),
+        )
+        assertNull(malIdForTitle("Bleach", body))
+    }
+
+    @Test
+    fun `being called exactly that still beats being a series`() {
+        // "Gintama'" is the second season and a series; the first one is what was asked for.
+        val body = search(
+            entry(918, romaji = "Gintama", english = "Gintama"),
+            entry(9969, romaji = "Gintama'", english = "Gintama Season 2"),
+        )
+        assertEquals(918L, malIdForTitle("Gintama", body))
     }
 }

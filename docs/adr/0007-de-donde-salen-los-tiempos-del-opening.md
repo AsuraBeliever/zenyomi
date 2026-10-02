@@ -1,8 +1,11 @@
-# ADR-0007 — De dónde salen los tiempos del opening
+# ADR-0007 — De dónde salen los tiempos del opening y del ending
 
 **Fecha:** 2026-09-18 · **Estado:** aceptada
 **Revisada:** 2026-09-19 — cómo se identifica el anime ante AniSkip, y el botón deja de
 ofrecerse cuando nadie sabe dónde está el opening
+**Revisada:** 2026-09-20 — el ending tiene botón propio, y unos créditos con algo detrás
+dejan de anunciar el siguiente episodio
+(el fichero conserva su nombre; lo enlazan el código y varias entradas del CHANGELOG)
 
 ## Contexto
 
@@ -54,9 +57,18 @@ sin querer decir nada distinto, medido sobre 105 títulos reales de una bibliote
   «Gintama». Se comparan también las letras seguidas, sin separadores y en orden.
 
 Dos entradas que coinciden no son respuesta —no hay nada que elegir entre una serie y
-su recopilatorio—, **salvo que una se llame exactamente así, carácter por carácter**:
-las temporadas de Gintama son «Gintama», «Gintama'», «Gintama°» y «Gintama.», y ese
-apóstrofo es toda la diferencia, justo lo primero que tira una comparación de palabras.
+su recopilatorio— salvo por dos desempates, en este orden y ningún otro:
+
+1. **Llamarse exactamente así, carácter por carácter.** Las temporadas de Gintama son
+   «Gintama», «Gintama'», «Gintama°» y «Gintama.», y ese apóstrofo es toda la
+   diferencia, justo lo primero que tira una comparación de palabras.
+2. **Ser la serie y no lo que la rodea.** Un special, un OVA o un recopilatorio llevan
+   de sinónimo el nombre de la serie: «Assassination Classroom» es a la vez el anime y
+   una cosa de diez minutos de una convención de 2013. Una fuente que lista episodios
+   se refiere al anime. Solo se llega aquí entre entradas que ya coinciden en el nombre.
+
+Empatadas después de los dos —dos series con el mismo nombre— no hay respuesta, que
+cuesta un botón y nunca cuesta episodio.
 
 **Y si la búsqueda no devuelve nada, se pregunta una segunda vez con el principio del
 título.** La parte no estricta de todo esto es el buscador de AniList, que se rinde ante
@@ -65,8 +77,11 @@ contesta vacío. El nombre está delante, así que se pregunta por él —hasta 
 corte fuerte, seis palabras como mucho— y lo que venga se compara igual contra el
 título entero. Una pregunta más corta, no un listón más bajo.
 
-De 105 títulos reales, resuelven **90 (85%)**; con la igualdad literal anterior
-resolvían 77 (73%). Lo que queda sin resolver es casi todo anime que AniList no tiene,
+De 105 títulos reales resuelven **90 (85%)**, frente a 77 (73%) con la igualdad literal
+anterior. Y sobre 485 animes cuyo id se conocía de antemano —población más limpia, de
+nombres de catálogo— aciertan **476 (98%)** frente a 459, **sin que ninguno resuelva al
+anime equivocado**, que es el fallo que costaría episodio y la razón de que cada
+desempate esté acotado. Lo que queda sin resolver es casi todo anime que AniList no tiene,
 o títulos donde la fuente pone una palabra que el catálogo no. No encontrar nada es un
 resultado correcto: no hay botón.
 
@@ -98,9 +113,42 @@ diferencia está en otra parte del episodio —un avance que el stream no trae, 
 créditos cortados de otra forma— y no dice nada del opening. Un capítulo del propio
 fichero no lleva esa corrección: ese habla de esta copia.
 
-**El salto automático es opcional y viene apagado.** Actúa sobre un intervalo que ha
-enviado otra persona; cuando está mal, se lleva minuto y medio de episodio por
-delante. Se activa en Ajustes → Reproductor y, cuando salta, lo dice en pantalla.
+**El ending tiene el mismo botón, con una condición de más: que haya algo detrás.** Los
+tiempos ya venían en la misma respuesta —se piden `op` y `ed` a la vez—, y hasta ahora el
+ending solo servía para saber cuándo anunciar el siguiente episodio. Lo que faltaba es lo que
+pidió el cliente: hay episodios con una escena después de los créditos, y sin botón no había
+forma de llegar a ella sin buscar a mano. Las reglas son las del opening —solo mientras los
+créditos están en pantalla, una sola pulsación, y el aterrizaje cinco segundos antes de su
+final menos la deriva entre copias— más una: **solo se ofrece cuando después de los créditos
+queda episodio**, quince segundos o más. Unos créditos que llegan al último fotograma no
+tienen nada al otro lado, y un botón que salta al final del episodio es la tarjeta de
+siguiente episodio con otro nombre y sin su cuenta atrás. Quince segundos porque por debajo
+de eso lo que hay es un logo, unos fotogramas en negro o el final de los créditos mal medido
+por un segundo, y el botón estaría prometiendo una escena que no existe.
+
+**Y unos créditos con algo detrás ya no anuncian el siguiente episodio.** Saber dónde
+empiezan los créditos servía para adelantar la tarjeta del siguiente episodio, que en
+reproducción automática trae una cuenta atrás de diez segundos: en un episodio con escena
+post-créditos eso se la llevaba por delante. Unos créditos con episodio detrás no son el
+final del episodio, así que ahí la tarjeta espera al último medio minuto —lo mismo que hace
+en un episodio del que nadie sabe nada— y el sitio lo ocupa el botón de saltarlos.
+
+**Ningún botón salta hacia atrás.** El aterrizaje está cinco segundos antes del final del
+tramo, así que en esos últimos cinco segundos pulsar «omitir» rebobinaba. Los dos botones
+dejan de ofrecerse ahí: ya no queda nada que saltar.
+
+**Un capítulo del fichero llamado «Ending» también cuenta**, igual que pasa con el opening y
+con el mismo orden de confianza: capítulos → AniSkip. A diferencia del opening, ese capítulo
+puede ser el último del fichero —unos créditos que llegan al final son el caso corriente—, y
+entonces lo que lo cierra es la duración. No cuesta nada, porque ahí no hay botón de todas
+formas.
+
+**El salto automático es opcional y viene apagado, y es solo del opening.** Actúa sobre un
+intervalo que ha enviado otra persona; cuando está mal, se lleva minuto y medio de episodio
+por delante. Se activa en Ajustes → Reproductor y, cuando salta, lo dice en pantalla. Para el
+ending no hay equivalente y no se echa en falta: saltar los créditos solos dejaría al
+espectador en mitad de una escena que no ha pedido ver, y quien no quiere créditos ya tiene
+la reproducción automática.
 
 **Cuando AniSkip no sabe, no pasa nada.** Un 404 es la respuesta normal para un
 episodio que nadie ha cronometrado, y significa que en ese episodio no hay botón.
@@ -140,6 +188,10 @@ interruptor apagado o un momento sin red: en todos ellos no aparece nada y el op
 se salta con la barra, como en cualquier reproductor. Es preferible a un botón que
 aparece cuando no toca.
 
+**Y hay episodios con botón de opening y sin botón de ending**, que es el caso corriente: la
+mayoría de los episodios terminan con los créditos y no tienen nada detrás. El botón del
+ending es para los que sí.
+
 ## Alternativas descartadas
 
 - **Solo la cantidad fija** (lo que hace Aniyomi sin AniSkip). Es lo que teníamos en
@@ -152,6 +204,11 @@ aparece cuando no toca.
   salto desde el principio del episodio en vez de desde la pulsación, y no pasar nunca
   del último segundo— y seguía siendo una conjetura disfrazada de dato. Un botón que
   no está no engaña a nadie.
+- **Ofrecer el botón del ending siempre que se sepa dónde están los créditos.** Es lo
+  evidente, y en la mayoría de los episodios el botón saltaría al último segundo: eso no es
+  omitir el ending, es pasar al siguiente episodio, que es justo lo que ofrece la tarjeta de
+  al lado y con diez segundos para arrepentirse. Un botón que hace otra cosa de la que dice
+  es el fallo que esta misma ADR ya corrigió una vez.
 - **Detectar el opening analizando el audio o el vídeo.** Es la única vía que no
   depende de terceros ni de metadatos, y cuesta más CPU en un móvil de la que vale
   un salto de botón.

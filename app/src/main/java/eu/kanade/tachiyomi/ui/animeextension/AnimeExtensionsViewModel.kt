@@ -145,6 +145,13 @@ class AnimeExtensionsViewModel(
                     .map { (lang, extensions) -> lang to extensions.sortedBy { it.name } }
             }
 
+        /**
+         * How many extensions the list shows, for the section header. Untrusted ones count:
+         * Mihon's manga header counts its own, and on a fresh install they are all there is.
+         */
+        val shownCount: Int
+            get() = untrusted.size + groupedAvailable.sumOf { it.second.size } + installed.size
+
         /** True when a search or a language filter is hiding everything there is. */
         val isFilteredEmpty: Boolean
             get() = groupedAvailable.isEmpty() &&

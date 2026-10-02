@@ -82,6 +82,30 @@ donde ffprobe decía 83.
   listar playlists antiguas como episodios. Es histórico y ya no es la defensa: la
   defensa es la comprobación del punto 3.
 
+## Medición: ¿qué formatos entregan las fuentes? (2026-10-01, KAN-11)
+
+El camino lento —ffmpeg pidiendo segmentos de uno en uno— solo importa si alguna fuente que
+funciona entrega un formato segmentado que no sea HLS ni DASH. Se midió **por contenido**, no
+por URL (las URL mienten, ver abajo): el arnés vuelca los vídeos de cada fuente que reproduce
+(`-e only <fuente> -e videos true`) y se leen los primeros 16 bytes de cada uno con sus
+cabeceras.
+
+| Fuente | Lo que entrega |
+|---|---|
+| KickAssAnime | HLS (3 de 3) |
+| AnimeOnsen | DASH (1 de 1) |
+| Jkanime | HLS (7), MP4 binario (2: mp4upload, streamtape), página de Mediafire (1), 403 o Cloudflare (3) |
+| TioAnime | HLS (1), MP4 binario (1: vidcache), 403 (1) |
+| TioHentai | HLS (1), MP4 binario (1: vidcache), 403 (1) |
+
+Ninguna entrega un tercer formato segmentado. El MP4 binario va al disco tal cual (punto 1),
+sin ffmpeg ni latencia por segmento. Los 403 (rutas `/engine/download/…mp4` de un CDN que
+sirve el HLS de la misma fuente) y las páginas de Cloudflare no dejaron leer su contenido
+desde fuera de la app, así que de esos no se sabe el formato. Cada una de esas fuentes tiene
+además enlaces HLS o MP4 que sí se descargan rápido.
+Conclusión: **un tercer lector no se escribe mientras ninguna fuente lo necesite**. Si alguna
+lo necesita, se repite esta medición.
+
 ## Alternativas descartadas
 
 - **Añadir `<MPD` al olfateo.** Arregla AnimeOnsen y deja el siguiente formato igual de
