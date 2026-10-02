@@ -233,6 +233,9 @@ Técnicas:
 
 ## Siguiente paso
 
+Desde el 2026-10-01 el trabajo pendiente vive en Jira (espacio `KAN`,
+https://alansethmanjarrez.atlassian.net). Lo de abajo es el resumen; el estado al día está allí.
+
 Fase 4. Lo que queda, por orden:
 
 | Pieza | Estado |

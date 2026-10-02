@@ -128,3 +128,50 @@ Procedimiento, fixtures y estado de la conexión: `docs/TESTING.md`.
 - JDK 21 (`/usr/lib/jvm/java-21-openjdk`) — no usar el 26 del sistema
 - Android SDK: `~/Android/Sdk`, `adb` en `~/Android/Sdk/platform-tools`
 - Gradle 9.7.1 vía wrapper, AGP 9.3.2
+
+## 11. Gestión de tareas: Jira
+
+El trabajo se organiza en Jira y **lo lleva Claude por completo**: crea, mueve, comenta
+y cierra las tareas. El cliente puede crear tareas o comentar, pero no tiene por qué.
+
+- Sitio: https://alansethmanjarrez.atlassian.net — espacio **Zenyomi**, clave `KAN`
+- `cloudId`: `f04e906b-0ec4-4966-b049-acd498427118`
+- Acceso: MCP `atlassian` (`https://mcp.atlassian.com/v1/mcp`). Si pide autenticación,
+  el cliente la hace con `/mcp` → atlassian → Authenticate.
+
+**Estados y transiciones** (id para `transitionJiraIssue`):
+
+| Estado | id | Significa |
+|---|---|---|
+| Tareas por hacer | `11` | Pendiente |
+| En curso | `21` | Claude está trabajando en ella |
+| En revisión | `31` | En `develop` y verificada en el emulador, sin publicar todavía |
+| Finalizada | `41` | Publicada en una release, o decisión tomada, o verificación hecha |
+
+**Épicas:** una por release (`Release vX.Y.Z`), una por fase del roadmap y
+`Mantenimiento continuo` (KAN-7). Tipos: `Historia` para lo que el cliente nota, `Tarea`
+para el resto. No existe el tipo Bug: un fallo es una `Tarea` con la etiqueta `bug`.
+
+**Etiquetas:** los ámbitos de commit (`anime`, `player`, `ext`, …) más `bug`, `release`,
+`verificacion`, `rendimiento`, `escritorio`, `sync` y `decision-cliente`.
+
+**Responsable:** las tareas de Claude van sin asignar, porque Jira solo tiene la cuenta del
+cliente. Todo lo que requiere al cliente, sobre todo las decisiones de producto, se le
+asigna a él (`70121:f22207c0-2104-4fb2-97e6-8f23667e6a63`) con la etiqueta
+`decision-cliente`, y las opciones se escriben en lenguaje de producto (sección 2).
+
+**Flujo:**
+
+1. Al empezar una sesión de trabajo, consultar las tareas abiertas: `project = KAN AND
+   statusCategory != Done`, y mirar si hay comentarios nuevos del cliente.
+2. Todo trabajo tiene tarea. Si no existe, se crea antes de empezar, y pasa a *En curso*.
+3. Lo que el cliente reporte en la conversación (un fallo, algo que falta) se convierte en
+   tarea en el momento.
+4. Los commits llevan la referencia en el pie: `Refs: KAN-12`. La tarea anota los SHA.
+5. Al mergear en `develop` y verificar en el emulador → *En revisión*, con un comentario
+   que diga qué se comprobó y cómo.
+6. Al publicar la release → *Finalizada* todas las tareas de su épica, y la épica también.
+
+**Jira no sustituye a `docs/`.** Jira dice *qué* hay que hacer y en qué estado está. El
+detalle técnico, las mediciones y las decisiones siguen en `docs/PROJECT_STATUS.md`,
+`docs/adr/` y `docs/PORTING_LOG.md`, y las tareas enlazan ahí en vez de copiarlo.
