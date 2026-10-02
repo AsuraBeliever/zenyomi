@@ -32,6 +32,26 @@ La sección 6 es la que suele pasarse por alto: la licencia cubre el **código**
 **marcas**. Por eso no basta con conservar el `LICENSE` — hay que sustituir logos,
 nombre y metadatos de tienda.
 
+## El complemento de torrent es GPL-3.0
+
+El módulo `torrent/` produce un APK aparte, `app.zenyomi.torrent`, que lleva dentro el
+ejecutable de TorrServer (GPL-3.0). Decisión y razonamiento: ADR-0008. Zenyomi no lo enlaza
+—le habla por un servicio enlazado y por HTTP en 127.0.0.1—, así que sigue siendo Apache-2.0.
+
+| Obligación de la GPL-3.0 | Cómo se cumple |
+|---|---|
+| Entregar la licencia | `torrent/LICENSE`, texto íntegro de la GPL-3.0 |
+| Indicar el código fuente exacto del binario | `NOTICE` y `torrent/build.gradle.kts`: `YouROK/TorrServer`, tag `MatriX.145.1`, con el SHA-256 de cada ejecutable |
+| Publicar el código propio del complemento bajo GPL-3.0 | `torrent/src/`, en este repositorio |
+| Avisar al usuario | `NOTICE`. **Pendiente:** pantalla «Acerca de» del complemento (KAN-32) |
+
+Antes de cada release se comprueba además que **nada de `torrent/` entra en el APK de la
+app** (no es una dependencia de `:app`):
+
+```sh
+grep -n "projects.torrent\|:torrent" app/build.gradle.kts   # debe salir vacío
+```
+
 ## Cómo auditar
 
 **Dos coincidencias son esperadas y no son incumplimientos**, así que la auditoría las

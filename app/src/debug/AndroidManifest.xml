@@ -10,6 +10,12 @@
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:label="Anime source probe" />
+        <activity
+            android:name="eu.kanade.tachiyomi.debug.TorrentAddonProbeActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:label="Torrent add-on probe" />
     </application>
 
 </manifest>
