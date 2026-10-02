@@ -48,9 +48,14 @@ mismo instalador que usan las extensiones. Después se comunican así:
   primer plano desde otra app, y el enlace mantiene vivo el proceso.
 - **Datos:** por HTTP en `127.0.0.1`, con la API de TorrServer: añadir el torrent, ver sus
   ficheros y pedir la URL de streaming que se le pasa a mpv.
-- **Confianza:** antes de enlazarse, Zenyomi comprueba que el complemento instalado está
-  firmado con **la clave del proyecto** (el mismo SHA-256 que la app). Un paquete con ese
-  nombre y otra firma se ignora.
+- **Confianza, en los dos sentidos:** antes de enlazarse, Zenyomi comprueba que el
+  complemento instalado está firmado con **la clave del proyecto** (`checkSignatures` contra
+  sí misma). Un paquete con ese nombre y otra firma se ignora. Y el servicio del complemento
+  exige un permiso `signature` (`<paquete>.permission.BIND`), así que ninguna otra app
+  puede enlazarse a él. Las dos apps declaran ese permiso, de modo que existe instale quien
+  instale primero.
+- **Protocolo de enlace:** un `Messenger`. Zenyomi manda «arranca» y el complemento contesta
+  con el puerto y la versión de TorrServer, o con el error, cuando `/echo` ya responde.
 - **Visibilidad:** Zenyomi declara `app.zenyomi.torrent` en `<queries>`. Sin eso, desde
   Android 11 no puede ni ver que está instalado.
 
@@ -58,11 +63,17 @@ Dentro del complemento:
 
 - El ejecutable va en `jniLibs` como `libtorrserver.so`, que es la única forma de que
   Android lo instale en el `nativeLibraryDir`, y el complemento lo lanza con
-  `ProcessBuilder` en un puerto libre y con sus datos en `cacheDir`.
+  `ProcessBuilder` en un puerto libre, escuchando **solo en 127.0.0.1** (`--ip`), y con
+  su base de datos en `filesDir` (son ajustes y la lista de torrents: no es caché).
+- Los binarios **no entran en git**: una tarea de Gradle (`fetchTorrServer`) los baja de la
+  release de TorrServer, los verifica contra un SHA-256 fijado en `torrent/build.gradle.kts`
+  y los cachea en `~/.gradle/caches/zenyomi-torrserver`.
 - El complemento sí comprime sus librerías (`extractNativeLibs=true`): pesa unos 23 MB en
   descarga, y lo que se instala solo lo paga quien lo usa.
 - Se firma con la clave del proyecto y se publica como un asset más de cada release de
   Zenyomi (`zenyomi-torrent-<abi>-v<versión>.apk`).
+- En debug el complemento es `app.zenyomi.torrent.dev` y se empareja con `app.zenyomi.dev`,
+  ambos con la clave de debug; la app sabe cuál le toca por `BuildConfig.TORRENT_ADDON_PACKAGE`.
 
 ## Licencia
 
@@ -102,3 +113,19 @@ Lo que obliga la GPL con el complemento, y se cumple:
   complemento ofrece lo mismo, se instala desde Zenyomi y se sabe qué versión hay.
 - **Motor propio sobre libtorrent (BSD).** Sin problema de licencia, pero son semanas de
   trabajo y un servidor de streaming que mantener, para llegar a lo que TorrServer ya hace.
+
+## Prueba de concepto (2026-10-02)
+
+Módulo `:torrent` y cliente `TorrentAddon` en la app, comprobados en el emulador (x86_64,
+Android 17, páginas de 16 KB) con la sonda de debug `TorrentAddonProbeActivity`:
+
+- `/echo` contesta `MatriX.145.1` unos 2 s después de enlazarse en frío, 0,3 s en caliente.
+- El socket solo escucha en `127.0.0.1`.
+- TorrServer se para —y lo registra— al cerrar la sonda, al matar la app con `kill -9` y al
+  forzar su detención. El complemento sobrevive las tres veces, con cero crashes.
+- Sin el complemento instalado, `connect()` falla con `NotInstalled` sin enlazar nada.
+- El APK release pesa 24–25 MB por arquitectura y va firmado con la clave del proyecto.
+
+La primera ejecución destapó un fallo que habría tumbado el complemento cada vez que se
+paraba TorrServer: el hilo que lee su salida recibe un `InterruptedIOException` cuando
+`destroy()` cierra el flujo. Ahora se trata como lo que es, el fin de la salida.
