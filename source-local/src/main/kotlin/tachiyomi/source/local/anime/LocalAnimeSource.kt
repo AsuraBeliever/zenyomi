@@ -116,8 +116,9 @@ class LocalAnimeSource(
     }
 }
 
+// "torrent": a .torrent file is an episode too, played through the torrent add-on.
 private val VIDEO_EXTENSIONS = setOf(
-    "mp4", "mkv", "webm", "avi", "mov", "flv", "wmv", "m4v", "ts", "m2ts", "ogv",
+    "mp4", "mkv", "webm", "avi", "mov", "flv", "wmv", "m4v", "ts", "m2ts", "ogv", "torrent",
 )
 
 private val UniFile.isVideo: Boolean

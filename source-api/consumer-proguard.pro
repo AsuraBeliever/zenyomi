@@ -13,3 +13,6 @@
 -keep class eu.kanade.tachiyomi.animesource.online.** { public protected *; }
 -keep class eu.kanade.tachiyomi.animesource.** extends eu.kanade.tachiyomi.animesource.AnimeSource { public protected *; }
 -keep class eu.kanade.tachiyomi.animesource.AnimeSource { public protected *; }
+
+# Called by Aniyomi's torrent extensions by name; see TorrentUtils.
+-keep class eu.kanade.tachiyomi.torrentutils.** { public protected *; }

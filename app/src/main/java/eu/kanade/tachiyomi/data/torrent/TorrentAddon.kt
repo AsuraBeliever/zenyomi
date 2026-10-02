@@ -11,6 +11,9 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -27,6 +30,8 @@ import kotlin.time.Duration.Companion.seconds
  * free port of 127.0.0.1, and talks to it over HTTP. The binding is what keeps TorrServer alive:
  * closing the [Connection], or this process dying, stops it.
  */
+@Inject
+@SingleIn(AppScope::class)
 class TorrentAddon(private val context: Context) {
 
     val packageName: String = BuildConfig.TORRENT_ADDON_PACKAGE
@@ -52,10 +57,11 @@ class TorrentAddon(private val context: Context) {
     // Runs on the main thread, like every callback below, so [bound] needs no locking.
     private suspend fun bind(): Connection {
         val state = state()
-        if (state !is State.Installed) throw TorrentAddonException("Torrent add-on not usable: $state")
+        if (state !is State.Installed) throw TorrentAddonUnavailableException(state)
 
         return suspendCancellableCoroutine { continuation ->
             var bound = false
+            var delivered: Connection? = null
             lateinit var serviceConnection: ServiceConnection
 
             fun unbind() {
@@ -82,6 +88,7 @@ class TorrentAddon(private val context: Context) {
                             )
                             // If the caller is cancelled before it gets this, nobody else
                             // will close it and TorrServer would live on until the app dies.
+                            delivered = connection
                             continuation.resume(connection) { _, unclaimed, _ -> unclaimed.close() }
                         }
                     }
@@ -98,8 +105,18 @@ class TorrentAddon(private val context: Context) {
                     }
                 }
 
-                override fun onServiceDisconnected(name: ComponentName) = fail("Torrent add-on disconnected")
-                override fun onBindingDied(name: ComponentName) = fail("Torrent add-on died")
+                // After the connection was handed over these mean the add-on's process died, and
+                // TorrServer with it: the port it gave is dead too.
+                override fun onServiceDisconnected(name: ComponentName) {
+                    delivered?.isAlive = false
+                    fail("Torrent add-on disconnected")
+                }
+
+                override fun onBindingDied(name: ComponentName) {
+                    delivered?.isAlive = false
+                    fail("Torrent add-on died")
+                }
+
                 override fun onNullBinding(name: ComponentName) = fail("Torrent add-on refused the binding")
             }
 
@@ -126,7 +143,16 @@ class TorrentAddon(private val context: Context) {
     /** A running TorrServer. [close] releases it; once nobody holds one, it stops. */
     class Connection(val port: Int, val version: String, private val close: () -> Unit) : AutoCloseable {
         val baseUrl = "http://127.0.0.1:$port"
-        override fun close() = close.invoke()
+
+        /** False once the add-on went away; a new [connect] is needed. */
+        @Volatile
+        var isAlive = true
+            internal set
+
+        override fun close() {
+            isAlive = false
+            close.invoke()
+        }
     }
 
     companion object {
@@ -142,4 +168,8 @@ class TorrentAddon(private val context: Context) {
     }
 }
 
-class TorrentAddonException(message: String) : Exception(message)
+open class TorrentAddonException(message: String) : Exception(message)
+
+/** The add-on is missing, or a package took its name without our signature. */
+class TorrentAddonUnavailableException(val state: TorrentAddon.State) :
+    TorrentAddonException("Torrent add-on not usable: $state")
