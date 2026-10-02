@@ -203,8 +203,8 @@ Galaxy S25 Ultra del cliente, no pasa nada.
 **Medido el 2026-10-01 (KAN-13)** sobre el APK, leyendo el `p_align` de los segmentos LOAD
 de cada `.so`, en arm64-v8a y x86_64: **22 de las 24 librerías ya están a 16 KB**, incluidas
 las de mpv y las de Mihon que aparecían en el diálogo al principio (`libconscrypt_jni`,
-`libsqliteJni`, `libquickjs`, `libimagedecoder2`, `libwebgpu_c_bundled`), que upstream ya
-arregló. El empaquetado del APK también pasa `zipalign -c -P 16`. Solo quedan dos, las dos
+`libsqliteJni`, `libquickjs`, `libimagedecoder2`, `libwebgpu_c_bundled`). No hay una medición
+anterior con la que comparar; lo que consta es que hoy están alineadas. El empaquetado del APK también pasa `zipalign -c -P 16`. Solo quedan dos, las dos
 de FFmpegKit:
 
 | Librería | Alineación |
@@ -221,7 +221,7 @@ corre prisa; el plan está en KAN-13.
 Para repetir la medición:
 
 ```sh
-unzip -q -o app/build/outputs/apk/debug/app-arm64-v8a-debug.apk 'lib/*' -d /tmp/so
+rm -rf /tmp/so && unzip -q app/build/outputs/apk/debug/app-arm64-v8a-debug.apk 'lib/*' -d /tmp/so
 for f in /tmp/so/lib/*/*.so; do echo "$(basename $f) $(readelf -lW $f | awk '/LOAD/{print $NF}' | sort -u)"; done
 $ANDROID_HOME/build-tools/37.0.0/zipalign -c -P 16 4 app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 ```
