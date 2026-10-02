@@ -137,7 +137,7 @@ episodios.
 La regresión de manga de cada cambio (regla dura 1, paso `zen-test`) se hace sobre
 **«Manga de prueba (fixture)»**, de la fuente local: tres capítulos en CBZ de seis páginas
 cada uno, con portada y `details.json`. Cada página lleva grabados su capítulo y su número
-(«Capítulo 2 · 4 / 6»), así que una captura dice en qué página está el lector sin fiarse
+(«Capítulo 2» y, debajo, «4 / 6»), así que una captura dice en qué página está el lector sin fiarse
 de la app.
 
 ```sh
@@ -150,7 +150,8 @@ Manga de prueba (fixture) → Add to library**.
 
 El lector de Mihon va por defecto **de derecha a izquierda**, como un manga: para pasar a
 la página siguiente por adb, el gesto es de izquierda a derecha
-(`input swipe 200 1500 1100 1500 200`). El contrario vuelve al capítulo anterior.
+(`input swipe 200 1500 1100 1500 200`). El contrario vuelve a la página anterior, y
+desde la primera página, al capítulo anterior.
 
 La carpeta `MangaDePrueba` que hay al lado es anterior: un capítulo suelto de dos páginas
 sin metadatos. No se usa para la regresión.
