@@ -140,7 +140,8 @@ Dos cosas que salieron al hacerlo y que están en el código por algo:
   limpia la cabecera dice «Anime extensions 0» mientras debajo hay veintiuna esperando
   a que se confíen; la de manga sí cuenta la suya. Solo es el número: la lista y el
   botón *Trust* funcionan. Mihon es la referencia, así que el número debería incluirlas.
-  Visto al verificar la v0.11.0.
+  Visto al verificar la v0.11.0. **Sin publicar:** corregido (KAN-9); la cabecera cuenta
+  las no confiadas, igual que la de manga.
 
 ## La prueba de humo de la v0.14.3 encontró un fallo, y para eso está
 
