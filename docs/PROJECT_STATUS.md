@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-10-01
+**Actualizado:** 2026-10-02
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
 **Última release:** v0.19.5, tag en `main`
 **¿Compila?** sí
@@ -80,6 +80,7 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Descargas independientes del formato | ✅ | Ver `docs/adr/0006-descargas-por-contenido-no-por-formato.md`. Se decide por el contenido (binario → disco, texto → ffmpeg, página/JSON → rechazo), ffprobe dice qué calidades hay dentro y cuál mapear, y nada se llama episodio sin comprobar que es un contenedor con vídeo y duración. Verificado en el emulador: **DASH** (AnimeOnsen, que antes guardaba 8 KB de XML) baja un mkv real de 155 MB con un único stream de vídeo, su audio y 16 subtítulos; **HLS** (KickAssAnime) sigue igual, 81 MB por el camino rápido. 12 tests cubren el clasificador |
 | Camino rápido de DASH | ✅ | El lector de MPD cubre `SegmentTemplate` (por número y por línea de tiempo), `SegmentList` y representación de un solo fichero; declina lo que no reconoce y entonces lo baja ffmpeg. Medido en el emulador con AnimeOnsen: **7 min → 52 s**, y el fichero sale igual (mismo vídeo, audio, 16 subtítulos y duración). 14 tests |
 | Velocidad de formatos sin lector propio | ✅ | Lo que no sea HLS ni DASH sigue bajándolo ffmpeg segmento a segmento, como dice el ADR-0006. **Medido el 2026-10-01 (KAN-11): ninguna fuente que funcione lo usa.** Las cinco que reproducen entregan HLS, DASH o un MP4 directo, que va al disco sin ffmpeg. Si aparece un formato nuevo, la medición se repite con la receta del ADR |
+| Torrent: complemento con TorrServer | ⏳ | **Base hecha (KAN-30).** APK aparte `app.zenyomi.torrent` (GPL-3.0, ADR-0008) que arranca TorrServer MatriX.145.1 solo en 127.0.0.1 mientras Zenyomi está enlazada, y lo para cuando deja de estarlo, incluso si la app muere con `kill -9`. Verificado en el emulador: `/echo` contesta a los ~2 s. Falta lo que ve el usuario: reproducir (KAN-31), ajustes e instalación desde la app (KAN-32) y descargas (KAN-33) |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ✅ | MyAnimeList, AniList y **Kitsu** verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación, progreso, puntuación, privado y desvincular, comprobado en los servidores de cada servicio. En Kitsu además se comprobó que la entrada cae en la biblioteca de anime y no en la de manga |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |

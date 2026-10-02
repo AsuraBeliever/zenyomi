@@ -42,6 +42,9 @@ android {
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
 
+        // The torrent add-on (torrent/, a separate APK) that this build pairs with.
+        torrentAddon("app.zenyomi.torrent")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -77,6 +80,7 @@ android {
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-${getLatestCommitCount()}"
             isPseudoLocalesEnabled = true
+            torrentAddon("app.zenyomi.torrent.dev")
         }
         val release = getByName("release") {
             isMinifyEnabled = true
@@ -182,6 +186,11 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
     }
+}
+
+fun com.android.build.api.dsl.VariantDimension.torrentAddon(packageName: String) {
+    buildConfigField("String", "TORRENT_ADDON_PACKAGE", "\"$packageName\"")
+    manifestPlaceholders["torrentAddonPackage"] = packageName
 }
 
 kotlin {

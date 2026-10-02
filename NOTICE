@@ -20,3 +20,10 @@ docs/PORTING_LOG.md.
 
 You may obtain a copy of the Apache License, Version 2.0 at:
   http://www.apache.org/licenses/LICENSE-2.0
+
+The torrent add-on (the torrent/ module, published as a separate APK) is a
+separate program licensed under the GNU General Public License, version 3. It
+bundles the TorrServer executable — https://github.com/YouROK/TorrServer, tag
+MatriX.145.1, also GPL-3.0 — and its full license is in torrent/LICENSE.
+Zenyomi does not link it: the two communicate over a bound service and HTTP
+on 127.0.0.1. See docs/adr/0008-torrent-como-complemento.md.
