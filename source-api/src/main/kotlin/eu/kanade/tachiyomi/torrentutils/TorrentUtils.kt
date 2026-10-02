@@ -48,6 +48,9 @@ object TorrentUtils {
     // parameter is added by the Kotlin compiler). We add another overload of getTorrentInfo that is not a suspend
     // function so that extensions targetting other forks where getTorrentInfo was not a suspend function can still
     // work.
+    //
+    // Never from the main thread: binding to the torrent add-on needs that thread, so blocking it here would wait
+    // forever. Extensions call it while parsing a page, which never runs there.
     @Deprecated(
         message = "This overload of getTorrentInfo exists only for binary compatibility with extensions targeting" +
             " other forks where getTorrentInfo was not a suspend function",

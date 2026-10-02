@@ -114,9 +114,15 @@ class TorrentEngine(
 
     /** What an extension asks for: the files of a magnet, without keeping it. */
     override suspend fun describeMagnet(link: String, title: String): Torrent = use { client ->
-        val torrent = client.awaitFiles(client.add(link, title))
-        torrent.hash?.let { removeUnlessOpen(client, it) }
-        torrent
+        val added = client.add(link, title)
+        try {
+            client.awaitFiles(added)
+        } finally {
+            // Also when the wait is cancelled — the viewer left the entry while the extension
+            // listed episodes — or times out on a magnet nobody shares. In the engine's scope,
+            // because the caller's may be the one being cancelled.
+            added.hash?.let { hash -> scope.launch { removeUnlessOpen(client, hash) } }
+        }
     }
 
     private suspend fun readTorrentFile(link: String, headers: Map<String, String>): ByteArray = withIOContext {

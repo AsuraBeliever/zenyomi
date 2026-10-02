@@ -5,12 +5,14 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
 import eu.kanade.tachiyomi.data.torrent.TorrentAddon
+import eu.kanade.tachiyomi.torrentutils.TorrentUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URI
 
 /**
@@ -21,6 +23,10 @@ import java.net.URI
  *
  *     adb shell am start -n app.zenyomi.dev/eu.kanade.tachiyomi.debug.TorrentAddonProbeActivity
  *     adb logcat -s TorrentAddonProbe
+ *
+ * With `--es describe <magnet>` it also reads the magnet the way an extension does, through
+ * [TorrentUtils], and with `--el cancelAfterMs <n>` gives up on it after that long — to check
+ * that neither outcome leaves the torrent behind in TorrServer.
  *
  * TorrServer stays up while this activity is open; finishing it (or killing the app) releases
  * the binding, and the add-on stops TorrServer.
@@ -44,12 +50,30 @@ class TorrentAddonProbeActivity : Activity() {
                 val echo = withContext(Dispatchers.IO) {
                     URI("${connected.baseUrl}/echo").toURL().readText().trim()
                 }
-                "echo=$echo port=${connected.port} version=${connected.version}"
+                report(status, "echo=$echo port=${connected.port} version=${connected.version}")
+                describe(status)
+                "done"
             } catch (e: Exception) {
                 "failed: ${e.message}"
             }
             report(status, result)
         }
+    }
+
+    private suspend fun describe(status: TextView) {
+        val magnet = intent.getStringExtra("describe") ?: return
+        val cancelAfter = intent.getLongExtra("cancelAfterMs", 0L).takeIf { it > 0 } ?: Long.MAX_VALUE
+        val result = withTimeoutOrNull(cancelAfter) {
+            runCatching { TorrentUtils.getTorrentInfo(magnet, "probe") }
+        }
+        report(
+            status,
+            when {
+                result == null -> "describe: cancelled after $cancelAfter ms"
+                result.isFailure -> "describe: failed with ${result.exceptionOrNull()?.javaClass?.simpleName}"
+                else -> "describe: ${result.getOrThrow().files.map { it.indexFile to it.path }}"
+            },
+        )
     }
 
     override fun onDestroy() {
