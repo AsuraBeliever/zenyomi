@@ -196,15 +196,35 @@ backup grande de Mihon, con una biblioteca real de cientos de títulos.
 
 ## Aviso conocido: alineación de 16 KB
 
-En el emulador (Pixel 10 Pro XL, página de 16 KB) Android muestra un diálogo de
-compatibilidad: varias librerías nativas no están alineadas a 16 KB y la app corre en
-modo compatible. **No es algo que hayamos introducido**: en la lista aparecen también
-librerías propias de Mihon (`libconscrypt_jni`, `libsqliteJni`, `libquickjs`,
-`libimagedecoder2`, `libwebgpu_c_bundled`), junto a las nuevas de mpv y FFmpeg.
+En un dispositivo con páginas de 16 KB (el emulador Pixel 10 Pro XL) Android avisa de que
+hay librerías nativas sin alinear y la app corre en modo compatible. En uno de 4 KB, como el
+Galaxy S25 Ultra del cliente, no pasa nada.
 
-Hoy solo es un aviso y la app funciona. A futuro conviene vigilarlo, porque Google Play
-acabará exigiendo alineación de 16 KB. La parte que depende de nosotros son mpv y
-FFmpeg-kit; el resto se arregla siguiendo a upstream.
+**Medido el 2026-10-01 (KAN-13)** sobre el APK, leyendo el `p_align` de los segmentos LOAD
+de cada `.so`, en arm64-v8a y x86_64: **22 de las 24 librerías ya están a 16 KB**, incluidas
+las de mpv y las de Mihon que aparecían en el diálogo al principio (`libconscrypt_jni`,
+`libsqliteJni`, `libquickjs`, `libimagedecoder2`, `libwebgpu_c_bundled`). No hay una medición
+anterior con la que comparar; lo que consta es que hoy están alineadas. El empaquetado del APK también pasa `zipalign -c -P 16`. Solo quedan dos, las dos
+de FFmpegKit:
+
+| Librería | Alineación |
+|---|---|
+| `libffmpegkit.so` | 4 KB (`0x1000`) |
+| `libffmpegkit_abidetect.so` | 4 KB (`0x1000`) |
+
+FFmpegKit es `com.github.jmir1:ffmpeg-kit` 1.18, el fork de Aniyomi, sin releases ni
+commits desde el 2025-10-02. No hay versión nueva a la que subir: arreglarlo es **compilar
+FFmpegKit desde su código** con `-Wl,-z,max-page-size=16384` y mantener ese build.
+Zenyomi no se distribuye por Google Play, que es quien acabará exigiéndolo, así que hoy no
+corre prisa; el plan está en KAN-13.
+
+Para repetir la medición:
+
+```sh
+rm -rf /tmp/so && unzip -q app/build/outputs/apk/debug/app-arm64-v8a-debug.apk 'lib/*' -d /tmp/so
+for f in /tmp/so/lib/*/*.so; do echo "$(basename $f) $(readelf -lW $f | awk '/LOAD/{print $NF}' | sort -u)"; done
+$ANDROID_HOME/build-tools/37.0.0/zipalign -c -P 16 4 app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+```
 
 ## Hechos medidos (2026-09-08)
 
@@ -242,7 +262,7 @@ Fase 4. Lo que queda, por orden:
 | Pieza | Estado |
 |---|---|
 | Afinado de R8 | pendiente; el baseline profile ya cubre el anime |
-| Alineación de librerías nativas a 16 KB | vigilando; hoy solo es un aviso |
+| Alineación de librerías nativas a 16 KB | solo falta FFmpegKit (2 de 24 librerías); hay que compilarlo nosotros, ver KAN-13 |
 | Streaming por torrent (torrserver) | opcional, decisión del cliente |
 
 La interfaz de anime está completa y en uso: pestañas Anime/Manga, biblioteca,
