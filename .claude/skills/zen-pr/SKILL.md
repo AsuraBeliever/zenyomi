@@ -1,0 +1,61 @@
+---
+name: zen-pr
+description: Paso 5 de zen-flow. Empuja la rama de una tarea y abre (o actualiza) su PR contra develop en GitHub, con la evidencia de pruebas, y enlaza PR y tarea de Jira.
+argument-hint: KAN-n
+---
+
+# zen-pr — subir el PR
+
+Tarea: $ARGUMENTS
+
+## 1. Antes de empujar
+
+- Rama actual = la de la tarea, árbol limpio.
+- `zen-test` terminó con todo ✅ y existe su `informe.md`. Si no, no se sigue.
+- `git log develop..HEAD`: todos los commits llevan `Refs: KAN-n` y ninguno es "WIP".
+
+## 2. Empujar
+
+```sh
+git push -u origin HEAD
+```
+
+Si el PR ya existe, por una ronda de revisión, basta con el push: el PR se actualiza solo.
+Añade un comentario al PR con el nuevo informe de pruebas y lo que cambió en esta ronda.
+
+## 3. Abrir el PR
+
+```sh
+gh pr create --base develop --head <rama> --title "<título>" --body-file <fichero>
+```
+
+- **Título:** como un Conventional Commit, en inglés, que es el que acabará en el merge:
+  `fix(anime): count untrusted extensions in the anime header`.
+- **Cuerpo:**
+
+```markdown
+## Qué cambia
+<para el usuario de la app, en 1-3 frases>
+
+## Por qué
+<causa del bug o motivo de la mejora>
+
+## Cómo
+<decisiones técnicas relevantes; enlaces a ADR si los hay>
+
+## Pruebas
+<contenido de informe.md>
+
+## Jira
+[KAN-n](https://alansethmanjarrez.atlassian.net/browse/KAN-n)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+```
+
+## 4. CI y Jira
+
+- El workflow `Build & Test` corre solo en el PR. Lanza
+  `gh pr checks <nº> --watch --fail-fast` con `run_in_background` y sigue con la revisión
+  mientras tanto: `zen-merge` espera el resultado.
+- Jira: transición `31` (*En revisión*) y comentario `PR: <url>`.
+- Devuelve el número del PR.

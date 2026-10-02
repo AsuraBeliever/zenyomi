@@ -48,14 +48,17 @@ separadas, al estilo Aniyomi. Detalle en `docs/ARCHITECTURE.md`.
 |---|---|
 | `main` | Estable. Solo llega vía merge de `develop`. Cada release se tagea aquí. |
 | `develop` | Integración. Todo trabajo se mergea aquí primero. |
-| `feat/<slug>` | Feature nueva |
-| `fix/<slug>` | Corrección |
-| `port/<slug>` | Porte de código desde Aniyomi |
-| `chore/<slug>` | Build, CI, deps, docs |
+| `feat/kan-<n>-<slug>` | Feature nueva |
+| `fix/kan-<n>-<slug>` | Corrección |
+| `port/kan-<n>-<slug>` | Porte de código desde Aniyomi |
+| `chore/kan-<n>-<slug>` | Build, CI, deps, docs |
 | `sync/mihon-<version>` | Absorber cambios de upstream Mihon |
 | `upstream-mihon` / `upstream-aniyomi` | Espejos de solo lectura. **Nunca commitear aquí.** |
 
 Remotes: `origin` (nuestro), `mihon` y `aniyomi` (solo fetch).
+
+Las ramas de trabajo llevan la clave de su tarea de Jira y entran en `develop` **por PR**,
+revisado y con el CI en verde (sección 11).
 
 ## 6. Commits
 
@@ -145,7 +148,7 @@ y cierra las tareas. El cliente puede crear tareas o comentar, pero no tiene por
 |---|---|---|
 | Tareas por hacer | `11` | Pendiente |
 | En curso | `21` | Claude está trabajando en ella |
-| En revisión | `31` | En `develop` y verificada en el emulador, sin publicar todavía |
+| En revisión | `31` | PR abierto, o ya en `develop` (etiqueta `en-develop`) sin publicar |
 | Finalizada | `41` | Publicada en una release, o decisión tomada, o verificación hecha |
 
 **Épicas:** una por release (`Release vX.Y.Z`), una por fase del roadmap y
@@ -153,24 +156,37 @@ y cierra las tareas. El cliente puede crear tareas o comentar, pero no tiene por
 para el resto. No existe el tipo Bug: un fallo es una `Tarea` con la etiqueta `bug`.
 
 **Etiquetas:** los ámbitos de commit (`anime`, `player`, `ext`, …) más `bug`, `release`,
-`verificacion`, `rendimiento`, `escritorio`, `sync` y `decision-cliente`.
+`verificacion`, `rendimiento`, `escritorio`, `sync`, `decision-cliente` y `en-develop`
+(mergeada, pendiente de release).
 
 **Responsable:** las tareas de Claude van sin asignar, porque Jira solo tiene la cuenta del
 cliente. Todo lo que requiere al cliente, sobre todo las decisiones de producto, se le
 asigna a él (`70121:f22207c0-2104-4fb2-97e6-8f23667e6a63`) con la etiqueta
 `decision-cliente`, y las opciones se escriben en lenguaje de producto (sección 2).
 
-**Flujo:**
+**Flujo: skill `zen-flow`.** Cuando el cliente reporta un bug, pide una mejora o cualquier
+cambio, se ejecuta `zen-flow` (`.claude/skills/`), que encadena:
 
-1. Al empezar una sesión de trabajo, consultar las tareas abiertas: `project = KAN AND
-   statusCategory != Done`, y mirar si hay comentarios nuevos del cliente.
-2. Todo trabajo tiene tarea. Si no existe, se crea antes de empezar, y pasa a *En curso*.
-3. Lo que el cliente reporte en la conversación (un fallo, algo que falta) se convierte en
-   tarea en el momento.
-4. Los commits llevan la referencia en el pie: `Refs: KAN-12`. La tarea anota los SHA.
-5. Al mergear en `develop` y verificar en el emulador → *En revisión*, con un comentario
-   que diga qué se comprobó y cómo.
-6. Al publicar la release → *Finalizada* todas las tareas de su épica, y la épica también.
+| Paso | Skill | Qué hace |
+|---|---|---|
+| 1 | `zen-ticket` | crea la tarea en Jira (o reutiliza la que ya existe) con su «Hecho cuando» |
+| 2 | `zen-branch` | rama `<tipo>/kan-<n>-<slug>` desde `develop`, tarea *En curso* |
+| 3 | `zen-implement` | código, tests y commits con `Refs: KAN-n` |
+| 4 | `zen-test` | backend (spotless, tests, migraciones) + visual en el emulador con capturas revisadas, logcat y regresión de manga; evidencia en Jira |
+| 5 | `zen-pr` | push y PR contra `develop` con la evidencia; tarea *En revisión* |
+| 6 | `zen-review` | revisión independiente (subagente) contra el charter; veredicto en el PR |
+| 7 | `zen-merge` | con APROBADO y CI verde: merge en `develop`, borra la rama, etiqueta `en-develop` |
+
+GitHub no permite aprobar un PR propio y solo hay una cuenta, así que la aprobación es el
+comentario de revisión **APROBADO** de `zen-review`. Sin él, no hay merge.
+
+Además:
+
+- Al empezar una sesión de trabajo se consultan las tareas abiertas (`project = KAN AND
+  statusCategory != Done`) y los comentarios nuevos del cliente.
+- Todo trabajo tiene tarea, incluido el que no pasa por `zen-flow` (releases, docs).
+- Al publicar la release, todas las tareas de su épica pasan a *Finalizada*, y la épica
+  también.
 
 **Jira no sustituye a `docs/`.** Jira dice *qué* hay que hacer y en qué estado está. El
 detalle técnico, las mediciones y las decisiones siguen en `docs/PROJECT_STATUS.md`,
