@@ -156,6 +156,26 @@ desde la primera página, al capítulo anterior.
 La carpeta `MangaDePrueba` que hay al lado es anterior: un capítulo suelto de dos páginas
 sin metadatos. No se usa para la regresión.
 
+## Backup grande de Mihon
+
+`LargeMihonBackupTest` genera un backup de Mihon del tamaño de una biblioteca real, con las
+mismas clases de backup de la app: 600 mangas, 54 738 capítulos, 10 categorías, historial,
+tracking de MyAnimeList, 50 entradas leídas fuera de la biblioteca, y tres fuentes, una de
+ellas instalada (Weeb Central) y dos que no. Usa una semilla fija, así que el fichero sale
+igual siempre.
+
+```sh
+./gradlew :app:testDebugUnitTest --tests 'eu.kanade.tachiyomi.data.backup.LargeMihonBackupTest'
+adb push app/build/fixtures/mihon-large.tachibk /sdcard/Documents/
+adb shell content call --method scan_volume --uri content://media --arg external_primary
+```
+
+En la app: **More → Settings → Data and storage → Restore backup**. Si el selector de
+archivos no lo enseña, busca «mihon-large» con su lupa. Después se comparan los recuentos de
+`tachiyomi.db` (con sus `-wal` y `-shm`, ver arriba) con `app/build/fixtures/mihon-large.expected.txt`,
+que el test escribe al lado del backup. Para contar solo lo restaurado se filtra por
+`url LIKE '/fixture/%'`.
+
 ## Vídeos de prueba generados con FFmpeg
 
 Para probar el reproductor sin depender de ninguna fuente, se generan clips locales y se

@@ -190,8 +190,9 @@ Y una decisión: las pantallas de OAuth que dicen «Mihon» se quedan como está
 da igual ver el nombre del proyecto del que venimos al conceder acceso, y cambiarlo pedía
 registrar aplicaciones propias en MyAnimeList y AniList.
 
-Queda sin ejercitar una sola cosa, en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): restaurar un
-backup grande de Mihon, con una biblioteca real de cientos de títulos.
+Lo último que quedaba sin ejercitar, restaurar un backup grande de Mihon, se verificó el
+2026-10-01 con uno sintético de 600 mangas y 54 738 capítulos: 4 s, sin errores y con todos
+los recuentos cuadrando. El detalle está en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md).
 
 
 ## Aviso conocido: alineación de 16 KB

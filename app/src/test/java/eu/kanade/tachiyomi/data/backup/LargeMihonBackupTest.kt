@@ -39,6 +39,23 @@ class LargeMihonBackupTest {
             ProtoBuf.decodeFromByteArray(Backup.serializer(), it.readByteArray())
         }
 
+        // What a restore has to end up with, next to the file, so the emulator's database can
+        // be checked against it line by line (docs/TESTING.md).
+        val chapters = decoded.backupManga.flatMap { it.chapters }
+        File(file.parentFile, "mihon-large.expected.txt").writeText(
+            """
+            mangas|${decoded.backupManga.size}
+            en biblioteca|${decoded.backupManga.count { it.favorite }}
+            capitulos|${chapters.size}
+            leidos|${chapters.count { it.read }}
+            marcadores|${chapters.count { it.bookmark }}
+            categorias|${decoded.backupCategories.size}
+            manga-categoria|${decoded.backupManga.sumOf { it.categories.size }}
+            historial|${decoded.backupManga.sumOf { it.history.size }}
+            tracking|${decoded.backupManga.sumOf { it.tracking.size }}
+            """.trimIndent() + "\n",
+        )
+
         assertEquals(MANGA, decoded.backupManga.size)
         assertEquals(backup.backupManga.sumOf { it.chapters.size }, decoded.backupManga.sumOf { it.chapters.size })
         assertEquals(CATEGORIES, decoded.backupCategories.size)
