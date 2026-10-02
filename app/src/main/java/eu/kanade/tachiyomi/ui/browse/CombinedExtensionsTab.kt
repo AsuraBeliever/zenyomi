@@ -167,9 +167,7 @@ fun combinedExtensionsTab(
                         item(key = "anime-ext-header") {
                             BrowseSectionHeader(
                                 title = stringResource(ANMR.strings.browse_section_anime_extensions),
-                                count = animeState.installed.size + animeState.groupedAvailable.sumOf {
-                                    it.second.size
-                                },
+                                count = animeState.shownCount,
                                 expanded = animeExpanded,
                                 onToggle = layout::toggleAnimeExtensions,
                             )
