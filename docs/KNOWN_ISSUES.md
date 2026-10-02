@@ -130,9 +130,14 @@ Aquí el código sigue estando intacto (diff vacío contra `mihon/main` en lecto
 y dominio de manga), y esa es la comprobación que se repite antes de cada release. La
 auditoría completa de paridad está en [`MIHON_PARITY.md`](MIHON_PARITY.md).
 
-Lo que sigue sin ejercitarse es **restaurar un backup grande de Mihon**: el backup y la
-restauración se prueban aquí con entradas de prueba, no con una biblioteca real de cientos
-de títulos.
+**Restaurar un backup grande de Mihon — ✅ VERIFICADO (2026-10-01, KAN-10).** Con un backup
+sintético del tamaño de una biblioteca real (ver `docs/TESTING.md`, «Backup grande de
+Mihon»): 600 mangas, 54 738 capítulos, 10 categorías, historial, tracking y 50 entradas
+leídas que no están en la biblioteca. Se restauró en el emulador en **4 s y sin errores**, y
+los nueve recuentos de la base de datos coinciden con el backup uno por uno. Lo que ya había
+en la biblioteca quedó intacto. La biblioteca arranca en frío en unos 2,3 s (build debug), una
+ficha de 1 134 capítulos abre y se desplaza, y el lector sigue funcionando. No es el backup
+del cliente, que no se ha usado: es uno generado con las mismas clases de backup.
 
 ---
 
