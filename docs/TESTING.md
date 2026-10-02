@@ -204,6 +204,13 @@ sqlite3 anime.db "INSERT INTO anime_sync (anime_id, sync_id, remote_id, library_
 
 `sync_id` 1 es MyAnimeList y 2 AniList, los ids que reparte `TrackerManager`.
 
+## Manejar la app por adb
+
+`scripts/zen-ui.sh` reúne lo necesario para navegar sin tocar el emulador: abrir la app,
+tocar por texto o por `content-desc`, leer la pantalla, capturar y contar crashes. Se carga
+con `export OUT=<carpeta>; source scripts/zen-ui.sh`, y lo usa la skill `zen-test`. La
+cabecera del script explica cada función y las trampas conocidas están en la skill.
+
 ## Lo que adb no puede probar
 
 `adb shell input tap` tarda entre 100 y 300 ms por evento, por encima de la ventana de

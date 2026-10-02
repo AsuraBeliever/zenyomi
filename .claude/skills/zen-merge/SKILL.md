@@ -19,8 +19,8 @@ gh pr checks <nº>
    llega con una release.
 2. El último comentario de revisión de `zen-review` dice **APROBADO**, y es posterior al
    último push de la rama.
-3. Todos los checks en verde. Si siguen corriendo, espera con
-   `gh pr checks <nº> --watch` en segundo plano. Si alguno falla, lee el log
+3. Todos los checks en verde, **sobre el último commit de la rama**. Si siguen corriendo,
+   espera con `gh run watch <id> --exit-status` en segundo plano (ver `zen-pr`). Si alguno falla, lee el log
    (`gh run view <id> --log-failed`) y vuelve a `zen-implement`.
    - Hay un fallo conocido que no es nuestro: JitPack con `Could not find
      flexible-adapter`. Relanza el job (`gh run rerun <id> --failed`) una vez.
