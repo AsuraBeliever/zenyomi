@@ -148,6 +148,10 @@ El script borra y vuelve a crear la carpeta, así que se puede relanzar siempre.
 si el manga no está ya en la biblioteca: **Browse → Sources → Manga → Local source →
 Manga de prueba (fixture) → Add to library**.
 
+El lector de Mihon va por defecto **de derecha a izquierda**, como un manga: para pasar a
+la página siguiente por adb, el gesto es de izquierda a derecha
+(`input swipe 200 1500 1100 1500 200`). El contrario vuelve al capítulo anterior.
+
 La carpeta `MangaDePrueba` que hay al lado es anterior: un capítulo suelto de dos páginas
 sin metadatos. No se usa para la regresión.
 
