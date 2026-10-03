@@ -5,6 +5,7 @@ import eu.kanade.tachiyomi.data.torrent.EmptyTorrentException
 import eu.kanade.tachiyomi.data.torrent.TorrentAddon
 import eu.kanade.tachiyomi.data.torrent.TorrentAddonException
 import eu.kanade.tachiyomi.data.torrent.TorrentAddonUnavailableException
+import eu.kanade.tachiyomi.data.torrent.TorrentDisabledException
 import eu.kanade.tachiyomi.data.torrent.TorrentNoPeersException
 import eu.kanade.tachiyomi.network.HttpException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -78,6 +79,8 @@ object AnimeSourceError {
 
         // Before the generic cases: a torrent fails for reasons of its own, and a timeout here
         // means no peers, not a slow site.
+        error is TorrentDisabledException -> Message(ANMR.strings.anime_error_torrent_disabled)
+
         error is TorrentAddonUnavailableException -> when (error.state) {
             TorrentAddon.State.Untrusted -> Message(ANMR.strings.anime_error_torrent_addon_untrusted)
             else -> Message(ANMR.strings.anime_error_torrent_addon_missing)

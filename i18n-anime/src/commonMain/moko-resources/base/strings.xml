@@ -221,7 +221,18 @@
     <string name="pref_player_torrents_port_summary">Enter 0 to let system choose a port</string>
     <string name="pref_player_torrents_port_error">Port must be a number between 0 and 65535</string>
     <string name="pref_player_torrents_trackers">Torrent trackers</string>
-    <string name="pref_player_torrents_trackers_reset">Reset default torrent trackers string</string>
+    <string name="pref_player_torrents_trackers_reset">Restore the default trackers</string>
+    <string name="pref_player_torrents_enable_summary">Play episodes that sources deliver as torrents. While one plays, you also share it with others.</string>
+    <string name="pref_player_torrents_trackers_summary">Added to every torrent you open, to find people sharing it sooner. %1$d in the list.</string>
+    <string name="pref_player_torrents_trackers_hint">One per line</string>
+    <string name="pref_player_torrents_addon">Torrent add-on</string>
+    <string name="pref_player_torrents_addon_installed">Installed, version %1$s</string>
+    <string name="pref_player_torrents_addon_missing">Not installed. Torrent episodes need it to play.</string>
+    <string name="pref_player_torrents_addon_untrusted">Installed, but not signed by Zenyomi, so it is not used.</string>
+    <string name="pref_player_torrents_clear_cache">Clear TorrServer cache</string>
+    <string name="pref_player_torrents_clear_cache_summary">Forget the torrents TorrServer kept from earlier, along with what it downloaded of them</string>
+    <string name="pref_player_torrents_cache_cleared">Torrents removed: %1$d</string>
+    <string name="pref_player_torrents_cache_failed">Could not clear the cache: the torrent add-on did not start.</string>
     <string name="pref_player_torrents_proxy_mode">Proxy mode</string>
     <string name="pref_player_torrents_proxy_mode_none">None</string>
     <string name="pref_player_torrents_proxy_mode_tracker">Tracker</string>
@@ -745,6 +756,7 @@
     <string name="anime_error_torrent_addon_failed">The torrent add-on did not start.</string>
     <string name="anime_error_torrent_no_peers">Nobody is sharing this torrent right now, so it cannot start.</string>
     <string name="anime_error_torrent_empty">This torrent has no file to play.</string>
+    <string name="anime_error_torrent_disabled">This episode is a torrent, and torrents are turned off. Turn them on in Settings → Player → Torrent.</string>
     <string name="anime_source_health_gone">Checked %1$s: the site this source uses no longer exists.</string>
     <string name="anime_source_health_outdated">Checked %1$s: the site changed and this extension could not read it.</string>
     <string name="anime_category_move_up">Move up</string>

@@ -29,6 +29,9 @@ import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadPreferences
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.data.library.MetadataUpdateJob
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
+import eu.kanade.tachiyomi.data.torrent.TorrentAddon
+import eu.kanade.tachiyomi.data.torrent.TorrentEngine
+import eu.kanade.tachiyomi.data.torrent.TorrentPreferences
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
 import eu.kanade.tachiyomi.extension.ExtensionManager
@@ -94,6 +97,10 @@ interface AppGraph : ViewModelGraph {
     val readerPreferences: ReaderPreferences
 
     val playerPreferences: PlayerPreferences
+
+    val torrentPreferences: TorrentPreferences
+    val torrentAddon: TorrentAddon
+    val torrentEngine: TorrentEngine
 
     val animeDownloadPreferences: AnimeDownloadPreferences
 
