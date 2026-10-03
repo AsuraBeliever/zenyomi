@@ -55,6 +55,15 @@ class TorrentTrackersTest {
     }
 
     @Test
+    fun `a badly escaped tracker in the magnet does not stop ours being added`() {
+        val magnet = "magnet:?xt=urn:btih:abc&tr=udp%3A%2F%2Fbroken%zz"
+        assertEquals(
+            "$magnet&tr=http%3A%2F%2Fnyaa.tracker.wf%3A7777%2Fannounce",
+            TorrentTrackers.addToMagnet(magnet, listOf(nyaa)),
+        )
+    }
+
+    @Test
     fun `no trackers leaves the magnet alone`() {
         val magnet = "magnet:?xt=urn:btih:abc"
         assertEquals(magnet, TorrentTrackers.addToMagnet(magnet, emptyList()))

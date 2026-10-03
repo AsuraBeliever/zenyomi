@@ -39,7 +39,9 @@ object TorrentTrackers {
         val existing = base.substringAfter('?', "")
             .split('&')
             .filter { it.startsWith("tr=") }
-            .map { URLDecoder.decode(it.substringAfter('='), "UTF-8") }
+            // A badly escaped tracker is the source's to fix; it stays as written, and ours are
+            // added next to it rather than the whole magnet failing to open.
+            .mapNotNull { runCatching { URLDecoder.decode(it.substringAfter('='), "UTF-8") }.getOrNull() }
             .toSet()
         val missing = trackers.filter { it !in existing }
         if (missing.isEmpty()) return magnet
