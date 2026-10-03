@@ -255,6 +255,14 @@ class AnimeExtensionManager(
         return installer.downloadAndInstall(availableExt.apkUrl, availableExt, isUpdateForPrivatelyInstalled)
     }
 
+    /**
+     * Returns a flow of the installation process of an app that is not an extension, such as the
+     * torrent add-on. Same as [installExtension] otherwise.
+     */
+    fun installApp(url: String, pkgName: String): Flow<InstallStep> {
+        return installer.downloadAndInstallApp(url, pkgName)
+    }
+
     fun cancelInstallUpdateExtension(extension: AnimeExtension) {
         installer.cancelInstall(extension.pkgName)
     }

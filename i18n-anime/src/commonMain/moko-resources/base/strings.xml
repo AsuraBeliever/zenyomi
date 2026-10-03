@@ -229,6 +229,17 @@
     <string name="pref_player_torrents_addon_installed">Installed, version %1$s</string>
     <string name="pref_player_torrents_addon_missing">Not installed. Torrent episodes need it to play.</string>
     <string name="pref_player_torrents_addon_untrusted">Installed, but not signed by Zenyomi, so it is not used.</string>
+    <string name="pref_player_torrents_addon_missing_install">Not installed. Tap to install it: torrent episodes need it to play.</string>
+    <string name="pref_player_torrents_addon_outdated">Version %1$s installed, older than this Zenyomi expects. Tap to update.</string>
+    <string name="pref_player_torrents_addon_downloading">Downloading…</string>
+    <string name="pref_player_torrents_addon_installing">Installing…</string>
+    <string name="pref_player_torrents_addon_failed">Could not install it. Tap to try again.</string>
+    <string name="pref_player_torrents_addon_unavailable">This build of Zenyomi has no torrent add-on to download.</string>
+    <string name="pref_player_torrents_addon_install_title">Install the torrent add-on?</string>
+    <string name="pref_player_torrents_addon_install_text">Torrent episodes play through a separate add-on, about 25 MB. Zenyomi downloads it, and Android asks you to confirm the install.</string>
+    <string name="pref_player_torrents_addon_update_title">Update the torrent add-on?</string>
+    <string name="pref_player_torrents_addon_update_text">The installed add-on, version %1$s, is older than the one this version of Zenyomi comes with.</string>
+    <string name="pref_player_torrents_addon_not_now">Not now</string>
     <string name="pref_player_torrents_clear_cache">Clear TorrServer cache</string>
     <string name="pref_player_torrents_clear_cache_summary">Forget the torrents TorrServer kept from earlier, along with what it downloaded of them</string>
     <string name="pref_player_torrents_cache_cleared">Torrents removed: %1$d</string>
@@ -751,7 +762,7 @@
     <string name="anime_error_no_video">No video found for this episode.</string>
     <string name="anime_error_unknown">This source failed. Try again, or use another one.</string>
     <string name="anime_error_playback">This video would not open. The host is probably down or the link has expired — try another source.</string>
-    <string name="anime_error_torrent_addon_missing">This episode is a torrent. Playing it needs the Zenyomi Torrent add-on, which is not installed.</string>
+    <string name="anime_error_torrent_addon_missing">This episode is a torrent. Playing it needs the Zenyomi Torrent add-on, which is not installed. Install it from Settings → Player → Torrent.</string>
     <string name="anime_error_torrent_addon_untrusted">The installed torrent add-on is not signed by Zenyomi, so it is not used.</string>
     <string name="anime_error_torrent_addon_failed">The torrent add-on did not start.</string>
     <string name="anime_error_torrent_no_peers">Nobody is sharing this torrent right now, so it cannot start.</string>
