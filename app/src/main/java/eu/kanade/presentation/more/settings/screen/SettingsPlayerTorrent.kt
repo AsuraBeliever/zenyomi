@@ -179,9 +179,11 @@ private fun TrackersPreference(value: String, onConfirm: (String) -> Unit) {
                     value = text,
                     onValueChange = { text = it },
                     placeholder = { Text(stringResource(ANMR.strings.pref_player_torrents_trackers_hint)) },
+                    // Capped: the default list is 26 lines, and a field that tall pushes OK under
+                    // the keyboard. Past the cap it scrolls inside.
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 200.dp),
+                        .heightIn(min = 120.dp, max = 280.dp),
                 )
             },
             confirmButton = {

@@ -225,6 +225,12 @@ class TorrentEngine(
             mutex.withLock {
                 users--
                 if (users > 0) return@withLock
+                // Turned off while an episode was still playing: that episode was the last
+                // reason to keep TorrServer, so it goes now rather than after the grace period.
+                if (!preferences.enabled.get()) {
+                    shutDown()
+                    return@withLock
+                }
                 idle = scope.launch {
                     delay(IDLE_TIMEOUT)
                     mutex.withLock { if (users == 0) shutDown() }
