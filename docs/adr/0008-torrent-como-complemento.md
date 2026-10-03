@@ -147,3 +147,20 @@ encenderlo.
 - **Vaciar la caché** borra de TorrServer los torrents que no se están reproduciendo. Los
   nuestros ya se borran al cerrar el episodio; esto limpia lo que dejó un complemento parado
   a medias.
+
+## Instalación desde la app (2026-10-03, KAN-35)
+
+- **De dónde.** La app descarga `zenyomi-torrent-<abi>-v<versión>.apk` de la release de **su
+  propia versión** en GitHub. Así app y complemento salen del mismo commit y nunca hay que
+  adivinar qué complemento casa con qué app. La URL se fija al compilar
+  (`BuildConfig.TORRENT_ADDON_URL`, con `{abi}` por rellenar en el dispositivo); `-Ptorrent-addon-url`
+  la cambia para probar contra un servidor local. El build de debug no tiene de dónde bajarlo
+  —ninguna release publica el complemento firmado con la clave de debug— salvo que se le dé.
+- **Qué arquitectura.** La primera de `Build.SUPPORTED_ABIS`, en el orden de preferencia del
+  propio teléfono, para la que hay complemento.
+- **Con qué.** Con el instalador de las extensiones de anime y el método elegido en ajustes,
+  salvo el instalador «privado»: una app instalada dentro de Zenyomi no podría ejecutarse, así
+  que en ese caso se usa el PackageInstaller del sistema.
+- **Versión.** `torrent/addon.properties` es la única fuente del `versionCode` del complemento:
+  lo lee `torrent/` para el APK y `app/` para saber cuál espera. Uno instalado más viejo sigue
+  funcionando —el protocolo solo se amplía— pero la app avisa y ofrece actualizarlo.
