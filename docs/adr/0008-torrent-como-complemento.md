@@ -129,3 +129,21 @@ Android 17, páginas de 16 KB) con la sonda de debug `TorrentAddonProbeActivity`
 La primera ejecución destapó un fallo que habría tumbado el complemento cada vez que se
 paraba TorrServer: el hilo que lee su salida recibe un `InterruptedIOException` cuando
 `destroy()` cierra el flujo. Ahora se trata como lo que es, el fin de la salida.
+
+## Ajustes (2026-10-02, KAN-32)
+
+En _Ajustes → Reproductor → Torrent_. El torrent está **apagado por defecto**: compartir lo
+que se descarga es decisión de quien paga la conexión, y encenderlo enseña una vez el aviso
+de Aniyomi. Apagado, `TorrentEngine` se niega antes de enlazar el complemento, también
+cuando una extensión pregunta qué hay dentro de un magnet, y el reproductor dice cómo
+encenderlo.
+
+- **Sin ajuste de puerto.** El complemento elige uno libre en 127.0.0.1 cada vez que arranca
+  TorrServer; un puerto fijo solo añadiría la posibilidad de chocar con otra app.
+- **Trackers dentro del torrent.** TorrServer tal cual no recibe una lista de trackers desde
+  fuera, así que se añaden a cada torrent al abrirlo (`tr=` en el magnet, un nivel más de
+  `announce-list` en el `.torrent`). No cambia el hash, y un cambio en la lista vale desde el
+  siguiente torrent, sin reiniciar nada.
+- **Vaciar la caché** borra de TorrServer los torrents que no se están reproduciendo. Los
+  nuestros ya se borran al cerrar el episodio; esto limpia lo que dejó un complemento parado
+  a medias.
