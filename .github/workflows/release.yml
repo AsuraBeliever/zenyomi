@@ -59,10 +59,11 @@ jobs:
       # --stacktrace porque sin él Gradle corta la causa: la v0.18.1 solo dijo "A failure
       # occurred while executing PackageAndroidArtifact$IncrementalSplitterRunnable" y hubo
       # que deducir el motivo. Un release rojo tiene que decir por qué a la primera.
-      # Solo :app: el complemento de torrent (torrent/) aún no se publica, así que
-      # construirlo aquí solo alargaría el job firmado. Se añade cuando se publique (KAN-32).
+      # Con la app va el complemento de torrent (torrent/, ADR-0008): la app lo descarga de
+      # la release de su propia versión, así que cada release tiene que llevarlo. Firmado con
+      # la misma clave, o la app no se enlaza a él.
       - name: Build
-        run: .github/scripts/gradle-with-retry.sh :app:assembleRelease -Penable-updater --stacktrace
+        run: .github/scripts/gradle-with-retry.sh :app:assembleRelease :torrent:assembleRelease -Penable-updater --stacktrace
         env:
           storeFileBase64: ${{ secrets.SIGNING_KEY }}
           storePassword: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -79,6 +80,11 @@ jobs:
           mv app/build/outputs/apk/release/app-x86-release.apk zenyomi-x86-${{ needs.get_tag.outputs.tag }}.apk
           mv app/build/outputs/apk/release/app-x86_64-release.apk zenyomi-x86_64-${{ needs.get_tag.outputs.tag }}.apk
 
+          # The name the app builds its download url from (app/build.gradle.kts).
+          for abi in arm64-v8a armeabi-v7a x86 x86_64; do
+            mv torrent/build/outputs/apk/release/torrent-$abi-release.apk zenyomi-torrent-$abi-${{ needs.get_tag.outputs.tag }}.apk
+          done
+
       - name: Upload APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -89,6 +95,7 @@ jobs:
             zenyomi-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
             zenyomi-x86-${{ needs.get_tag.outputs.tag }}.apk
             zenyomi-x86_64-${{ needs.get_tag.outputs.tag }}.apk
+            zenyomi-torrent-*-${{ needs.get_tag.outputs.tag }}.apk
 
   build_foss:
     if: github.repository == 'AsuraBeliever/zenyomi'
@@ -175,6 +182,8 @@ jobs:
             > [!IMPORTANT]
             >
             > Zenyomi installs alongside Mihon and Aniyomi rather than over them, so you can keep all three. Restore a Mihon backup from **More → Backup and restore** to bring your library across.
+
+            The `zenyomi-torrent-*` files are the torrent add-on. There is no need to download them: Zenyomi installs the right one itself when you turn torrents on in **Settings → Player → Torrent**. The add-on is licensed under GPL-3.0 and runs [TorrServer](https://github.com/YouROK/TorrServer); its source is in [`torrent/`](https://github.com/AsuraBeliever/zenyomi/tree/main/torrent).
           # No files here on purpose: this step only writes the release and its notes. The
           # APKs go up in the step below, one at a time. Handing all six to this action
           # uploads them in parallel and the step dies as a whole on `Headers Timeout Error`
@@ -207,7 +216,11 @@ jobs:
             "zenyomi-arm64-v8a-$TAG.apk" \
             "zenyomi-armeabi-v7a-$TAG.apk" \
             "zenyomi-x86-$TAG.apk" \
-            "zenyomi-x86_64-$TAG.apk"
+            "zenyomi-x86_64-$TAG.apk" \
+            "zenyomi-torrent-arm64-v8a-$TAG.apk" \
+            "zenyomi-torrent-armeabi-v7a-$TAG.apk" \
+            "zenyomi-torrent-x86-$TAG.apk" \
+            "zenyomi-torrent-x86_64-$TAG.apk"
           do
             for attempt in 1 2 3; do
               echo "Uploading $name (attempt $attempt)"
