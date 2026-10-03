@@ -25,6 +25,7 @@ import okhttp3.Headers.Companion.toHeaders
 import okhttp3.OkHttpClient
 import tachiyomi.core.common.torrent.TorrServerClient
 import tachiyomi.core.common.torrent.TorrentEpisodeFile
+import tachiyomi.core.common.torrent.TorrentTrackers
 import tachiyomi.core.common.torrent.model.Torrent
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
@@ -51,6 +52,7 @@ class TorrentEngine(
     private val context: Context,
     private val addon: TorrentAddon,
     private val network: NetworkHelper,
+    private val preferences: TorrentPreferences,
 ) : TorrentMagnetResolver {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -87,8 +89,9 @@ class TorrentEngine(
         val client = acquire()
         var added: String? = null
         try {
+            val trackers = trackers()
             val torrent = if (link.startsWith("magnet:", ignoreCase = true)) {
-                val pending = client.add(link, title).also { added = it.hash }
+                val pending = client.add(TorrentTrackers.addToMagnet(link, trackers), title).also { added = it.hash }
                 try {
                     client.awaitFiles(pending)
                 } catch (_: TimeoutCancellationException) {
@@ -96,7 +99,8 @@ class TorrentEngine(
                     throw TorrentNoPeersException()
                 }
             } else {
-                client.upload(readTorrentFile(link, headers), title).also { added = it.hash }
+                val file = TorrentTrackers.addToTorrentFile(readTorrentFile(link, headers), trackers)
+                client.upload(file, title).also { added = it.hash }
             }
             val hash = requireNotNull(torrent.hash) { "TorrServer returned a torrent without a hash" }
             val file = TorrentEpisodeFile.choose(torrent.fileStats.orEmpty(), TorrentEpisodeFile.requestedIndex(link))
@@ -114,7 +118,7 @@ class TorrentEngine(
 
     /** What an extension asks for: the files of a magnet, without keeping it. */
     override suspend fun describeMagnet(link: String, title: String): Torrent = use { client ->
-        val added = client.add(link, title)
+        val added = client.add(TorrentTrackers.addToMagnet(link, trackers()), title)
         try {
             client.awaitFiles(added)
         } finally {
@@ -124,6 +128,41 @@ class TorrentEngine(
             added.hash?.let { hash -> scope.launch { removeUnlessOpen(client, hash) } }
         }
     }
+
+    /**
+     * Forgets every torrent TorrServer holds that is not playing right now, with whatever it
+     * had downloaded of them, and returns how many there were. Our own torrents are removed
+     * when their episode closes; what this clears is what an add-on killed mid-episode left
+     * in its database.
+     */
+    suspend fun clearCache(): Int = use { client ->
+        val playing = mutex.withLock { openStreams.keys.toSet() }
+        client.list()
+            .mapNotNull { it.hash }
+            .filter { it !in playing }
+            .count { hash ->
+                runCatching { client.remove(hash) }
+                    .onFailure { logcat(LogPriority.WARN, it) { "Could not remove torrent $hash" } }
+                    .isSuccess
+            }
+    }
+
+    /**
+     * Lets TorrServer go now instead of after [IDLE_TIMEOUT], unless something is using it.
+     * For when the viewer turns torrents off: nothing should keep running after that.
+     */
+    fun stopWhenUnused() {
+        scope.launch {
+            mutex.withLock {
+                if (users > 0) return@withLock
+                idle?.cancel()
+                idle = null
+                shutDown()
+            }
+        }
+    }
+
+    private fun trackers(): List<String> = TorrentTrackers.parse(preferences.trackers.get())
 
     private suspend fun readTorrentFile(link: String, headers: Map<String, String>): ByteArray = withIOContext {
         if (link.startsWith("http://") || link.startsWith("https://")) {
@@ -162,6 +201,9 @@ class TorrentEngine(
     }
 
     private suspend fun acquire(): TorrServerClient {
+        // Checked on every use rather than when the setting changes: an extension asking for
+        // a magnet's files goes through here too, and it must not start TorrServer either.
+        if (!preferences.enabled.get()) throw TorrentDisabledException()
         val pending = mutex.withLock {
             users++
             idle?.cancel()
@@ -201,7 +243,7 @@ class TorrentEngine(
         } else {
             current.cancel()
         }
-        logcat { "TorrServer released after ${IDLE_TIMEOUT.inWholeSeconds} s unused" }
+        logcat { "TorrServer released" }
     }
 
     private fun Deferred<TorrentAddon.Connection>.usable(): Boolean = when {
@@ -227,6 +269,9 @@ class TorrentStream(val url: String, private val onClose: () -> Unit) : AutoClos
         if (closed.compareAndSet(false, true)) onClose()
     }
 }
+
+/** The viewer has torrents turned off in the player settings. */
+class TorrentDisabledException : Exception("Torrents are turned off")
 
 /** A magnet whose metadata never arrived: nobody is sharing it. */
 class TorrentNoPeersException : Exception("No peers for this torrent")

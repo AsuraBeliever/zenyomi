@@ -96,6 +96,7 @@ object SettingsPlayerScreen : SearchableSettings {
             // over the scene they are watching — which is the only way to answer "is this big
             // enough". One store behind both, so neither can be the stale one.
             subtitleAppearanceGroup(subtitlePref),
+            torrentGroup(),
         )
     }
 }

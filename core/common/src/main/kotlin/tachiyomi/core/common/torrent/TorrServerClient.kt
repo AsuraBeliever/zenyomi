@@ -52,6 +52,11 @@ class TorrServerClient(
 
     suspend fun get(hash: String): Torrent = torrents(TorrentRequest(action = "get", hash = hash))
 
+    /** Every torrent TorrServer holds, including the ones left in its database by an earlier run. */
+    suspend fun list(): List<Torrent> =
+        client.newCall(POST("$baseUrl/torrents", body = encode(TorrentRequest(action = "list")))).awaitSuccess()
+            .use { json.decodeFromStream<List<Torrent>>(it.body.byteStream()) }
+
     /**
      * Stops the torrent and forgets it: nothing more is downloaded or kept for it.
      *
