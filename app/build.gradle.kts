@@ -27,6 +27,16 @@ if (Config.includeTelemetry) {
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 
+// The add-on version this build expects (torrent/addon.properties).
+val torrentAddonVersionCode = rootProject.file("torrent/addon.properties").inputStream()
+    .use { Properties().apply { load(it) } }
+    .getProperty("versionCode")
+
+// Where the app downloads the add-on from. Each release publishes it next to the app, so a
+// build fetches the one from its own version's release; `{abi}` is filled in on the device.
+// Overridable with -Ptorrent-addon-url, to test the install against a local server.
+val torrentAddonUrl = providers.gradleProperty("torrent-addon-url")
+
 android {
     namespace = "eu.kanade.tachiyomi"
 
@@ -43,7 +53,14 @@ android {
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
 
         // The torrent add-on (torrent/, a separate APK) that this build pairs with.
-        torrentAddon("app.zenyomi.torrent")
+        torrentAddon(
+            packageName = "app.zenyomi.torrent",
+            url = torrentAddonUrl.getOrElse(
+                "https://github.com/AsuraBeliever/zenyomi/releases/download/" +
+                    "v$versionName/zenyomi-torrent-{abi}-v$versionName.apk",
+            ),
+        )
+        buildConfigField("int", "TORRENT_ADDON_VERSION_CODE", torrentAddonVersionCode)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -80,7 +97,9 @@ android {
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-${getLatestCommitCount()}"
             isPseudoLocalesEnabled = true
-            torrentAddon("app.zenyomi.torrent.dev")
+            // No release publishes the debug-signed add-on, so there is nowhere to download it
+            // from unless a url is given.
+            torrentAddon(packageName = "app.zenyomi.torrent.dev", url = torrentAddonUrl.getOrElse(""))
         }
         val release = getByName("release") {
             isMinifyEnabled = true
@@ -188,8 +207,9 @@ android {
     }
 }
 
-fun com.android.build.api.dsl.VariantDimension.torrentAddon(packageName: String) {
+fun com.android.build.api.dsl.VariantDimension.torrentAddon(packageName: String, url: String) {
     buildConfigField("String", "TORRENT_ADDON_PACKAGE", "\"$packageName\"")
+    buildConfigField("String", "TORRENT_ADDON_URL", "\"$url\"")
     manifestPlaceholders["torrentAddonPackage"] = packageName
 }
 

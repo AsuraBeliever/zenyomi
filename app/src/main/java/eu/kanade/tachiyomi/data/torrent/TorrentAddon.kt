@@ -11,6 +11,7 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
+import androidx.core.content.pm.PackageInfoCompat
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -48,7 +49,10 @@ class TorrentAddon(private val context: Context) {
         ) {
             return State.Untrusted
         }
-        return State.Installed(info.versionName.orEmpty())
+        return State.Installed(
+            versionName = info.versionName.orEmpty(),
+            isOutdated = PackageInfoCompat.getLongVersionCode(info) < BuildConfig.TORRENT_ADDON_VERSION_CODE,
+        )
     }
 
     /** Binds to the add-on and waits until TorrServer answers. */
@@ -137,7 +141,12 @@ class TorrentAddon(private val context: Context) {
     sealed interface State {
         data object NotInstalled : State
         data object Untrusted : State
-        data class Installed(val versionName: String) : State
+
+        /**
+         * [isOutdated]: older than the add-on this build was released with. It still plays — the
+         * add-on is only ever extended, never changed under the app — but should be updated.
+         */
+        data class Installed(val versionName: String, val isOutdated: Boolean) : State
     }
 
     /** A running TorrServer. [close] releases it; once nobody holds one, it stops. */

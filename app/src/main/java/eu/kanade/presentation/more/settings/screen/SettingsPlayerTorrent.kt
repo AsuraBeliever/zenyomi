@@ -10,6 +10,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.tachiyomi.data.torrent.TorrentAddon
+import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.launch
 import logcat.LogPriority
@@ -41,7 +43,8 @@ import tachiyomi.presentation.core.util.collectAsState
  * Aniyomi's screen, less two settings that do not apply here: the port, because the add-on
  * picks a free one on 127.0.0.1 every time, and the proxy, because the stock TorrServer the
  * add-on runs takes none from outside. What is added is what Aniyomi does not need: whether the
- * add-on is there, and a way to clear what an add-on stopped mid-episode left behind.
+ * add-on is there, installing or updating it from here, and a way to clear what an add-on
+ * stopped mid-episode left behind.
  *
  * Everything applies on the next torrent opened, with no restart: the engine reads these
  * preferences each time it opens one.
@@ -53,16 +56,82 @@ internal fun torrentGroup(): Preference.PreferenceGroup {
     val preferences = remember { context.appGraph.torrentPreferences }
     val addon = remember { context.appGraph.torrentAddon }
     val engine = remember { context.appGraph.torrentEngine }
+    val installer = remember { context.appGraph.torrentAddonInstaller }
 
     val enabled by preferences.enabled.collectAsState()
     val trackers by preferences.trackers.collectAsState()
-    // Read again when the switch moves: that is when the viewer has just gone to install it.
-    val addonState = remember(enabled) { addon.state() }
+    val installStep by installer.step.collectAsState()
+    // Read again when the switch moves and when an install moves on: a finished one changes it.
+    val addonState = remember(enabled, installStep) { addon.state() }
+    // Whether there is an add-on to install or update over what is there. One signed by someone
+    // else cannot be replaced: Android refuses an update with a different key.
+    val addonWanted = addonState == TorrentAddon.State.NotInstalled ||
+        (addonState is TorrentAddon.State.Installed && addonState.isOutdated)
+    val canInstall = installer.downloadUrl != null &&
+        installStep != InstallStep.Downloading &&
+        installStep != InstallStep.Installing &&
+        installStep != InstallStep.Pending
+
+    val startInstall = {
+        if (!installer.install()) context.toast(ANMR.strings.pref_player_torrents_addon_unavailable)
+    }
+
+    var installOffered by rememberSaveable { mutableStateOf(false) }
+    if (installOffered) {
+        val outdated = addonState as? TorrentAddon.State.Installed
+        AlertDialog(
+            onDismissRequest = { installOffered = false },
+            title = {
+                Text(
+                    stringResource(
+                        if (outdated != null) {
+                            ANMR.strings.pref_player_torrents_addon_update_title
+                        } else {
+                            ANMR.strings.pref_player_torrents_addon_install_title
+                        },
+                    ),
+                )
+            },
+            text = {
+                Text(
+                    if (outdated != null) {
+                        stringResource(ANMR.strings.pref_player_torrents_addon_update_text, outdated.versionName)
+                    } else {
+                        stringResource(ANMR.strings.pref_player_torrents_addon_install_text)
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        installOffered = false
+                        startInstall()
+                    },
+                ) {
+                    Text(
+                        stringResource(
+                            if (outdated != null) MR.strings.ext_update else MR.strings.ext_install,
+                        ),
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { installOffered = false }) {
+                    Text(stringResource(ANMR.strings.pref_player_torrents_addon_not_now))
+                }
+            },
+        )
+    }
 
     var noticeShown by rememberSaveable { mutableStateOf(false) }
     if (noticeShown) {
+        // The install offer waits for the notice to be read, rather than covering it.
+        val closeNotice = {
+            noticeShown = false
+            if (addonWanted && canInstall) installOffered = true
+        }
         AlertDialog(
-            onDismissRequest = { noticeShown = false },
+            onDismissRequest = closeNotice,
             title = { Text(stringResource(ANMR.strings.pref_player_torrents_notice)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium)) {
@@ -71,7 +140,7 @@ internal fun torrentGroup(): Preference.PreferenceGroup {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { noticeShown = false }) {
+                TextButton(onClick = closeNotice) {
                     Text(stringResource(MR.strings.action_ok))
                 }
             },
@@ -88,6 +157,8 @@ internal fun torrentGroup(): Preference.PreferenceGroup {
                     if (on && !preferences.noticeShown.get()) {
                         noticeShown = true
                         preferences.noticeShown.set(true)
+                    } else if (on && addonWanted && canInstall) {
+                        installOffered = true
                     }
                     if (!on) engine.stopWhenUnused()
                     true
@@ -97,13 +168,25 @@ internal fun torrentGroup(): Preference.PreferenceGroup {
         add(
             Preference.PreferenceItem.TextPreference(
                 title = stringResource(ANMR.strings.pref_player_torrents_addon),
-                subtitle = when (addonState) {
-                    is TorrentAddon.State.Installed ->
+                subtitle = when {
+                    installStep == InstallStep.Pending || installStep == InstallStep.Downloading ->
+                        stringResource(ANMR.strings.pref_player_torrents_addon_downloading)
+                    installStep == InstallStep.Installing ->
+                        stringResource(ANMR.strings.pref_player_torrents_addon_installing)
+                    installStep == InstallStep.Error && addonWanted ->
+                        stringResource(ANMR.strings.pref_player_torrents_addon_failed)
+                    addonState is TorrentAddon.State.Installed && addonState.isOutdated ->
+                        stringResource(ANMR.strings.pref_player_torrents_addon_outdated, addonState.versionName)
+                    addonState is TorrentAddon.State.Installed ->
                         stringResource(ANMR.strings.pref_player_torrents_addon_installed, addonState.versionName)
-                    TorrentAddon.State.NotInstalled -> stringResource(ANMR.strings.pref_player_torrents_addon_missing)
-                    TorrentAddon.State.Untrusted -> stringResource(ANMR.strings.pref_player_torrents_addon_untrusted)
+                    addonState == TorrentAddon.State.NotInstalled && installer.downloadUrl != null ->
+                        stringResource(ANMR.strings.pref_player_torrents_addon_missing_install)
+                    addonState == TorrentAddon.State.NotInstalled ->
+                        stringResource(ANMR.strings.pref_player_torrents_addon_missing)
+                    else -> stringResource(ANMR.strings.pref_player_torrents_addon_untrusted)
                 },
                 enabled = enabled,
+                onClick = { if (addonWanted && canInstall) startInstall() },
             ),
         )
         // A custom item is shown whatever its enabled says, so it is left out instead.

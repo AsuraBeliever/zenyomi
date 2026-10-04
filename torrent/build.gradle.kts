@@ -16,14 +16,17 @@ val torrServerVersion = "MatriX.145.1"
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 
+// Shared with app/, which compares the installed add-on against it.
+val addonVersion = file("addon.properties").inputStream().use { Properties().apply { load(it) } }
+
 android {
     namespace = "app.zenyomi.torrent"
 
     defaultConfig {
         applicationId = "app.zenyomi.torrent"
 
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = addonVersion.getProperty("versionCode").toInt()
+        versionName = addonVersion.getProperty("versionName")
 
         buildConfigField("String", "TORRSERVER_VERSION", "\"$torrServerVersion\"")
     }

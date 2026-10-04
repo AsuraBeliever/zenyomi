@@ -40,7 +40,10 @@ alimenta del keystore real, no de la clave de depuración de Android.
 ## Proceso
 
 1. Cerrar el trabajo en `develop` y comprobar que el CI está verde.
-2. Subir `versionCode` y `versionName` en `app/build.gradle.kts`.
+2. Subir `versionCode` y `versionName` en `app/build.gradle.kts`. Si cambió el complemento de
+   torrent (`torrent/`: otro TorrServer, otro mensaje del protocolo), subir también su
+   `versionCode` en `torrent/addon.properties`: la app compara el instalado con ese número y
+   ofrece actualizarlo.
 3. Añadir la entrada en `CHANGELOG.md` y en `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 4. **Auditar el cumplimiento como fork** — ver `docs/FORK_COMPLIANCE.md`.
 5. **Pasar el arnés de extensiones** y regenerar `anime-source-health.json` — ver
@@ -49,7 +52,10 @@ alimenta del keystore real, no de la clave de depuración de Android.
 6. Probar en dispositivo con la checklist de humo de `docs/TESTING.md`.
 7. Mergear `develop` en `main`.
 8. Tagear `v<version>` y empujar el tag: el workflow `Release` compila, firma y crea
-   la release en GitHub.
+   la release en GitHub. Lleva diez APK: los seis de la app y los cuatro del complemento,
+   `zenyomi-torrent-<abi>-v<version>.apk`. La app descarga el complemento de la release de
+   su propia versión con ese nombre exacto, así que una release sin ellos deja el torrent sin
+   poder instalarse.
 
 ## Cuando el workflow `Release` falla y el código está bien
 
