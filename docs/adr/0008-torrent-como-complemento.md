@@ -84,7 +84,8 @@ eso **Zenyomi sigue siendo Apache-2.0**.
 
 Lo que obliga la GPL con el complemento, y se cumple:
 
-- su `LICENSE` es GPL-3.0, y la pantalla «Acerca de» del complemento lo dice;
+- su `LICENSE` es GPL-3.0, y viaja **dentro de cada APK** del complemento (`assets/LICENSE`,
+  con un `assets/NOTICE` que dice de dónde sale el ejecutable; ver «Licencia dentro del APK»);
 - se indica el código fuente exacto del binario: `YouROK/TorrServer`, tag `MatriX.145.1`;
 - el código del propio complemento (el servicio que lanza el binario) se publica en este
   repositorio, en su módulo, también bajo GPL-3.0;
@@ -180,3 +181,15 @@ encenderlo.
   `.torrent`. El tamaño real llega de TorrServer cuando empieza la descarga.
 - **Errores con nombre.** Torrent apagado, complemento ausente o sin firma, nadie compartiendo:
   la notificación dice cuál, con las mismas frases que el reproductor.
+
+## Licencia dentro del APK (2026-10-17, KAN-42)
+
+La auditoría previa a la v0.20.0, la primera release que publica el complemento, encontró que
+su APK no llevaba la GPL dentro, y que la pantalla «Acerca de» prometida arriba no existía. No
+hace falta: el complemento no tiene interfaz, así que el §5(d) de la GPL, que pide mostrar
+avisos legales en una interfaz interactiva, no aplica. Lo que sí pide es que la licencia
+acompañe al binario. Una tarea de Gradle (`AddonLicenseTask`) copia `torrent/LICENSE` a los
+assets del APK y escribe a su lado un `NOTICE` con el tag exacto de TorrServer, el enlace a su
+código y el del propio complemento. Se genera en vez de guardar una segunda copia, para que no
+se separen. Las notas de la release enlazan TorrServer en el mismo tag, que el workflow lee del
+módulo.

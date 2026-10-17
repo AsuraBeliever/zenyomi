@@ -29,10 +29,21 @@ jobs:
     name: Build
     runs-on: 'ubuntu-24.04'
     needs: get_tag
+    outputs:
+      torrserver: ${{ steps.torrserver.outputs.version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Para enlazar en las notas el código exacto de TorrServer que lleva el complemento: la
+      # GPL pide decir dónde está. Se lee del módulo para que no haya que tocarlo a mano.
+      - name: TorrServer version
+        id: torrserver
+        run: |
+          version=$(sed -n 's/^val torrServerVersion = "\(.*\)"$/\1/p' torrent/build.gradle.kts)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK
         uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
@@ -183,7 +194,7 @@ jobs:
             >
             > Zenyomi installs alongside Mihon and Aniyomi rather than over them, so you can keep all three. Restore a Mihon backup from **More → Backup and restore** to bring your library across.
 
-            The `zenyomi-torrent-*` files are the torrent add-on. There is no need to download them: Zenyomi installs the right one itself when you turn torrents on in **Settings → Player → Torrent**. The add-on is licensed under GPL-3.0 and runs [TorrServer](https://github.com/YouROK/TorrServer); its source is in [`torrent/`](https://github.com/AsuraBeliever/zenyomi/tree/main/torrent).
+            The `zenyomi-torrent-*` files are the torrent add-on. There is no need to download them: Zenyomi installs the right one itself when you turn torrents on in **Settings → Player → Torrent**. The add-on is licensed under GPL-3.0 and runs [TorrServer ${{ needs.build.outputs.torrserver }}](https://github.com/YouROK/TorrServer/tree/${{ needs.build.outputs.torrserver }}), unmodified; its own source is in [`torrent/`](https://github.com/AsuraBeliever/zenyomi/tree/${{ needs.get_tag.outputs.tag }}/torrent). Each add-on APK carries the licence and these pointers in `assets/LICENSE` and `assets/NOTICE`.
           # No files here on purpose: this step only writes the release and its notes. The
           # APKs go up in the step below, one at a time. Handing all six to this action
           # uploads them in parallel and the step dies as a whole on `Headers Timeout Error`

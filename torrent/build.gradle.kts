@@ -1,3 +1,4 @@
+import zenyomi.gradle.tasks.AddonLicenseTask
 import zenyomi.gradle.tasks.FetchTorrServerTask
 import java.io.FileInputStream
 import java.util.Properties
@@ -108,8 +109,16 @@ val fetchTorrServer = tasks.register<FetchTorrServerTask>("fetchTorrServer") {
     outputDir.set(layout.buildDirectory.dir("generated/torrserver/jniLibs"))
 }
 
+// The GPL travels with the APK: see AddonLicenseTask.
+val addonLicense = tasks.register<AddonLicenseTask>("addonLicense") {
+    license.set(file("LICENSE"))
+    tag.set(torrServerVersion)
+    outputDir.set(layout.buildDirectory.dir("generated/license/assets"))
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(fetchTorrServer) { it.outputDir }
+        variant.sources.assets?.addGeneratedSourceDirectory(addonLicense) { it.outputDir }
     }
 }
