@@ -98,10 +98,7 @@ class AnimeDownloader(
      * for them would fail and would be pointless if it worked. A magnet is not http either,
      * but TorrServer turns it into something that is.
      */
-    fun isDownloadable(source: AnimeSource, video: Video?): Boolean {
-        val url = video?.videoUrl ?: return false
-        return source.id != LOCAL_ANIME_SOURCE_ID && (url.startsWith("http") || TorrentEngine.isTorrentLink(url))
-    }
+    fun isDownloadable(source: AnimeSource, video: Video?): Boolean = isDownloadableUrl(source.id, video?.videoUrl)
 
     fun isDownloadableSource(source: AnimeSource): Boolean = source.id != LOCAL_ANIME_SOURCE_ID
 
@@ -725,6 +722,12 @@ class AnimeDownloader(
 
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
+
+        /** [isDownloadable] on its own inputs, so the rule can be pinned by a test. */
+        fun isDownloadableUrl(sourceId: Long, url: String?): Boolean =
+            url != null &&
+                sourceId != LOCAL_ANIME_SOURCE_ID &&
+                (url.startsWith("http") || TorrentEngine.isTorrentLink(url))
 
         /** Matches tachiyomi.source.local.anime.LocalAnimeSource.ID without depending on it. */
         private const val LOCAL_ANIME_SOURCE_ID = 0L
