@@ -157,7 +157,7 @@ uno**. Un fichero flojo cuesta ahora otro intento de ese fichero, no la release 
 
 ```sh
 gh run rerun <run-id>          # el workflow entero, nunca --failed
-gh release view v<version> --json assets --jq '.assets | length'   # debe dar 6
+gh release view v<version> --json assets --jq '.assets | length'   # debe dar 10 (6 de la app + 4 del complemento)
 ```
 
 Comprobar el número de assets antes de dar una release por buena no es opcional: que el job
@@ -240,6 +240,7 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.19.3 | 38 | **clave del proyecto** | Tres arreglos del botón de omitir: el salto fijo se mide desde donde empieza el opening, los tiempos de AniSkip se corrigen por la diferencia entre copias, y el salto aterriza 5 s antes del final. **Un solo intento**, los 6 assets subidos |
 | 0.19.4 | 39 | **clave del proyecto** | El botón de omitir deja de aparecer cuando nadie sabe dónde está el opening, y el emparejado por título entiende cómo escribe cada catálogo una temporada. **Un solo intento**, los 6 assets subidos |
 | 0.19.5 | 40 | **clave del proyecto** | Botón para omitir el ending cuando hay algo detrás de los créditos, la serie gana al *special* que comparte su nombre, y el contador de extensiones de anime cuenta las no confiadas. Primera release que entra en `develop` por PR revisado (flujo `zen-*`). **Un solo intento**, los 6 assets subidos |
+| 0.20.0 | 41 | **clave del proyecto** | Streaming y descarga por torrent con el complemento `app.zenyomi.torrent` (1.0.0, GPL-3.0, licencia dentro del APK), que la app instala bajándolo de la propia release; arreglos de PiP, de las descargas tras ver un episodio y de la cola de manga. Primera release con **10 assets**. **Un solo intento** del workflow. Verificada sobre lo publicado: la app se instala encima del build local (misma firma) y el complemento se instala desde la app bajándolo de esta release |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es
