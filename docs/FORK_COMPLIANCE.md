@@ -7,7 +7,7 @@ cumplimiento y se revisa **antes de cada release**.
 
 Mihon publica sus requisitos para forks en su `CONTRIBUTING.md`, sección *Forks*.
 Estado a 2026-10-01 (revisado antes de la v0.13.0, la v0.13.1, la v0.14.0, la v0.14.1, la v0.14.2,
-la v0.14.3, la v0.14.4, la v0.15.0, la v0.16.0, la v0.17.0, la v0.18.0, la v0.18.1, la v0.19.0, la v0.19.2, la v0.19.3, la v0.19.4 y la v0.19.5):
+la v0.14.3, la v0.14.4, la v0.15.0, la v0.16.0, la v0.17.0, la v0.18.0, la v0.18.1, la v0.19.0, la v0.19.2, la v0.19.3, la v0.19.4, la v0.19.5 y la v0.20.0):
 
 | Requisito de Mihon | Estado | Cómo se cumple |
 |---|---|---|
@@ -43,7 +43,8 @@ ejecutable de TorrServer (GPL-3.0). Decisión y razonamiento: ADR-0008. Zenyomi 
 | Entregar la licencia | `torrent/LICENSE`, texto íntegro de la GPL-3.0 |
 | Indicar el código fuente exacto del binario | `NOTICE` y `torrent/build.gradle.kts`: `YouROK/TorrServer`, tag `MatriX.145.1`, con el SHA-256 de cada ejecutable |
 | Publicar el código propio del complemento bajo GPL-3.0 | `torrent/src/`, en este repositorio |
-| Avisar al usuario | `NOTICE`. **Pendiente:** pantalla «Acerca de» del complemento (KAN-32) |
+| Que la licencia acompañe al binario | Cada APK del complemento lleva `assets/LICENSE` (la GPL-3.0) y `assets/NOTICE` (de dónde sale el ejecutable y su código), generados al compilar desde `torrent/LICENSE` (KAN-42). Las notas de cada release enlazan TorrServer en su tag exacto |
+| Avisos legales en pantalla (§5(d)) | No aplica: el complemento **no tiene interfaz**, solo un servicio. La pantalla «Acerca de» que prometía el ADR-0008 sobraba y no se hizo |
 
 Antes de cada release se comprueba además que **nada de `torrent/` entra en el APK de la
 app** (no es una dependencia de `:app`):
@@ -77,6 +78,16 @@ Menciones legítimas y esperadas: `LICENSE`, `NOTICE`, `README`, `CHANGELOG`,
 `CONTRIBUTING`, `docs/` — ahí Mihon y Aniyomi **deben** aparecer, es la atribución.
 También los espacios de nombres internos de Kotlin (`eu.kanade.tachiyomi`,
 `mihon.app.*`), que se conservan a propósito para no romper los merges con upstream.
+
+## Nota de la v0.20.0: el `.torrent` de prueba sí entró, y por qué
+
+`core/common/src/test/resources/…/torrent/big-buck-bunny.torrent` (KAN-31) es el `.torrent`
+que publica WebTorrent para *Big Buck Bunny*, de la Blender Foundation, bajo **CC BY 3.0**. Choca
+a primera vista con la nota de abajo, pero no es el mismo caso: aquella excluía un fichero de un
+sitio comercial sin licencia, y este describe una obra con licencia libre que permite
+redistribuirla citando la fuente. La cita está en el propio test (`TorrentEpisodeFileTest`). Es
+un recurso de test: no entra en ningún APK. Los otros dos `.torrent` de la misma carpeta vienen
+de los tests de Aniyomi (Apache-2.0), portados con su SHA en `PORTING_LOG.md`.
 
 ## Nota de la v0.18.0: un fixture de terceros que no entró
 
