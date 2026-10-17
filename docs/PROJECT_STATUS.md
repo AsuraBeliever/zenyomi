@@ -273,6 +273,13 @@ estadísticas y backup. El módulo `i18n-anime` existe y está poblado.
 
 ## Incidencias resueltas
 
+- **2026-10-17 — FlexibleAdapter desaparece de JitPack (KAN-38).** El fallo de
+  `flexible-adapter:c8013533` dejó de ser pasajero: JitPack marca esa compilación como fallida
+  y contesta 404 al `.pom` y al `.aar`, así que relanzar ya no sirve y ningún build sin caché
+  de Gradle resuelve dependencias. Mihon había pasado ya a la versión que el autor publica en
+  Maven Central (`eu.davidea:flexible-adapter:5.1.0`, Mihon `737fdbfbf`), y se trae ese commit
+  tal cual: es un adelanto de la sincronización con Mihon (KAN-15).
+
 - **2026-09-14 — la v0.11.1 pasó el CI y el `Release` a la primera.** Sin rastro del
   fallo de JitPack de la tanda anterior, que era suyo y no nuestro.
 
