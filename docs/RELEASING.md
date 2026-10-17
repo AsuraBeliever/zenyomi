@@ -40,7 +40,10 @@ alimenta del keystore real, no de la clave de depuración de Android.
 ## Proceso
 
 1. Cerrar el trabajo en `develop` y comprobar que el CI está verde.
-2. Subir `versionCode` y `versionName` en `app/build.gradle.kts`.
+2. Subir `versionCode` y `versionName` en `app/build.gradle.kts`. Si cambió el complemento de
+   torrent (`torrent/`: otro TorrServer, otro mensaje del protocolo), subir también su
+   `versionCode` en `torrent/addon.properties`: la app compara el instalado con ese número y
+   ofrece actualizarlo.
 3. Añadir la entrada en `CHANGELOG.md` y en `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 4. **Auditar el cumplimiento como fork** — ver `docs/FORK_COMPLIANCE.md`.
 5. **Pasar el arnés de extensiones** y regenerar `anime-source-health.json` — ver
@@ -49,7 +52,10 @@ alimenta del keystore real, no de la clave de depuración de Android.
 6. Probar en dispositivo con la checklist de humo de `docs/TESTING.md`.
 7. Mergear `develop` en `main`.
 8. Tagear `v<version>` y empujar el tag: el workflow `Release` compila, firma y crea
-   la release en GitHub.
+   la release en GitHub. Lleva diez APK: los seis de la app y los cuatro del complemento,
+   `zenyomi-torrent-<abi>-v<version>.apk`. La app descarga el complemento de la release de
+   su propia versión con ese nombre exacto, así que una release sin ellos deja el torrent sin
+   poder instalarse.
 
 ## Cuando el workflow `Release` falla y el código está bien
 
@@ -233,6 +239,7 @@ $ANDROID_HOME/build-tools/*/aapt2 dump resources "$APK" | grep -c ic_mihon   # d
 | 0.19.2 | 37 | **clave del proyecto** | AniSkip responde de un anime sin tracker, identificándolo por su título. **Un solo intento**, los 6 assets subidos |
 | 0.19.3 | 38 | **clave del proyecto** | Tres arreglos del botón de omitir: el salto fijo se mide desde donde empieza el opening, los tiempos de AniSkip se corrigen por la diferencia entre copias, y el salto aterriza 5 s antes del final. **Un solo intento**, los 6 assets subidos |
 | 0.19.4 | 39 | **clave del proyecto** | El botón de omitir deja de aparecer cuando nadie sabe dónde está el opening, y el emparejado por título entiende cómo escribe cada catálogo una temporada. **Un solo intento**, los 6 assets subidos |
+| 0.19.5 | 40 | **clave del proyecto** | Botón para omitir el ending cuando hay algo detrás de los créditos, la serie gana al *special* que comparte su nombre, y el contador de extensiones de anime cuenta las no confiadas. Primera release que entra en `develop` por PR revisado (flujo `zen-*`). **Un solo intento**, los 6 assets subidos |
 
 Las builds de debug usan el applicationId `app.zenyomi.dev`, así que conviven con las
 de release (`app.zenyomi`) sin desinstalar nada. Entre releases, la actualización es

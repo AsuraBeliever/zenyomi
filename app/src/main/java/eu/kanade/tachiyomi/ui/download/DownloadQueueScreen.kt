@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenuItem
@@ -28,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -268,7 +271,19 @@ object DownloadQueueScreen : Screen() {
                     )
                     return@Column
                 }
-                MangaQueue(viewModel, downloadList, contentPadding, nestedScrollConnection, scope)
+                // The top inset is already taken by this column, above the tabs. Handed on whole,
+                // the list applied it a second time and opened a gap the height of the app bar.
+                val layoutDirection = LocalLayoutDirection.current
+                val belowTabs = PaddingValues(
+                    start = contentPadding.calculateStartPadding(layoutDirection),
+                    end = contentPadding.calculateEndPadding(layoutDirection),
+                    bottom = contentPadding.calculateBottomPadding(),
+                )
+                // Mihon's list draws outside its own bounds, so rows can slide under a translucent
+                // app bar. Here the tabs sit between the two, and the rows were painted over them.
+                Box(modifier = Modifier.clipToBounds()) {
+                    MangaQueue(viewModel, downloadList, belowTabs, nestedScrollConnection, scope)
+                }
             }
         }
     }

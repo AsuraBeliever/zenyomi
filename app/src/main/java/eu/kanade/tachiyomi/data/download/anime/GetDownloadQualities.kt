@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.data.download.anime
 import dev.zacsweers.metro.Inject
 import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.tachiyomi.animesource.model.Video
+import eu.kanade.tachiyomi.data.torrent.TorrentEngine
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -62,9 +63,18 @@ class GetDownloadQualities(
         val videos = runCatching { getEpisodeVideos.await(sourceId, episode) }.getOrDefault(emptyList())
         val video = getEpisodeVideos.playable(sourceId, videos) ?: return@withIOContext emptyList()
 
+        // A torrent is not weighed: that would mean starting TorrServer and finding peers just
+        // to draw a dialog, and asking a `.torrent` link the usual way is worse — it answers
+        // with the size of the `.torrent`. The download learns the real size from TorrServer
+        // once it starts. Several torrents, one per quality, are still offered to choose from.
+        if (videos.size <= 1 && TorrentEngine.isTorrentLink(video.videoUrl)) {
+            return@withIOContext listOf(DownloadQuality(video.heightOrNull(), video.label(), estimatedBytes = null))
+        }
+
         // Only opened when there is a reason to: with several videos the source has already
         // named the qualities, and the playlist has nothing to add unless sizes are wanted.
-        val playlist = if (measure || videos.size <= 1) {
+        // Never a torrent's: there is no playlist in one, and fetching a magnet is not a request.
+        val playlist = if ((measure || videos.size <= 1) && !TorrentEngine.isTorrentLink(video.videoUrl)) {
             runCatching { sizer.fetchText(video.videoUrl, video.headers) }.getOrNull()
         } else {
             null
@@ -105,7 +115,11 @@ class GetDownloadQualities(
                         DownloadQuality(
                             height = it.heightOrNull(),
                             label = it.label(),
-                            estimatedBytes = if (measure) sizer.sizeOf(it) else null,
+                            estimatedBytes = if (measure && !TorrentEngine.isTorrentLink(it.videoUrl)) {
+                                sizer.sizeOf(it)
+                            } else {
+                                null
+                            },
                         )
                     }
             dash != null ->

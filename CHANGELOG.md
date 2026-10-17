@@ -10,6 +10,21 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.20.0] - 2026-10-17
+### Added
+- **Anime que llega como torrent: se ve y se descarga.** Algunas fuentes entregan los episodios como magnet o como fichero `.torrent`. Ahora el reproductor los abre como cualquier otro episodio —eligiendo el vídeo del episodio aunque el torrent traiga subtítulos, portadas o una temporada entera— y el botón de descargar los guarda en el teléfono como un vídeo normal, que luego se ve sin conexión. Mientras un torrent se reproduce o se descarga, también se comparte con otros: por eso viene **apagado**, y encenderlo enseña antes un aviso.
+- **El complemento de torrent se instala desde la propia app.** El torrent funciona con TorrServer, que va en una app aparte, «Zenyomi Torrent», para que quien no lo use no cargue con ella. Al encender el torrent en _Ajustes → Reproductor → Torrent_, la app ofrece instalarla: la baja de esta misma versión, para la arquitectura del teléfono, y Android pide confirmar. Si el instalado se queda viejo, lo dice y ofrece actualizarlo.
+- **Ajustes del torrent** en _Ajustes → Reproductor → Torrent_: encenderlo y apagarlo, ver si el complemento está instalado, editar la lista de trackers y vaciar lo que TorrServer guardó de antes.
+
+### Fixed
+- **Las descargas ya no fallan después de ver un episodio.** En cuanto se reproducía cualquier cosa, todas las descargas siguientes de esa sesión acababan en «No se pudo descargar», aunque el vídeo hubiera bajado entero; solo se arreglaba cerrando la app. La comprobación de que lo descargado es un vídeo se quedaba sin respuesta en cuanto arrancaba el reproductor.
+- **Cerrar la ventana flotante cierra el reproductor.** Arrastrar la ventana de imagen en imagen a la X, o cerrarla desde su menú, la dejaba detenida y escondida, y con un torrent el complemento seguía funcionando por detrás. Ahora se cierra de verdad y guarda dónde ibas.
+- **La cola de descargas de manga ya no tiene una franja en blanco arriba**, y al desplazarla las filas ya no tapan las pestañas Manga/Anime.
+- Cuando una descarga torrent falla por algo que tiene arreglo —el torrent apagado, el complemento sin instalar, nadie compartiéndolo—, la notificación dice cuál.
+
+### Other
+- FlexibleAdapter, la librería de la cola de descargas de manga, se toma ahora de Maven Central, como en Mihon: JitPack dejó de servir la versión antigua y la app no se podía compilar desde cero.
+
 ## [0.19.5] - 2026-10-01
 ### Added
 - **Botón para omitir el ending.** Funciona igual que el del opening: aparece solo mientras los créditos están en pantalla —cuando lo dicen los capítulos del propio fichero o AniSkip—, es una sola pulsación y aterriza cinco segundos antes de que acaben, contados desde donde acaban de verdad y no desde donde lo dice una copia ajena. Y solo se ofrece **cuando hay algo detrás de los créditos**: una escena final, el avance del siguiente episodio. Si los créditos llegan al último fotograma no hay nada al otro lado, y ahí el botón sería la tarjeta de siguiente episodio con otro nombre.

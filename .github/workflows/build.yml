@@ -60,8 +60,10 @@ jobs:
           name: test-report-${{ github.sha }}
           path: app/build/reports/tests/testDebugUnitTest
 
+      # --stacktrace: without it packageRelease can fail naming no cause, as it did once on
+      # this PR job (run 37034614294) with 86 GB free; the next run passed. Cause unknown.
       - name: Build app
-        run: ./gradlew assembleRelease -Penable-updater
+        run: ./gradlew assembleRelease -Penable-updater --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

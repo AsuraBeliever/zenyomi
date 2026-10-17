@@ -13,15 +13,20 @@ import eu.kanade.domain.anime.interactor.GetEpisodeVideos
 import eu.kanade.domain.anime.interactor.GetSkipIntervals
 import eu.kanade.domain.anime.interactor.ResolveEpisodeVideo
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
+import eu.kanade.tachiyomi.data.torrent.TorrentEngine
+import eu.kanade.tachiyomi.data.torrent.TorrentStream
 import eu.kanade.tachiyomi.ui.animeplayer.setting.PlayerPreferences
 import eu.kanade.tachiyomi.ui.animeplayer.setting.SubtitlePreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import logcat.LogPriority
 import tachiyomi.core.common.util.lang.launchNonCancellable
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.interactor.GetAnime
 import tachiyomi.domain.anime.model.Anime
 import tachiyomi.domain.episode.interactor.GetEpisode
@@ -58,6 +63,7 @@ class AnimePlayerViewModel(
     private val getEpisodeVideos: GetEpisodeVideos,
     private val playerPreferences: PlayerPreferences,
     private val subtitlePreferences: SubtitlePreferences,
+    private val torrentEngine: TorrentEngine,
 ) : ViewModel() {
 
     /**
@@ -100,22 +106,64 @@ class AnimePlayerViewModel(
      */
     private var prefetched: Pair<Long, PlaybackRequest>? = null
 
+    /**
+     * The torrent the episode on screen streams from, when it is one. Held until the player
+     * moves to another episode or closes, and then let go so TorrServer stops downloading it.
+     */
+    private var torrent: TorrentStream? = null
+
     init {
         viewModelScope.launch {
             val episode = getEpisode.await(episodeId)
+            _state.update { it.copy(loaded = true, title = episode?.name.orEmpty()) }
+            val playable = try {
+                playable(request, episode?.name.orEmpty())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e) { "Could not open episode $episodeId" }
+                _state.update { it.copy(openError = e) }
+                loadNeighbours(episodeId)
+                return@launch
+            }
             _state.update {
                 it.copy(
-                    loaded = true,
-                    title = episode?.name.orEmpty(),
                     playback = Playback(
                         episodeId = episodeId,
-                        request = request,
+                        request = playable,
                         resumeAt = episode.resumePoint(),
                     ),
                 )
             }
             loadNeighbours(episodeId)
         }
+    }
+
+    override fun onCleared() {
+        torrent?.close()
+        torrent = null
+    }
+
+    /**
+     * What mpv can open for [request]. A torrent link becomes TorrServer's stream of the
+     * episode's file; anything else is already playable. Opening a torrent is done here and
+     * not when the episode is resolved, because resolving also happens ahead of time for the
+     * next episode, and that must not start downloading it.
+     */
+    private suspend fun playable(request: PlaybackRequest, title: String): PlaybackRequest {
+        val previous = torrent
+        if (!TorrentEngine.isTorrentLink(request.url)) {
+            torrent = null
+            previous?.close()
+            return request
+        }
+        val stream = torrentEngine.openStream(request.url, title, request.headers)
+        torrent = stream
+        // Closed only once the new one is open, so TorrServer is not stopped and restarted in
+        // between, and an episode from the same torrent keeps it.
+        previous?.close()
+        // TorrServer is on 127.0.0.1 and wants none of the source's headers.
+        return request.copy(url = stream.url, headers = emptyMap())
     }
 
     /**
@@ -154,7 +202,17 @@ class AnimePlayerViewModel(
         switchJob = viewModelScope.launch {
             saveProgress(positionSeconds, durationSeconds)
             _state.update { it.copy(switching = true, switchError = null) }
-            val resolved = requestFor(episode)
+            val resolved = requestFor(episode)?.let { request ->
+                try {
+                    playable(request, episode.name)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logcat(LogPriority.ERROR, e) { "Could not open episode ${episode.id}" }
+                    _state.update { it.copy(switchError = e) }
+                    null
+                }
+            }
             if (resolved == null) {
                 _state.update { it.copy(switching = false) }
                 return@launch
@@ -311,6 +369,8 @@ class AnimePlayerViewModel(
         /** An episode is being resolved; the picture on screen is still the old one. */
         val switching: Boolean = false,
         val switchError: Throwable? = null,
+        /** The episode the player was opened with could not be opened; nothing is playing. */
+        val openError: Throwable? = null,
         /** Where AniSkip says the opening is, in seconds. Null when nobody knows. */
         val opening: IntRange? = null,
         /** Where AniSkip says the ending is, in seconds. Null when nobody knows. */

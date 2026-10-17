@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-09-20
+**Actualizado:** 2026-10-17
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.19.4, tag en `main`
+**Última release:** v0.19.5, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** no por defecto — desde el 2026-09-18 las pruebas van al emulador
 y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
@@ -20,7 +20,7 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Wireless debugging | ✅ | Galaxy S25 Ultra emparejado, reconecta por mDNS |
 | Fase 0 | ✅ | tag `v0.1.0`, APK instalado y abierto sin crashes |
 | Releases 0.5.x – 0.17.0 | ✅ | hasta `v0.17.0` (la 0.14.4 nunca llegó a publicarse y su contenido sale aquí); cada una con prueba de humo (arranque, extensiones, reproducción, PiP) |
-| Prueba de humo sobre el APK **publicado** | ✅ | en la v0.19.0, sobre `zenyomi-x86_64-v0.19.0.apk` descargado de la release: se instaló **encima** del local sin desinstalar —la prueba de que la clave es la misma—, firma `24:5E:D5:…:5D:BF`, `app.zenyomi` 0.19.0, cero `ic_mihon`. Abre, lista extensiones de anime con el repo añadido desde la app, reproduce vídeo pasado el primer fotograma, entra en PiP, encadena cuatro episodios solo y el botón de omitir opening salta. Cero `Fatal signal` y cero `FATAL EXCEPTION`. En la v0.19.1, sobre el APK publicado: se instaló encima de la 0.19.0, y el botón de omitir opening pulsado tres veces movió el episodio **una vez** y exactos 85 s. En la v0.19.2 y la v0.19.3, sobre los APK publicados: instalan encima de la anterior sin desinstalar, abren, listan fuentes de anime, reproducen, entran en PiP y cero `Fatal signal`/`FATAL EXCEPTION`. La v0.19.3 se comprobó además **contra R8** en lo que cambió: el salto del opening del episodio 3 cae en el 3:14.000 exacto. En la v0.19.4, sobre `zenyomi-x86_64-v0.19.4.apk` del CI: instala encima de la 0.19.3, abre, y **contra R8** se comprueba lo que cambia — un fixture llamado «Mairimashita! Iruma-kun 4th Season», que la regla anterior no sabía identificar, resuelve, no ofrece botón en el segundo 19 y lo ofrece a los 1:53; pulsado ahí aterriza en el 2:28.000 exacto (160 − 5 − 7). Cero crashes |
+| Prueba de humo sobre el APK **publicado** | ✅ | en la v0.19.0, sobre `zenyomi-x86_64-v0.19.0.apk` descargado de la release: se instaló **encima** del local sin desinstalar —la prueba de que la clave es la misma—, firma `24:5E:D5:…:5D:BF`, `app.zenyomi` 0.19.0, cero `ic_mihon`. Abre, lista extensiones de anime con el repo añadido desde la app, reproduce vídeo pasado el primer fotograma, entra en PiP, encadena cuatro episodios solo y el botón de omitir opening salta. Cero `Fatal signal` y cero `FATAL EXCEPTION`. En la v0.19.1, sobre el APK publicado: se instaló encima de la 0.19.0, y el botón de omitir opening pulsado tres veces movió el episodio **una vez** y exactos 85 s. En la v0.19.2 y la v0.19.3, sobre los APK publicados: instalan encima de la anterior sin desinstalar, abren, listan fuentes de anime, reproducen, entran en PiP y cero `Fatal signal`/`FATAL EXCEPTION`. La v0.19.3 se comprobó además **contra R8** en lo que cambió: el salto del opening del episodio 3 cae en el 3:14.000 exacto. En la v0.19.4, sobre `zenyomi-x86_64-v0.19.4.apk` del CI: instala encima de la 0.19.3, abre, y **contra R8** se comprueba lo que cambia — un fixture llamado «Mairimashita! Iruma-kun 4th Season», que la regla anterior no sabía identificar, resuelve, no ofrece botón en el segundo 19 y lo ofrece a los 1:53; pulsado ahí aterriza en el 2:28.000 exacto (160 − 5 − 7). Cero crashes. En la v0.19.5, sobre `zenyomi-x86_64-v0.19.5.apk` del CI (firma `24:5E:D5:…:5D:BF`, cero `ic_mihon`): instala encima de la 0.19.5 local, lista las extensiones de anime y, **contra R8**, el botón de omitir el ending de `SerieFinal` sale en los créditos y aterriza en el **1:20.000 exacto**. PiP pinta vídeo y sigue reproduciendo. Cero crashes |
 | Fase 3 completa | ✅ | entregada y verificada, trackers incluidos |
 | Trackers de anime (código) | ✅ | MyAnimeList, AniList y Kitsu |
 | PiP del player | ✅ | Activity propia |
@@ -59,7 +59,7 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Siguiente episodio dentro del player | ✅ | botones de anterior y siguiente junto a la barra, y una tarjeta con cuenta atrás al final del episodio que abre el siguiente sola. **Desde la v0.19.5**, cuando detrás de los créditos queda episodio —una escena final, un avance—, la tarjeta ya no sale con ellos: espera al último medio minuto, porque anunciar el siguiente sobre unos créditos que no son el final es lo que se llevaba esa escena por delante. Se puede parar con Cancelar, y el ajuste "Reproducir el siguiente episodio automáticamente" lo apaga del todo. El siguiente se resuelve durante los créditos, así que el salto es instantáneo. Verificado en el emulador: cadena de cuatro episodios seguidos, progreso e historial de cada uno en la BD, y vuelta atrás con el botón de anterior |
 | Controles del player | ✅ | play/pausa y saltos en el centro de la imagen, reloj de un segundo, barra que se queda donde se suelta y cubierta de carga con salida. Se ocultan a los 5 s y el toque en la imagen los muestra u oculta en vez de pausar |
 | Arranque de un episodio | ✅ | audio y controles ya no esperan a que se descarguen dieciséis idiomas de subtítulos: de 37 s de vídeo mudo y medio minuto de botones muertos, a 2 s |
-| PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa |
+| PiP del player | ✅ | el player pasa a Activity propia; verificado: la miniatura pinta vídeo, sigue reproduciendo y restaura a pantalla completa. **Sin publicar:** cerrar la ventana —arrastrándola a la X o con la X de su menú— cierra el reproductor y guarda el progreso; antes se quedaba detenido y oculto, y con un torrent TorrServer seguía funcionando. Expandirla y apagar la pantalla con ella abierta siguen igual |
 | Resolución de vídeo desde la fuente | ✅ | verificada de punta a punta con la fuente local **y con extensiones HTTP reales** |
 | Reproducción de una extensión online | ✅ | KickAssAnime, AnimeOnsen y TioAnime se ven **y se oyen** en el emulador; ver `EXTENSIONS_STATUS.md` |
 | Cabeceras HTTP hasta mpv | ✅ | se resolvían bien y se perdían camino del player; corregido y comprobado contra un servidor que las imprime |
@@ -80,6 +80,7 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Descargas independientes del formato | ✅ | Ver `docs/adr/0006-descargas-por-contenido-no-por-formato.md`. Se decide por el contenido (binario → disco, texto → ffmpeg, página/JSON → rechazo), ffprobe dice qué calidades hay dentro y cuál mapear, y nada se llama episodio sin comprobar que es un contenedor con vídeo y duración. Verificado en el emulador: **DASH** (AnimeOnsen, que antes guardaba 8 KB de XML) baja un mkv real de 155 MB con un único stream de vídeo, su audio y 16 subtítulos; **HLS** (KickAssAnime) sigue igual, 81 MB por el camino rápido. 12 tests cubren el clasificador |
 | Camino rápido de DASH | ✅ | El lector de MPD cubre `SegmentTemplate` (por número y por línea de tiempo), `SegmentList` y representación de un solo fichero; declina lo que no reconoce y entonces lo baja ffmpeg. Medido en el emulador con AnimeOnsen: **7 min → 52 s**, y el fichero sale igual (mismo vídeo, audio, 16 subtítulos y duración). 14 tests |
 | Velocidad de formatos sin lector propio | ✅ | Lo que no sea HLS ni DASH sigue bajándolo ffmpeg segmento a segmento, como dice el ADR-0006. **Medido el 2026-10-01 (KAN-11): ninguna fuente que funcione lo usa.** Las cinco que reproducen entregan HLS, DASH o un MP4 directo, que va al disco sin ffmpeg. Si aparece un formato nuevo, la medición se repite con la receta del ADR |
+| Torrent: complemento con TorrServer | ⏳ | **Base hecha (KAN-30).** APK aparte `app.zenyomi.torrent` (GPL-3.0, ADR-0008) que arranca TorrServer MatriX.145.1 solo en 127.0.0.1 mientras Zenyomi está enlazada, y lo para cuando deja de estarlo, incluso si la app muere con `kill -9`. **Reproducir (KAN-31):** un episodio que llega como magnet o como `.torrent` (de una extensión o de la fuente local) se abre a través de TorrServer, y se reproduce el fichero del episodio y no el primero de la lista. Al cerrar el reproductor el torrent se borra de TorrServer y a los 30 s sin uso el complemento se para. Sin complemento, el reproductor lo dice. Verificado en el emulador también contra R8 con *Big Buck Bunny*. Las extensiones de torrent de Aniyomi (Nyaa, PTorrent) encuentran `TorrentUtils` con las mismas firmas. **Sin publicar: ajustes (KAN-32).** En _Ajustes → Reproductor → Torrent_: activar el torrent —apagado por defecto, con un aviso la primera vez—, ver si el complemento está instalado, editar los trackers —que se añaden a cada torrent al abrirlo, sin cambiar su hash— y vaciar lo que TorrServer guardó de antes. Con el torrent apagado, un episodio torrent dice cómo encenderlo. Sin ajuste de puerto: el complemento elige uno libre cada vez (ADR-0008). **Sin publicar: instalarlo desde la app (KAN-35).** Encender el torrent sin el complemento ofrece instalarlo; la app lo baja de la release de su propia versión, para la arquitectura del teléfono, y Android pide confirmar. Si el instalado es más viejo que el que trae esta versión, lo dice y ofrece actualizarlo. El CI de release publica los cuatro APK del complemento junto a los de la app. **Sin publicar: descargas (KAN-33).** El botón de descarga funciona con un episodio torrent: TorrServer sirve el fichero del episodio y se guarda como cualquier mp4 o mkv, con la misma comprobación de vídeo reproducible. Verificado en el emulador con *Big Buck Bunny*: 276.134.947 bytes en ~27 s, las 1052 piezas enteras del mp4 coinciden con el `.torrent`, y se reproduce **sin red** desde el fichero descargado. Cancelar a mitad suelta el torrent y no deja nada en disco. Con el torrent apagado, la notificación de error dice cómo encenderlo |
 | Actualizaciones de biblioteca de anime | ✅ | job periódico propio; verificado: programa a 12 h, notifica episodios nuevos y errores |
 | Trackers de anime | ✅ | MyAnimeList, AniList y **Kitsu** verificados de punta a punta con cuenta real (2026-09-15): sesión, búsqueda, vinculación, progreso, puntuación, privado y desvincular, comprobado en los servidores de cada servicio. En Kitsu además se comprobó que la entrada cae en la biblioteca de anime y no en la de manga |
 | Ajustes del player | ✅ | salto, umbral de visto, velocidad, idiomas preferidos, pantalla completa |
@@ -190,8 +191,9 @@ Y una decisión: las pantallas de OAuth que dicen «Mihon» se quedan como está
 da igual ver el nombre del proyecto del que venimos al conceder acceso, y cambiarlo pedía
 registrar aplicaciones propias en MyAnimeList y AniList.
 
-Queda sin ejercitar una sola cosa, en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md): restaurar un
-backup grande de Mihon, con una biblioteca real de cientos de títulos.
+Lo último que quedaba sin ejercitar, restaurar un backup grande de Mihon, se verificó el
+2026-10-01 con uno sintético de 600 mangas y 54 738 capítulos: 4 s, sin errores y con todos
+los recuentos cuadrando. El detalle está en [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md).
 
 
 ## Aviso conocido: alineación de 16 KB
@@ -270,6 +272,13 @@ Explorar con fuentes y extensiones, ficha con episodios, ajustes, player, histor
 estadísticas y backup. El módulo `i18n-anime` existe y está poblado.
 
 ## Incidencias resueltas
+
+- **2026-10-17 — FlexibleAdapter desaparece de JitPack (KAN-38).** El fallo de
+  `flexible-adapter:c8013533` dejó de ser pasajero: JitPack marca esa compilación como fallida
+  y contesta 404 al `.pom` y al `.aar`, así que relanzar ya no sirve y ningún build sin caché
+  de Gradle resuelve dependencias. Mihon había pasado ya a la versión que el autor publica en
+  Maven Central (`eu.davidea:flexible-adapter:5.1.0`, Mihon `737fdbfbf`), y se trae ese commit
+  tal cual: es un adelanto de la sincronización con Mihon (KAN-15).
 
 - **2026-09-14 — la v0.11.1 pasó el CI y el `Release` a la primera.** Sin rastro del
   fallo de JitPack de la tanda anterior, que era suyo y no nuestro.

@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.util.view.setComposeContent
 import mihon.app.di.appGraph
@@ -29,6 +30,16 @@ import mihon.app.di.appGraph
 class AnimePlayerActivity : BaseActivity() {
 
     private var inPictureInPicture by mutableStateOf(false)
+
+    /**
+     * Left picture-in-picture and has not come back to the foreground yet.
+     *
+     * Expanding the window and dismissing it both end picture-in-picture, and only what
+     * follows tells them apart: an expanded player is resumed, a dismissed one is just
+     * stopped. Android does not call [finish] for a dismissed one, so without this the player
+     * — and, with a torrent, TorrServer — kept running in a task nobody can see.
+     */
+    private var leftPictureInPicture = false
 
     /**
      * mpv lives as long as this activity, not as long as the composition.
@@ -82,7 +93,8 @@ class AnimePlayerActivity : BaseActivity() {
 
     /**
      * The one place that knows the player is closing rather than being backgrounded. Reached
-     * by the X, by the system back gesture and by closing the picture-in-picture window.
+     * by the X, by the system back gesture and, through [onPictureInPictureModeChanged] and
+     * [onStop], by dismissing the picture-in-picture window.
      */
     override fun finish() {
         if (::player.isInitialized) player.finishing = true
@@ -116,6 +128,26 @@ class AnimePlayerActivity : BaseActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         inPictureInPicture = isInPictureInPictureMode
+        if (isInPictureInPictureMode) return
+
+        // Already stopped: the window was dismissed. Otherwise wait for what comes next.
+        if (lifecycle.currentState == Lifecycle.State.CREATED) {
+            finish()
+        } else {
+            leftPictureInPicture = true
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        leftPictureInPicture = false
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Still in picture-in-picture is the screen going off with the window up; that one
+        // keeps playing.
+        if (leftPictureInPicture) finish()
     }
 
     companion object {

@@ -58,14 +58,38 @@ class AnimeExtensionInstaller(
         extension: AnimeExtension,
         isUpdateForPrivatelyInstalled: Boolean = false,
     ): Flow<InstallStep> {
-        val downloadId = extension.pkgName.hashCode().toLong()
-        cancelInstall(extension.pkgName)
+        return download(url, extension.pkgName) { downloadId, tmpFile ->
+            installApk(downloadId, tmpFile, isUpdateForPrivatelyInstalled)
+        }
+    }
+
+    /**
+     * Downloads and installs an app that is not an extension: the torrent add-on. Same steps
+     * and same installer as an extension, except that it always goes to the system — an app
+     * installed "privately", inside Zenyomi, could not run.
+     *
+     * @param url The url of the apk.
+     * @param pkgName The package the apk installs.
+     */
+    fun downloadAndInstallApp(url: String, pkgName: String): Flow<InstallStep> {
+        return download(url, pkgName) { downloadId, tmpFile ->
+            installApk(downloadId, tmpFile, allowPrivate = false)
+        }
+    }
+
+    private fun download(
+        url: String,
+        pkgName: String,
+        install: (downloadId: Long, tmpFile: File) -> Unit,
+    ): Flow<InstallStep> {
+        val downloadId = pkgName.hashCode().toLong()
+        cancelInstall(pkgName)
 
         val step = MutableStateFlow(InstallStep.Pending)
         activeSteps[downloadId] = step
 
         val job = scope.launch {
-            val tmpFile = File(context.cacheDir, "extension_${extension.pkgName}.apk")
+            val tmpFile = File(context.cacheDir, "extension_$pkgName.apk")
             try {
                 step.value = InstallStep.Downloading
                 val request = Request.Builder().url(url).build()
@@ -81,7 +105,7 @@ class AnimeExtensionInstaller(
                 }
 
                 step.value = InstallStep.Installing
-                installApk(downloadId, tmpFile, isUpdateForPrivatelyInstalled)
+                install(downloadId, tmpFile)
             } catch (e: Exception) {
                 if (e is InterruptedException) {
                     // Canceled
@@ -92,11 +116,11 @@ class AnimeExtensionInstaller(
             }
         }
 
-        activeJobs[extension.pkgName] = job
+        activeJobs[pkgName] = job
 
         return step.asStateFlow()
             .onCompletion {
-                activeJobs.remove(extension.pkgName)
+                activeJobs.remove(pkgName)
                 activeSteps.remove(downloadId)
                 job.cancel()
             }
@@ -107,14 +131,28 @@ class AnimeExtensionInstaller(
      *
      * @param tempFile The file of the extension to install. Delete after use.
      * @param isUpdateForPrivatelyInstalled If this install is an update for a privately installed extension
+     * @param allowPrivate False for an app, which the private installer cannot install: the
+     * package installer is used instead.
      */
-    private fun installApk(downloadId: Long, tempFile: File, isUpdateForPrivatelyInstalled: Boolean = false) {
+    private fun installApk(
+        downloadId: Long,
+        tempFile: File,
+        isUpdateForPrivatelyInstalled: Boolean = false,
+        allowPrivate: Boolean = true,
+    ) {
         if (isUpdateForPrivatelyInstalled) {
             installApkPrivately(downloadId, tempFile)
             return
         }
 
-        when (val installer = extensionInstaller.get()) {
+        val installer = extensionInstaller.get().let {
+            if (it == BasePreferences.ExtensionInstaller.PRIVATE && !allowPrivate) {
+                BasePreferences.ExtensionInstaller.PACKAGEINSTALLER
+            } else {
+                it
+            }
+        }
+        when (installer) {
             BasePreferences.ExtensionInstaller.LEGACY -> {
                 val intent = Intent(context, AnimeExtensionInstallActivity::class.java)
                     .setDataAndType(tempFile.getUriCompat(context), APK_MIME)

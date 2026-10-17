@@ -7,6 +7,7 @@ import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.Track
 import eu.kanade.tachiyomi.animesource.model.Video
+import eu.kanade.tachiyomi.data.torrent.TorrentEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
@@ -25,6 +26,7 @@ import kotlinx.coroutines.sync.Semaphore
 import logcat.LogPriority
 import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.anime.model.Anime
@@ -53,6 +55,7 @@ class AnimeDownloader(
     private val prefetcher: SegmentPrefetcher,
     private val sizer: StreamSizer,
     private val probe: StreamProbe,
+    private val torrentEngine: TorrentEngine,
 ) {
 
     private val _progress = MutableStateFlow(emptyMap<Long, AnimeDownloadProgress>())
@@ -92,10 +95,10 @@ class AnimeDownloader(
      *
      * Local entries already live on the device, and their urls are content:// handles
      * from the storage framework, which an HTTP client cannot fetch. Offering a download
-     * for them would fail and would be pointless if it worked.
+     * for them would fail and would be pointless if it worked. A magnet is not http either,
+     * but TorrServer turns it into something that is.
      */
-    fun isDownloadable(source: AnimeSource, video: Video?): Boolean =
-        source.id != LOCAL_ANIME_SOURCE_ID && video?.videoUrl?.startsWith("http") == true
+    fun isDownloadable(source: AnimeSource, video: Video?): Boolean = isDownloadableUrl(source.id, video?.videoUrl)
 
     fun isDownloadableSource(source: AnimeSource): Boolean = source.id != LOCAL_ANIME_SOURCE_ID
 
@@ -185,60 +188,20 @@ class AnimeDownloader(
             // storage framework keeps it and names the new file "episode (1).mp4".
             provider.findAnyEpisodeFile(anime, source, episode)?.delete()
 
-            val request = Request.Builder()
-                .url(video.videoUrl)
-                .apply { video.headers?.let { headers(it) } }
-                .build()
-
-            var written: UniFile? = null
-
-            val manifest = networkHelper.client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) error("HTTP ${response.code}")
-                val body = response.body ?: error("Empty response")
-                val input = body.byteStream()
-
-                val head = ByteArray(StreamSniffer.SNIFF_BYTES)
-                val headLength = input.readAtMost(head)
-
-                when (val delivery = StreamSniffer.classify(head, headLength)) {
-                    // Said out loud instead of saved. An expired link and a login wall both
-                    // arrive as a perfectly successful response with a page in it, and writing
-                    // that page to the downloads folder is how an episode came to look
-                    // downloaded when nothing of it was there.
-                    is StreamDelivery.Unusable -> error(delivery.reason)
-                    // Small enough to hold: a few hundred lines of text. Read out so the
-                    // connection is closed before ffmpeg opens its own.
-                    is StreamDelivery.Manifest -> Manifest(
-                        hls = delivery.hls,
-                        text = String(head, 0, headLength, Charsets.UTF_8) + input.readBytes().decodeToString(),
-                    )
-                    // A real video, and its first bytes are already in hand: write them and
-                    // keep going rather than asking for them a second time.
-                    StreamDelivery.Container -> {
-                        val target = provider.createEpisodeFile(anime, source, episode, extensionFor(video.videoUrl))
-                            ?: error("Could not create the download file")
-                        written = target
-                        streamToFile(input, head, headLength, body.contentLength(), target, episode.id)
-                        null
+            if (TorrentEngine.isTorrentLink(video.videoUrl)) {
+                // TorrServer fetches the episode's file out of the torrent and serves it as one
+                // plain video, so from here on it is the same download as any other mp4 or mkv,
+                // checked the same way before it counts. Held open until the last byte, and
+                // closed on the way out however that goes, so TorrServer forgets the torrent.
+                torrentEngine.openStream(video.videoUrl, episode.name, video.headers?.toMap().orEmpty())
+                    .use { stream ->
+                        // TorrServer is on 127.0.0.1 and wants none of the source's headers.
+                        val local = video.copy(videoUrl = stream.url, headers = null)
+                        fetchFrom(stream.client, anime, source, episode, local, quality, expectedBytes)
                     }
-                }
+            } else {
+                fetchFrom(networkHelper.client, anime, source, episode, video, quality, expectedBytes)
             }
-
-            if (manifest != null) {
-                val target = provider.createEpisodeFile(anime, source, episode, REMUXED_EXTENSION)
-                    ?: error("Could not create the download file")
-                written = target
-                if (manifest.hls) {
-                    downloadPlaylist(episode, video, quality, expectedBytes, manifest.text, target)
-                } else {
-                    downloadManifest(episode, video, quality, expectedBytes, manifest.text, target)
-                }
-            }
-
-            // Only now is it an episode rather than a download in flight — and only if it is
-            // one. See [verify].
-            verify(written ?: error("Nothing was downloaded"))
-            provider.finish(written)
             clearProgress(episode.id)
         }.onFailure {
             // A cancellation is not a failure: the file is swept and the news is broken by
@@ -251,6 +214,72 @@ class AnimeDownloader(
             provider.findAnyEpisodeFile(anime, source, episode)?.delete()
             clearProgress(episode.id)
         }
+    }
+
+    /** Fetches [video] with [client], and finishes the file once it has been checked. */
+    private suspend fun fetchFrom(
+        client: OkHttpClient,
+        anime: Anime,
+        source: AnimeSource,
+        episode: Episode,
+        video: Video,
+        quality: Int?,
+        expectedBytes: Long?,
+    ) {
+        val request = Request.Builder()
+            .url(video.videoUrl)
+            .apply { video.headers?.let { headers(it) } }
+            .build()
+
+        var written: UniFile? = null
+
+        val manifest = client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("HTTP ${response.code}")
+            val body = response.body ?: error("Empty response")
+            val input = body.byteStream()
+
+            val head = ByteArray(StreamSniffer.SNIFF_BYTES)
+            val headLength = input.readAtMost(head)
+
+            when (val delivery = StreamSniffer.classify(head, headLength)) {
+                // Said out loud instead of saved. An expired link and a login wall both
+                // arrive as a perfectly successful response with a page in it, and writing
+                // that page to the downloads folder is how an episode came to look
+                // downloaded when nothing of it was there.
+                is StreamDelivery.Unusable -> error(delivery.reason)
+                // Small enough to hold: a few hundred lines of text. Read out so the
+                // connection is closed before ffmpeg opens its own.
+                is StreamDelivery.Manifest -> Manifest(
+                    hls = delivery.hls,
+                    text = String(head, 0, headLength, Charsets.UTF_8) + input.readBytes().decodeToString(),
+                )
+                // A real video, and its first bytes are already in hand: write them and
+                // keep going rather than asking for them a second time.
+                StreamDelivery.Container -> {
+                    val target = provider.createEpisodeFile(anime, source, episode, extensionFor(video.videoUrl))
+                        ?: error("Could not create the download file")
+                    written = target
+                    streamToFile(input, head, headLength, body.contentLength(), target, episode.id)
+                    null
+                }
+            }
+        }
+
+        if (manifest != null) {
+            val target = provider.createEpisodeFile(anime, source, episode, REMUXED_EXTENSION)
+                ?: error("Could not create the download file")
+            written = target
+            if (manifest.hls) {
+                downloadPlaylist(episode, video, quality, expectedBytes, manifest.text, target)
+            } else {
+                downloadManifest(episode, video, quality, expectedBytes, manifest.text, target)
+            }
+        }
+
+        // Only now is it an episode rather than a download in flight — and only if it is
+        // one. See [verify].
+        verify(written ?: error("Nothing was downloaded"))
+        provider.finish(written)
     }
 
     /** A manifest and which kind it is, on its way from the sniff to the path that handles it. */
@@ -693,6 +722,12 @@ class AnimeDownloader(
 
     companion object {
         private const val BUFFER_SIZE = 64 * 1024
+
+        /** [isDownloadable] on its own inputs, so the rule can be pinned by a test. */
+        fun isDownloadableUrl(sourceId: Long, url: String?): Boolean =
+            url != null &&
+                sourceId != LOCAL_ANIME_SOURCE_ID &&
+                (url.startsWith("http") || TorrentEngine.isTorrentLink(url))
 
         /** Matches tachiyomi.source.local.anime.LocalAnimeSource.ID without depending on it. */
         private const val LOCAL_ANIME_SOURCE_ID = 0L

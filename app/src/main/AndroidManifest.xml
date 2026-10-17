@@ -33,6 +33,17 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- Torrent add-on (docs/adr/0008). Declared here as well as in the add-on, so the
+         permission exists whichever of the two is installed first. -->
+    <permission
+        android:name="${torrentAddonPackage}.permission.BIND"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="${torrentAddonPackage}.permission.BIND" />
+
+    <queries>
+        <package android:name="${torrentAddonPackage}" />
+    </queries>
+
     <application
         android:name=".App"
         android:allowBackup="false"

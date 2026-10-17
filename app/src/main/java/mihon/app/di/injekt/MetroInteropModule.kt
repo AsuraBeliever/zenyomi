@@ -4,9 +4,11 @@ import dev.zacsweers.metro.Inject
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.animeextension.AnimeExtensionManager
 import eu.kanade.tachiyomi.data.cache.CoverCache
+import eu.kanade.tachiyomi.data.torrent.TorrentEngine
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.network.JavaScriptEngine
 import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.torrentutils.TorrentMagnetResolver
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import nl.adaptivity.xmlutil.serialization.XML
@@ -31,6 +33,8 @@ class MetroInteropModule(
     private val animeExtensionManager: AnimeExtensionManager,
 
     private val coverCache: CoverCache,
+
+    private val torrentEngine: TorrentEngine,
 ) : InjektModule {
 
     override fun InjektRegistrar.registerInjectables() {
@@ -49,5 +53,8 @@ class MetroInteropModule(
         addSingleton(animeExtensionManager)
 
         addSingleton(coverCache)
+
+        // TorrentUtils, which torrent extensions call, reads magnets through it.
+        addSingleton<TorrentMagnetResolver>(torrentEngine)
     }
 }

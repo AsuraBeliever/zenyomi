@@ -572,3 +572,49 @@ Escrito aquí, no copiado:
   se queda sin tiempos.
 - La UI es propia: un botón que solo aparece mientras el opening está en pantalla,
   en vez de la cuenta atrás estilo Netflix de Aniyomi.
+
+## 2026-10-02 — Reproducir torrents (KAN-31)
+
+| Fecha | Área | Origen (Aniyomi) | Destino (Zenyomi) | SHA origen | Notas |
+|---|---|---|---|---|---|
+| 2026-10-02 | core | `core/common/…/torrent/bencode/{BencodeParser,BencodeValue,BencodeWriter}.kt` | `core/common/src/main/kotlin/tachiyomi/core/common/torrent/bencode/` | `122a773b2` | Solo el paquete: `aniyomi.core.common.torrent` → `tachiyomi.core.common.torrent` |
+| 2026-10-02 | core | `TorrentHelpers.kt`, `model/{Torrent,TorrentRequest}.kt` | igual, bajo `tachiyomi.core.common.torrent` | `122a773b2` | Sin cambios |
+| 2026-10-02 | core | `TorrentHelpersTest.kt` y sus dos `.torrent` | `core/common/src/test/…/torrent/` | `122a773b2` | Sin cambios |
+| 2026-10-02 | source-api | `torrentutils/{TorrentUtils,model/TorrentFile,model/TorrentInfo}.kt` | `source-api/src/main/kotlin/eu/kanade/tachiyomi/torrentutils/` | `4b5b90a37` | API que llaman las extensiones: nombre, paquete y firmas intactos, la variante bloqueante incluida. Por dentro, los magnets van a `TorrentMagnetResolver` (la app) en vez de a TorrServer en el proceso |
+| 2026-10-02 | core | `TorrentServerApi.kt`, `TorrentServerUtils.kt` | **reescritos** como `TorrServerClient` | `c75ab19d4` | Sin singleton con puerto mutable: un cliente por dirección que da el complemento |
+| 2026-10-02 | app | `TorrentServerService.kt`, la parte de torrent de `PlayerActivity` | **no portados** | `c75ab19d4` | Aniyomi arranca TorrServer en su proceso con la librería GPL. Aquí lo hace el complemento (ADR-0008); el reparto lo lleva `TorrentEngine` y el player abre el stream desde su view model |
+| 2026-10-02 | app | `isTorrent` de las extensiones | **no portado** | `c75ab19d4` | No hace falta: `TorrentUtils` arranca TorrServer cuando una extensión lo necesita |
+
+Escrito aquí, no copiado, porque el comportamiento de Aniyomi falla:
+
+- **Qué fichero se reproduce.** Sin `index=` en el magnet, Aniyomi pide el fichero 0, que en
+  TorrServer no existe (los ids empiezan en 1). Lo mismo pasa con cualquier torrent de un solo
+  fichero leído de un `.torrent`: su `indexFile` sale 0, y es lo que Nyaa pone en el magnet.
+  `TorrentEpisodeFile` toma el índice que pide la fuente si existe y si no el vídeo más grande.
+- **La lista de ficheros de un magnet.** `add` responde antes de tener los metadatos, así que
+  `TorrentUtils` de Aniyomi devuelve a la extensión un magnet sin ficheros. `TorrServerClient`
+  espera a que lleguen, hasta un minuto, y si no llegan es `DeadTorrentException`.
+- **Soltar el torrent.** `rem` y no `drop`: con `drop` deja de descargar pero se queda en la
+  base de datos de TorrServer y vuelve a listarse tras reiniciar. Medido en MatriX.145.1.
+
+Compatibilidad comprobada sobre los dex de **Nyaa (Torrent)** y **PTorrent** v14.4 de yuzono:
+los siete métodos de `torrentutils` que llaman existen con la misma firma en nuestro APK, también
+en el release tras R8.
+
+
+## 2026-10-02 — Ajustes del torrent (KAN-32)
+
+| Fecha | Área | Origen (Aniyomi) | Destino (Zenyomi) | SHA origen | Notas |
+|---|---|---|---|---|---|
+| 2026-10-02 | app | `core/common/…/torrent/TorrentPreferences.kt` | `app/…/data/torrent/TorrentPreferences.kt` | `c75ab19d4` | Mismas claves, para que un backup de Aniyomi las traiga. El aviso ya mostrado pasa a estado de la app (no viaja en el backup). Sin puerto ni proxy |
+| 2026-10-02 | app | `PlayerSettingsTorrentScreen.kt` | **reescrito** como grupo «Torrent» en `SettingsPlayerTorrent.kt` | `c75ab19d4` | Se quedan el interruptor con su aviso, los trackers y restaurarlos. Se añaden el estado del complemento y vaciar la caché |
+
+Escrito aquí, no copiado:
+
+- **Los trackers.** Aniyomi se los pasa a la librería de TorrServer que enlaza. El binario
+  que corre el complemento no admite una lista, así que `TorrentTrackers` los mete en cada
+  torrent al abrirlo: `tr=` en un magnet, un nivel más de `announce-list` en un `.torrent`.
+  El diccionario `info` no se toca y el hash no cambia.
+- **Sin puerto ni proxy.** El puerto lo elige el complemento libre cada vez (ADR-0008); un
+  puerto fijo solo puede chocar. El proxy de Aniyomi es una opción de su librería que el
+  binario no recibe de fuera.

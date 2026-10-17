@@ -31,3 +31,6 @@ local.properties
 signing-key-backup/
 *.jks
 *.keystore
+
+# Salida del IDE en build-logic. El resto de bin/ viene versionado de upstream; lo nuestro no.
+/gradle/build-logic/bin/main/zenyomi/

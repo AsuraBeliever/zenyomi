@@ -3,16 +3,20 @@ package eu.kanade.tachiyomi.data.download.anime
 import android.content.Context
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.FFmpegKitConfig
+import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.MediaInformation
-import com.arthenica.ffmpegkit.MediaInformationSession
+import com.arthenica.ffmpegkit.MediaInformationJsonParser
+import com.arthenica.ffmpegkit.ReturnCode
 import com.hippo.unifile.UniFile
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import logcat.LogPriority
 import okhttp3.Headers
 import tachiyomi.core.common.util.system.logcat
+import java.io.File
 import kotlin.coroutines.resume
 
 /**
@@ -97,7 +101,7 @@ class StreamProbe(
             add("-i")
             add(url)
         }
-        return run(arguments.toTypedArray(), NETWORK_TIMEOUT_MS)?.toMedia()
+        return run(arguments)?.toMedia()
     }
 
     /**
@@ -124,8 +128,7 @@ class StreamProbe(
      */
     suspend fun isPlayable(file: UniFile): Boolean? {
         val path = pathFor(file) ?: return null
-        val information = run((REPORT_JSON + listOf("-i", path)).toTypedArray(), LOCAL_TIMEOUT_MS)
-            ?: return false
+        val information = run(REPORT_JSON + listOf("-i", path)) ?: return false
         if (information.format?.lowercase() in MANIFEST_FORMATS) return false
         val media = information.toMedia()
         return media.videos.isNotEmpty() && (media.durationSeconds ?: 0.0) > 0
@@ -139,18 +142,39 @@ class StreamProbe(
         }
     }.getOrNull()
 
-    private suspend fun run(arguments: Array<String>, timeoutMs: Int): MediaInformation? =
-        suspendCancellableCoroutine { continuation ->
-            val session = MediaInformationSession.create(arguments) { completed ->
-                if (continuation.isActive) continuation.resume(completed.mediaInformation)
-            }
-            continuation.invokeOnCancellation { FFmpegKit.cancel(session.sessionId) }
-            runCatching { FFmpegKitConfig.asyncGetMediaInformationExecute(session, timeoutMs) }
-                .onFailure {
-                    logcat(LogPriority.WARN, it) { "Could not probe the stream" }
-                    if (continuation.isActive) continuation.resume(null)
+    /**
+     * Runs ffprobe and reads back its report.
+     *
+     * The report goes to a file, not through ffmpeg-kit's log. ffprobe "prints" by logging, and
+     * ffmpeg-kit collects those lines through the one log callback libavutil has — the same one
+     * mpv takes over for its own logs the moment a player starts, since both load the same
+     * libavutil. From then on every report went to mpv's log and ffmpeg-kit was left with an
+     * empty string, so after watching anything each download failed its check. A file is
+     * nobody's to take.
+     */
+    private suspend fun run(arguments: List<String>): MediaInformation? {
+        val report = runCatching { File.createTempFile("probe", ".json", context.cacheDir) }
+            .onFailure { logcat(LogPriority.WARN, it) { "Could not create the probe report" } }
+            .getOrNull()
+            ?: return null
+        try {
+            val code = suspendCancellableCoroutine { continuation ->
+                val session = FFprobeKit.executeWithArgumentsAsync(reportTo(report.absolutePath, arguments)) {
+                    if (continuation.isActive) continuation.resume(it.returnCode)
                 }
+                continuation.invokeOnCancellation { FFmpegKit.cancel(session.sessionId) }
+            }
+            if (!ReturnCode.isSuccess(code)) return null
+            return MediaInformationJsonParser.from(report.readText())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logcat(LogPriority.WARN, e) { "Could not probe the stream" }
+            return null
+        } finally {
+            report.delete()
         }
+    }
 
     private fun MediaInformation.toMedia(): Media {
         var videoIndex = 0
@@ -185,9 +209,13 @@ class StreamProbe(
         )
     }
 
-    private companion object {
+    companion object {
+        /** ffprobe's [arguments] with its report written to [path] instead of logged. */
+        fun reportTo(path: String, arguments: List<String>): Array<String> =
+            (listOf("-o", path) + arguments).toTypedArray()
+
         /** Say what is in there, as json, and nothing else. */
-        val REPORT_JSON = listOf(
+        private val REPORT_JSON = listOf(
             "-v",
             "error",
             "-hide_banner",
@@ -197,9 +225,9 @@ class StreamProbe(
             "-show_streams",
         )
 
-        const val VIDEO = "video"
-        const val AUDIO = "audio"
-        const val BITS_PER_BYTE = 8
+        private const val VIDEO = "video"
+        private const val AUDIO = "audio"
+        private const val BITS_PER_BYTE = 8
 
         /**
          * What ffprobe calls the streaming formats, as opposed to containers.
@@ -207,13 +235,7 @@ class StreamProbe(
          * A file in the downloads folder that probes as one of these is a manifest that was
          * saved instead of being followed.
          */
-        val MANIFEST_FORMATS = setOf("dash", "hls", "applehttp", "ism", "m3u8")
-
-        /** Opening a manifest means fetching it and the head of a segment. */
-        const val NETWORK_TIMEOUT_MS = 30_000
-
-        /** Reading a local header. Anything near this means something is wrong. */
-        const val LOCAL_TIMEOUT_MS = 10_000
+        private val MANIFEST_FORMATS = setOf("dash", "hls", "applehttp", "ism", "m3u8")
     }
 }
 

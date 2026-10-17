@@ -123,8 +123,9 @@ class AnimeDownloadJob(private val context: Context, workerParams: WorkerParamet
 
             // A download the viewer called off is not one that went wrong, and saying so in a
             // notification would be telling them about their own decision.
-            if (result.isFailure && result.exceptionOrNull() !is CancellationException) {
-                notifier.showError(episode.name)
+            val error = result.exceptionOrNull()
+            if (error != null && error !is CancellationException) {
+                notifier.showError(episode.name, error)
             }
             downloadManager.dequeue(item.episodeId)
         }
