@@ -107,7 +107,7 @@ class TorrentEngine(
                 ?: throw EmptyTorrentException()
             mutex.withLock { openStreams[hash] = (openStreams[hash] ?: 0) + 1 }
             logcat { "Torrent $hash: playing file ${file.id} (${file.path})" }
-            return TorrentStream(client.streamUrl(torrent, file)) { closeStream(client, hash) }
+            return TorrentStream(client.streamUrl(torrent, file), http) { closeStream(client, hash) }
         } catch (e: Throwable) {
             // Added but never handed out: nobody else will remove it.
             added?.let { hash -> scope.launch { removeUnlessOpen(client, hash) } }
@@ -267,8 +267,18 @@ class TorrentEngine(
     }
 }
 
-/** A playing torrent file. Closing it lets TorrServer forget the torrent. */
-class TorrentStream(val url: String, private val onClose: () -> Unit) : AutoCloseable {
+/**
+ * A playing torrent file. Closing it lets TorrServer forget the torrent.
+ *
+ * [client] is the one to read [url] with when it is not mpv doing the reading: it talks only to
+ * 127.0.0.1 and has no limit on how long a call takes, which the app's client has — two minutes,
+ * including the body, and a whole episode out of a torrent takes longer than that.
+ */
+class TorrentStream(
+    val url: String,
+    val client: OkHttpClient,
+    private val onClose: () -> Unit,
+) : AutoCloseable {
     private val closed = AtomicBoolean(false)
 
     override fun close() {

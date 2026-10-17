@@ -1,9 +1,15 @@
 package eu.kanade.tachiyomi.data.download.anime
 
 import android.content.Context
+import androidx.core.app.NotificationCompat
 import dev.zacsweers.metro.Inject
+import eu.kanade.presentation.anime.AnimeSourceError
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.notification.Notifications
+import eu.kanade.tachiyomi.data.torrent.EmptyTorrentException
+import eu.kanade.tachiyomi.data.torrent.TorrentAddonException
+import eu.kanade.tachiyomi.data.torrent.TorrentDisabledException
+import eu.kanade.tachiyomi.data.torrent.TorrentNoPeersException
 import eu.kanade.tachiyomi.util.lang.chop
 import eu.kanade.tachiyomi.util.system.cancelNotification
 import eu.kanade.tachiyomi.util.system.notificationBuilder
@@ -53,7 +59,15 @@ class AnimeDownloadNotifier(private val context: Context) {
         context.notify(Notifications.ID_DOWNLOAD_EPISODE_PROGRESS, progressNotification(title, progress, remaining))
     }
 
-    fun showError(episodeName: String) {
+    /**
+     * @param error what went wrong, when it is something the viewer can fix. Only a torrent's
+     * reasons are spelled out — torrents turned off, no add-on, nobody sharing — because those
+     * have a next step. Anything else stays a bare "could not download", as it always was.
+     */
+    fun showError(episodeName: String, error: Throwable? = null) {
+        val reason = error?.takeIf { it.isTorrentFailure() }
+            ?.let { AnimeSourceError.describe(it) }
+            ?.let { message -> message.text ?: message.res?.let { res -> context.stringResource(res) } }
         context.notify(
             Notifications.ID_DOWNLOAD_EPISODE_ERROR,
             Notifications.CHANNEL_ANIME_DOWNLOADER_ERROR,
@@ -61,10 +75,20 @@ class AnimeDownloadNotifier(private val context: Context) {
             setContentTitle(
                 context.stringResource(ANMR.strings.anime_download_notifier_episode_error, episodeName.chop(40)),
             )
+            if (reason != null) {
+                setContentText(reason)
+                setStyle(NotificationCompat.BigTextStyle().bigText(reason))
+            }
             setSmallIcon(R.drawable.ic_zenyomi)
             setAutoCancel(true)
         }
     }
+
+    private fun Throwable.isTorrentFailure(): Boolean =
+        this is TorrentDisabledException ||
+            this is TorrentAddonException ||
+            this is TorrentNoPeersException ||
+            this is EmptyTorrentException
 
     fun dismissProgress() = context.cancelNotification(Notifications.ID_DOWNLOAD_EPISODE_PROGRESS)
 }

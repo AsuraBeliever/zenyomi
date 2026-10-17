@@ -164,3 +164,19 @@ encenderlo.
 - **Versión.** `torrent/addon.properties` es la única fuente del `versionCode` del complemento:
   lo lee `torrent/` para el APK y `app/` para saber cuál espera. Uno instalado más viejo sigue
   funcionando —el protocolo solo se amplía— pero la app avisa y ofrece actualizarlo.
+
+## Descargas (2026-10-17, KAN-33)
+
+- **Mismo camino que un vídeo cualquiera.** La descarga abre el torrent igual que el
+  reproductor (`TorrentEngine.openStream`) y guarda lo que TorrServer sirve: un fichero de
+  vídeo con su longitud, que va al disco por el camino «contenedor» del ADR-0006 y pasa la
+  misma comprobación de vídeo reproducible. El stream se cierra al acabar, falle o se cancele,
+  y TorrServer olvida el torrent.
+- **Con el cliente del motor, no con el de la app.** El de la app corta cualquier llamada a los
+  dos minutos *contando el cuerpo*, y un episodio entero tarda más. `TorrentStream` lleva el
+  cliente local, sin ese límite y con el plazo de lectura de 30 s que avisa si los pares se callan.
+- **Sin medir antes.** La ventana de calidad no pesa un torrent: costaría arrancar TorrServer y
+  buscar pares para dibujar un diálogo, y un enlace a un `.torrent` contestaría con el tamaño del
+  `.torrent`. El tamaño real llega de TorrServer cuando empieza la descarga.
+- **Errores con nombre.** Torrent apagado, complemento ausente o sin firma, nadie compartiendo:
+  la notificación dice cuál, con las mismas frases que el reproductor.
