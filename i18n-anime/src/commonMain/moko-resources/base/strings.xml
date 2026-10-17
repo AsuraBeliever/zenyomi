@@ -222,7 +222,7 @@
     <string name="pref_player_torrents_port_error">Port must be a number between 0 and 65535</string>
     <string name="pref_player_torrents_trackers">Torrent trackers</string>
     <string name="pref_player_torrents_trackers_reset">Restore the default trackers</string>
-    <string name="pref_player_torrents_enable_summary">Play episodes that sources deliver as torrents. While one plays, you also share it with others.</string>
+    <string name="pref_player_torrents_enable_summary">Play and download episodes that sources deliver as torrents. While one plays or downloads, you also share it with others.</string>
     <string name="pref_player_torrents_trackers_summary">Added to every torrent you open, to find people sharing it sooner. %1$d in the list.</string>
     <string name="pref_player_torrents_trackers_hint">One per line</string>
     <string name="pref_player_torrents_addon">Torrent add-on</string>
