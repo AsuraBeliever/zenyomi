@@ -3,15 +3,16 @@
 El ecosistema de Aniyomi se degrada solo: los sitios cambian y las extensiones no lo hacen.
 Esto **se mide**, no se opina. La medición la produce un arnés que vive en los builds de debug.
 
-**Última pasada: 2026-10-01**, emulador Pixel 10 Pro XL, 24 fuentes instaladas (KAN-16).
-**Las nueve que fallan por causa propia siguen siendo exactamente las mismas** que el
-2026-09-19, el 2026-09-17 y el 2026-09-16, con los mismos síntomas, así que
-`anime-source-health.json` solo cambia de fecha. Reproducen las mismas cinco —AnimeOnsen,
-Jkanime, KickAssAnime, TioAnime y TioHentai—, y AnimeOnsen y KickAssAnime siguen entregando
-subtítulos en inglés y español. La única diferencia: **Latanime** contestó un HTTP 503 en el
-catálogo, donde la vez anterior agotó los 45 s resolviendo el vídeo. Ninguna de las dos cosas
-entra en la lista de rotas: un 5xx o un *timeout* vuelven, y marcarlos se equivocaría más
-veces de las que acertaría.
+**Última pasada: 2026-10-17**, emulador Pixel 10 Pro XL, 24 fuentes instaladas, antes de la
+v0.20.0 (KAN-41). **Las nueve que fallan por causa propia siguen siendo las mismas**, y siguen
+reproduciendo las mismas cinco: AnimeOnsen, Jkanime, KickAssAnime, TioAnime y TioHentai. Un
+cambio: **Animetsu** ya no devuelve HTML donde la extensión espera JSON, sino que su dominio,
+todavía registrado, no tiene dirección (comprobado desde otra red con 1.1.1.1 y 8.8.8.8). Pasa
+de `outdated` a `gone`, que en la app se lee «el sitio que usa esta fuente ya no existe». Los
+demás fallos de esta pasada —9AnimeTV y Latanime por *timeout*, AnimeFLV y Kaido con 522,
+AniWatchtv con 403, AnimeLatinoHD y AnimePahe detrás de Cloudflare— son de los que vuelven y no
+entran en la lista. Jellyfin sigue pidiendo que se elija una biblioteca, que es configuración y
+no avería.
 
 ---
 

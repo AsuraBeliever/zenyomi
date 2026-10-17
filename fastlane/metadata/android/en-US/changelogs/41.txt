@@ -1,0 +1,11 @@
+Added: anime that sources deliver as torrents can be watched and downloaded. The player picks the episode's video out of the torrent, and downloads are saved as an ordinary video that plays offline. Torrents are off by default, since watching or downloading one also shares it.
+
+Added: the torrent add-on, Zenyomi Torrent, installs from the app itself when torrents are turned on in Settings > Player > Torrent, and the app offers to update it when it falls behind.
+
+Added: torrent settings: turn torrents on and off, see whether the add-on is installed, edit the trackers and clear what TorrServer kept.
+
+Fixed: downloads no longer fail after watching an episode. Until now, once anything had been played, every later download in that session failed even though the video had arrived in full.
+
+Fixed: closing the picture-in-picture window closes the player and saves your place, instead of leaving it paused and hidden.
+
+Fixed: the manga download queue no longer has a blank band at the top, and scrolled rows no longer cover the Manga/Anime tabs.
