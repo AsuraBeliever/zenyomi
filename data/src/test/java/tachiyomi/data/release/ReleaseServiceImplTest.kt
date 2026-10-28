@@ -30,6 +30,13 @@ class ReleaseServiceImplTest {
     }
 
     @Test
+    fun `Skips the add-on under its 0_21_0 name too`() {
+        val renamed = assets.map { (name, link) -> name.replace("zenyomi-torrent-", "zenyomi-torrent_") to link }
+        ReleaseServiceImpl.pickDownloadLink(renamed, isFoss = false, abi = "x86_64")
+            ?.substringAfterLast('/') shouldBe "zenyomi-x86_64-v0.20.0.apk"
+    }
+
+    @Test
     fun `Falls back to the universal APK for an unknown ABI`() {
         pick("riscv64") shouldBe "zenyomi-v0.20.0.apk"
     }

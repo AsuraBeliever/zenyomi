@@ -52,12 +52,14 @@ android {
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
 
-        // The torrent add-on (torrent/, a separate APK) that this build pairs with.
+        // The torrent add-on (torrent/, a separate APK) that this build pairs with. Its file name
+        // has an underscore before the ABI, not a hyphen, so that apps up to 0.20.0, whose
+        // updater matched "-<abi>" in any file name, do not take it for the app (KAN-44).
         torrentAddon(
             packageName = "app.zenyomi.torrent",
             url = torrentAddonUrl.getOrElse(
                 "https://github.com/AsuraBeliever/zenyomi/releases/download/" +
-                    "v$versionName/zenyomi-torrent-{abi}-v$versionName.apk",
+                    "v$versionName/zenyomi-torrent_{abi}-v$versionName.apk",
             ),
         )
         buildConfigField("int", "TORRENT_ADDON_VERSION_CODE", torrentAddonVersionCode)

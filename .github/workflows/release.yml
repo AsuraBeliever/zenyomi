@@ -93,7 +93,7 @@ jobs:
 
           # The name the app builds its download url from (app/build.gradle.kts).
           for abi in arm64-v8a armeabi-v7a x86 x86_64; do
-            mv torrent/build/outputs/apk/release/torrent-$abi-release.apk zenyomi-torrent-$abi-${{ needs.get_tag.outputs.tag }}.apk
+            mv torrent/build/outputs/apk/release/torrent-$abi-release.apk zenyomi-torrent_$abi-${{ needs.get_tag.outputs.tag }}.apk
           done
 
       - name: Upload APK
@@ -106,7 +106,7 @@ jobs:
             zenyomi-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
             zenyomi-x86-${{ needs.get_tag.outputs.tag }}.apk
             zenyomi-x86_64-${{ needs.get_tag.outputs.tag }}.apk
-            zenyomi-torrent-*-${{ needs.get_tag.outputs.tag }}.apk
+            zenyomi-torrent_*-${{ needs.get_tag.outputs.tag }}.apk
 
   build_foss:
     if: github.repository == 'AsuraBeliever/zenyomi'
@@ -194,7 +194,7 @@ jobs:
             >
             > Zenyomi installs alongside Mihon and Aniyomi rather than over them, so you can keep all three. Restore a Mihon backup from **More → Backup and restore** to bring your library across.
 
-            The `zenyomi-torrent-*` files are the torrent add-on. There is no need to download them: Zenyomi installs the right one itself when you turn torrents on in **Settings → Player → Torrent**. The add-on is licensed under GPL-3.0 and runs [TorrServer ${{ needs.build.outputs.torrserver }}](https://github.com/YouROK/TorrServer/tree/${{ needs.build.outputs.torrserver }}), unmodified; its own source is in [`torrent/`](https://github.com/AsuraBeliever/zenyomi/tree/${{ needs.get_tag.outputs.tag }}/torrent). Each add-on APK carries the licence and these pointers in `assets/LICENSE` and `assets/NOTICE`.
+            The `zenyomi-torrent_*` files are the torrent add-on. There is no need to download them: Zenyomi installs the right one itself when you turn torrents on in **Settings → Player → Torrent**. The add-on is licensed under GPL-3.0 and runs [TorrServer ${{ needs.build.outputs.torrserver }}](https://github.com/YouROK/TorrServer/tree/${{ needs.build.outputs.torrserver }}), unmodified; its own source is in [`torrent/`](https://github.com/AsuraBeliever/zenyomi/tree/${{ needs.get_tag.outputs.tag }}/torrent). Each add-on APK carries the licence and these pointers in `assets/LICENSE` and `assets/NOTICE`.
           # No files here on purpose: this step only writes the release and its notes. The
           # APKs go up in the step below, one at a time. Handing all six to this action
           # uploads them in parallel and the step dies as a whole on `Headers Timeout Error`
@@ -228,10 +228,10 @@ jobs:
             "zenyomi-armeabi-v7a-$TAG.apk" \
             "zenyomi-x86-$TAG.apk" \
             "zenyomi-x86_64-$TAG.apk" \
-            "zenyomi-torrent-arm64-v8a-$TAG.apk" \
-            "zenyomi-torrent-armeabi-v7a-$TAG.apk" \
-            "zenyomi-torrent-x86-$TAG.apk" \
-            "zenyomi-torrent-x86_64-$TAG.apk"
+            "zenyomi-torrent_arm64-v8a-$TAG.apk" \
+            "zenyomi-torrent_armeabi-v7a-$TAG.apk" \
+            "zenyomi-torrent_x86-$TAG.apk" \
+            "zenyomi-torrent_x86_64-$TAG.apk"
           do
             for attempt in 1 2 3; do
               echo "Uploading $name (attempt $attempt)"

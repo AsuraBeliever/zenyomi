@@ -71,7 +71,7 @@ Dentro del complemento:
 - El complemento sí comprime sus librerías (`extractNativeLibs=true`): pesa unos 23 MB en
   descarga, y lo que se instala solo lo paga quien lo usa.
 - Se firma con la clave del proyecto y se publica como un asset más de cada release de
-  Zenyomi (`zenyomi-torrent-<abi>-v<versión>.apk`).
+  Zenyomi (`zenyomi-torrent_<abi>-v<versión>.apk`).
 - En debug el complemento es `app.zenyomi.torrent.dev` y se empareja con `app.zenyomi.dev`,
   ambos con la clave de debug; la app sabe cuál le toca por `BuildConfig.TORRENT_ADDON_PACKAGE`.
 
@@ -151,7 +151,7 @@ encenderlo.
 
 ## Instalación desde la app (2026-10-03, KAN-35)
 
-- **De dónde.** La app descarga `zenyomi-torrent-<abi>-v<versión>.apk` de la release de **su
+- **De dónde.** La app descarga `zenyomi-torrent_<abi>-v<versión>.apk` de la release de **su
   propia versión** en GitHub. Así app y complemento salen del mismo commit y nunca hay que
   adivinar qué complemento casa con qué app. La URL se fija al compilar
   (`BuildConfig.TORRENT_ADDON_URL`, con `{abi}` por rellenar en el dispositivo); `-Ptorrent-addon-url`

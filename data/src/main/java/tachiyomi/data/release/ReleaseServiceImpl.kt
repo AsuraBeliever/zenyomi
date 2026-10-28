@@ -55,10 +55,11 @@ class ReleaseServiceImpl(
 
         /**
          * Release assets that are not the app. Zenyomi publishes its torrent add-on next to the
-         * app, and its per-ABI names also contain "-arm64-v8a" and friends: matched by ABI alone,
-         * the add-on wins and "updating" installs it while the app stays where it was.
+         * app, and up to 0.20.0 its per-ABI names also contained "-arm64-v8a" and friends:
+         * matched by ABI alone, the add-on won and "updating" installed it while the app stayed
+         * where it was. Since 0.21.0 they are "zenyomi-torrent_<abi>"; both spellings are skipped.
          */
-        private const val ADDON_PREFIX = "zenyomi-torrent-"
+        private const val ADDON_PREFIX = "zenyomi-torrent"
 
         /**
          * The app APK for [abi] among [assets] (name to link), the universal one when there is

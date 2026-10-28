@@ -53,7 +53,8 @@ alimenta del keystore real, no de la clave de depuración de Android.
 7. Mergear `develop` en `main`.
 8. Tagear `v<version>` y empujar el tag: el workflow `Release` compila, firma y crea
    la release en GitHub. Lleva diez APK: los seis de la app y los cuatro del complemento,
-   `zenyomi-torrent-<abi>-v<version>.apk`. La app descarga el complemento de la release de
+   `zenyomi-torrent_<abi>-v<version>.apk` (con guion bajo desde la v0.21.0: con guion, el
+   actualizador de la v0.20.0 y anteriores lo tomaba por la app, KAN-44). La app descarga el complemento de la release de
    su propia versión con ese nombre exacto, así que una release sin ellos deja el torrent sin
    poder instalarse.
 
