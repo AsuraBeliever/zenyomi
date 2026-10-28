@@ -52,6 +52,7 @@ import eu.kanade.tachiyomi.ui.animehistory.AnimeHistoryScreen
 import eu.kanade.tachiyomi.ui.animestats.AnimeStatsScreen
 import eu.kanade.tachiyomi.ui.animeupdates.AnimeUpdatesScreen
 import eu.kanade.tachiyomi.util.system.workManager
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.automirroredrounded.Label
@@ -67,10 +68,12 @@ import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.domain.category.anime.model.AnimeCategory
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
+import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Anime library, the first anime-facing screen in the app.
@@ -104,7 +107,7 @@ data object AnimeLibraryTab : Tab {
 
         // Goes through the same worker as the periodic update instead of refreshing inline, so a
         // manual refresh survives leaving the screen and reports progress the same way.
-        val onClickRefresh: () -> Unit = {
+        val onClickRefresh: () -> Boolean = {
             val started = AnimeLibraryUpdateJob.startNow(context.workManager)
             scope.launch {
                 snackbarHostState.showSnackbar(
@@ -113,7 +116,9 @@ data object AnimeLibraryTab : Tab {
                     ),
                 )
             }
+            started
         }
+        var isRefreshing by remember { mutableStateOf(false) }
 
         BackHandler(enabled = state.selectionMode, onBack = viewModel::clearSelection)
 
@@ -264,55 +269,71 @@ data object AnimeLibraryTab : Tab {
                     end = contentPadding.calculateEndPadding(LocalLayoutDirection.current),
                     bottom = contentPadding.calculateBottomPadding(),
                 )
-                when {
-                    state.isLoading -> LoadingScreen(Modifier.padding(innerPadding))
-                    // A search that matched nothing is not an empty library, and telling the
-                    // user to go add something would be wrong advice.
-                    state.isFilteredEmpty -> EmptyScreen(
-                        stringRes = ANMR.strings.anime_library_no_results,
-                        modifier = Modifier.padding(innerPadding),
-                    )
-                    // Nor is an empty tab: there is nothing to search for, only something
-                    // to file here.
-                    // A filter that excluded everything is not an empty library either: the
-                    // fix is to relax it, not to go and add anime.
-                    state.isFilterEmpty -> EmptyScreen(
-                        stringRes = ANMR.strings.anime_library_no_matches,
-                        modifier = Modifier.padding(innerPadding),
-                    )
-                    state.isEmptyCategory -> EmptyScreen(
-                        stringRes = ANMR.strings.anime_category_empty,
-                        modifier = Modifier.padding(innerPadding),
-                    )
-                    state.isEmpty -> EmptyScreen(
-                        stringRes = MR.strings.information_empty_library,
-                        modifier = Modifier.padding(innerPadding),
-                    )
-                    else -> AnimeLibraryContent(
-                        library = state.library,
-                        displayMode = state.settings.displayMode,
-                        // The same preference the manga library reads, on purpose: it is how
-                        // dense the grid is, and two libraries at different densities is the
-                        // difference this screen exists to remove. 0 is "fit what you can",
-                        // which is the default on both.
-                        columns = viewModel.columnsFor(LocalConfiguration.current.orientation),
-                        contentPadding = innerPadding,
-                        searchQuery = state.searchQuery,
-                        onAnimeClick = { id ->
-                            // Con algo elegido, tocar suma o quita en vez de abrir la ficha,
-                            // igual que en la biblioteca de manga.
-                            if (state.selectionMode) {
-                                state.library.firstOrNull { it.id == id }?.let(viewModel::toggleSelection)
-                            } else {
-                                navigator.push(AnimeDetailsScreen(id))
+                // Pull to refresh, as on the manga library (LibraryContent): the spinner is shown
+                // for a second only, since the update itself runs on in the background.
+                PullRefresh(
+                    refreshing = isRefreshing,
+                    enabled = !state.selectionMode,
+                    onRefresh = {
+                        if (onClickRefresh()) {
+                            scope.launch {
+                                isRefreshing = true
+                                delay(1.seconds)
+                                isRefreshing = false
                             }
-                        },
-                        onGlobalSearchClicked = {
-                            navigator.push(AnimeGlobalSearchScreen(initialQuery = state.searchQuery.orEmpty()))
-                        },
-                        selection = state.selection,
-                        onAnimeLongClick = viewModel::toggleSelection,
-                    )
+                        }
+                    },
+                ) {
+                    when {
+                        state.isLoading -> LoadingScreen(Modifier.padding(innerPadding))
+                        // A search that matched nothing is not an empty library, and telling the
+                        // user to go add something would be wrong advice.
+                        state.isFilteredEmpty -> EmptyScreen(
+                            stringRes = ANMR.strings.anime_library_no_results,
+                            modifier = Modifier.padding(innerPadding),
+                        )
+                        // Nor is an empty tab: there is nothing to search for, only something
+                        // to file here.
+                        // A filter that excluded everything is not an empty library either: the
+                        // fix is to relax it, not to go and add anime.
+                        state.isFilterEmpty -> EmptyScreen(
+                            stringRes = ANMR.strings.anime_library_no_matches,
+                            modifier = Modifier.padding(innerPadding),
+                        )
+                        state.isEmptyCategory -> EmptyScreen(
+                            stringRes = ANMR.strings.anime_category_empty,
+                            modifier = Modifier.padding(innerPadding),
+                        )
+                        state.isEmpty -> EmptyScreen(
+                            stringRes = MR.strings.information_empty_library,
+                            modifier = Modifier.padding(innerPadding),
+                        )
+                        else -> AnimeLibraryContent(
+                            library = state.library,
+                            displayMode = state.settings.displayMode,
+                            // The same preference the manga library reads, on purpose: it is how
+                            // dense the grid is, and two libraries at different densities is the
+                            // difference this screen exists to remove. 0 is "fit what you can",
+                            // which is the default on both.
+                            columns = viewModel.columnsFor(LocalConfiguration.current.orientation),
+                            contentPadding = innerPadding,
+                            searchQuery = state.searchQuery,
+                            onAnimeClick = { id ->
+                                // Con algo elegido, tocar suma o quita en vez de abrir la ficha,
+                                // igual que en la biblioteca de manga.
+                                if (state.selectionMode) {
+                                    state.library.firstOrNull { it.id == id }?.let(viewModel::toggleSelection)
+                                } else {
+                                    navigator.push(AnimeDetailsScreen(id))
+                                }
+                            },
+                            onGlobalSearchClicked = {
+                                navigator.push(AnimeGlobalSearchScreen(initialQuery = state.searchQuery.orEmpty()))
+                            },
+                            selection = state.selection,
+                            onAnimeLongClick = viewModel::toggleSelection,
+                        )
+                    }
                 }
             }
         }

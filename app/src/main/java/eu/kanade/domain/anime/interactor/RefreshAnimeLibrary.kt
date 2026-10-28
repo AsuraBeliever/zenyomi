@@ -41,16 +41,20 @@ class RefreshAnimeLibrary(
 ) {
 
     /**
+     * @param isAutomatic whether this is the periodic update. Only that one honours the "outside
+     * release period" restriction: a pull to refresh is an explicit request for every series.
      * @param onProgress invoked as each anime finishes, with the number done, the total, and the
      * title just handled. Called from several coroutines, so it is dispatched under a lock and
      * must be cheap.
      */
     suspend fun await(
+        isAutomatic: Boolean = false,
         onProgress: (current: Int, total: Int, title: String?) -> Unit = { _, _, _ -> },
     ): Result = coroutineScope {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val window = fetchInterval.getWindow(now.date, TimeZone.currentSystemDefault())
-        val skipOutsideReleasePeriod = LibraryPreferences.MANGA_OUTSIDE_RELEASE_PERIOD in
+        val skipOutsideReleasePeriod = isAutomatic &&
+            LibraryPreferences.MANGA_OUTSIDE_RELEASE_PERIOD in
             libraryPreferences.autoUpdateMangaRestrictions.get()
 
         // Una serie que no toca todavia no se consulta, que es de lo que sirve el intervalo.

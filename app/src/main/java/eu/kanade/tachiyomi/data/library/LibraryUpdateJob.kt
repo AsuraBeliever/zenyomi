@@ -19,6 +19,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkQuery
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import dev.icerock.moko.resources.StringResource
 import dev.zacsweers.metro.Inject
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.notification.Notifications
@@ -178,7 +179,14 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
             }
         }
 
-        val restrictions = libraryPreferences.autoUpdateMangaRestrictions.get()
+        // The "smart update" restrictions are for the automatic update. Pulling to refresh is an
+        // explicit request for every entry in the library: skipping the ones with unread chapters,
+        // which is nearly every series being followed, is what made it look like it did nothing.
+        val restrictions = if (tags.contains(WORK_NAME_AUTO)) {
+            libraryPreferences.autoUpdateMangaRestrictions.get()
+        } else {
+            emptySet()
+        }
         val skippedUpdates = mutableListOf<Pair<Manga, String?>>()
         val timeZone = TimeZone.currentSystemDefault()
         val (_, fetchWindowUpperBound) = fetchInterval.getWindow(
@@ -188,38 +196,9 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
 
         mangaToUpdate = listToUpdate
             .filter {
-                when {
-                    it.manga.updateStrategy == UpdateStrategy.ONLY_FETCH_ONCE && it.totalChapters > 0L -> {
-                        skippedUpdates.add(
-                            it.manga to context.stringResource(MR.strings.skipped_reason_not_always_update),
-                        )
-                        false
-                    }
-
-                    MANGA_NON_COMPLETED in restrictions && it.manga.status.toInt() == SManga.COMPLETED -> {
-                        skippedUpdates.add(it.manga to context.stringResource(MR.strings.skipped_reason_completed))
-                        false
-                    }
-
-                    MANGA_HAS_UNREAD in restrictions && it.unreadCount != 0L -> {
-                        skippedUpdates.add(it.manga to context.stringResource(MR.strings.skipped_reason_not_caught_up))
-                        false
-                    }
-
-                    MANGA_NON_READ in restrictions && it.totalChapters > 0L && !it.hasStarted -> {
-                        skippedUpdates.add(it.manga to context.stringResource(MR.strings.skipped_reason_not_started))
-                        false
-                    }
-
-                    MANGA_OUTSIDE_RELEASE_PERIOD in restrictions && it.manga.nextUpdate > fetchWindowUpperBound -> {
-                        skippedUpdates.add(
-                            it.manga to context.stringResource(MR.strings.skipped_reason_not_in_release_period),
-                        )
-                        false
-                    }
-
-                    else -> true
-                }
+                val reason = skipReason(it, restrictions, fetchWindowUpperBound)
+                if (reason != null) skippedUpdates.add(it.manga to context.stringResource(reason))
+                reason == null
             }
             .sortedBy { it.manga.title }
 
@@ -427,6 +406,28 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
          * Key for category to update.
          */
         private const val KEY_CATEGORY = "category"
+
+        /**
+         * Why [item] is left out of an update under the manga [restrictions], or null to update
+         * it. "Only fetch once" is the entry's own setting, so it holds even with no restrictions.
+         */
+        internal fun skipReason(
+            item: LibraryManga,
+            restrictions: Set<String>,
+            fetchWindowUpperBound: Long,
+        ): StringResource? = when {
+            item.manga.updateStrategy == UpdateStrategy.ONLY_FETCH_ONCE && item.totalChapters > 0L ->
+                MR.strings.skipped_reason_not_always_update
+            MANGA_NON_COMPLETED in restrictions && item.manga.status.toInt() == SManga.COMPLETED ->
+                MR.strings.skipped_reason_completed
+            MANGA_HAS_UNREAD in restrictions && item.unreadCount != 0L ->
+                MR.strings.skipped_reason_not_caught_up
+            MANGA_NON_READ in restrictions && item.totalChapters > 0L && !item.hasStarted ->
+                MR.strings.skipped_reason_not_started
+            MANGA_OUTSIDE_RELEASE_PERIOD in restrictions && item.manga.nextUpdate > fetchWindowUpperBound ->
+                MR.strings.skipped_reason_not_in_release_period
+            else -> null
+        }
 
         fun setupTask(
             context: Context,

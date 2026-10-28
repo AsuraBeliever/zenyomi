@@ -81,7 +81,11 @@ class AnimeLibraryUpdateJob(private val context: Context, workerParams: WorkerPa
 
         return withIOContext {
             try {
-                val result = refreshAnimeLibrary.await { current, total, title ->
+                val result = refreshAnimeLibrary.await(isAutomatic = tags.contains(WORK_NAME_AUTO)) {
+                        current,
+                        total,
+                        title,
+                    ->
                     notifier.showProgressNotification(current, total, title)
                 }
                 if (result.updates.isNotEmpty()) {
