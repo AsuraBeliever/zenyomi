@@ -6,12 +6,12 @@ import org.junit.jupiter.api.Test
 
 class TorrentAddonDownloadTest {
 
-    private val template = "https://example.org/v1.0/zenyomi-torrent-{abi}-v1.0.apk"
+    private val template = "https://example.org/v1.0/zenyomi-torrent_{abi}-v1.0.apk"
 
     @Test
     fun `fills in the device's preferred abi`() {
         assertEquals(
-            "https://example.org/v1.0/zenyomi-torrent-arm64-v8a-v1.0.apk",
+            "https://example.org/v1.0/zenyomi-torrent_arm64-v8a-v1.0.apk",
             TorrentAddonDownload.url(template, listOf("arm64-v8a", "armeabi-v7a", "armeabi")),
         )
     }
@@ -19,7 +19,7 @@ class TorrentAddonDownloadTest {
     @Test
     fun `an x86_64 emulator gets the x86_64 build, not the x86 one`() {
         assertEquals(
-            "https://example.org/v1.0/zenyomi-torrent-x86_64-v1.0.apk",
+            "https://example.org/v1.0/zenyomi-torrent_x86_64-v1.0.apk",
             TorrentAddonDownload.url(template, listOf("x86_64", "x86", "arm64-v8a")),
         )
     }
@@ -27,7 +27,7 @@ class TorrentAddonDownloadTest {
     @Test
     fun `skips abis the release has no build for`() {
         assertEquals(
-            "https://example.org/v1.0/zenyomi-torrent-armeabi-v7a-v1.0.apk",
+            "https://example.org/v1.0/zenyomi-torrent_armeabi-v7a-v1.0.apk",
             TorrentAddonDownload.url(template, listOf("riscv64", "armeabi-v7a")),
         )
     }

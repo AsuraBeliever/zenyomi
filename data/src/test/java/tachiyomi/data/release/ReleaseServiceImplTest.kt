@@ -31,9 +31,18 @@ class ReleaseServiceImplTest {
 
     @Test
     fun `Skips the add-on under its 0_21_0 name too`() {
-        val renamed = assets.map { (name, link) -> name.replace("zenyomi-torrent-", "zenyomi-torrent_") to link }
-        ReleaseServiceImpl.pickDownloadLink(renamed, isFoss = false, abi = "x86_64")
-            ?.substringAfterLast('/') shouldBe "zenyomi-x86_64-v0.20.0.apk"
+        // With an underscore the add-on never competes for an ABI, only for the universal slot,
+        // and listed after the universal APK it would take it.
+        val renamed = listOf(
+            "zenyomi-v0.21.0.apk",
+            "zenyomi-arm64-v8a-v0.21.0.apk",
+            "zenyomi-torrent_arm64-v8a-v0.21.0.apk",
+            "zenyomi-torrent_x86_64-v0.21.0.apk",
+        ).map { it to "https://example.com/$it" }
+        ReleaseServiceImpl.pickDownloadLink(renamed, isFoss = false, abi = "riscv64")
+            ?.substringAfterLast('/') shouldBe "zenyomi-v0.21.0.apk"
+        ReleaseServiceImpl.pickDownloadLink(renamed, isFoss = false, abi = "arm64-v8a")
+            ?.substringAfterLast('/') shouldBe "zenyomi-arm64-v8a-v0.21.0.apk"
     }
 
     @Test
