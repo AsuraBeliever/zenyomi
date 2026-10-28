@@ -22,6 +22,15 @@ de manga. Esto es la comprobación de esa regla. Se repite antes de cada release
 > renombrado a "Manga extensions" en la v0.5.4 cuando eran pestañas separadas; ahora esa
 > pestaña contiene las dos. El único cambio que queda en el `strings.xml` de Mihon es
 > `app_name`, que el checklist de forks **exige**.
+>
+> **Comportamientos de Mihon cambiados a propósito (v0.21.0).** Ninguno quita una función;
+> cambian cuándo se aplica o su valor de fábrica, a petición del cliente:
+> - La «actualización inteligente» (saltar series con no leídos, sin empezar, terminadas o
+>   fuera de periodo) solo se aplica a la actualización **automática**. Recargar la
+>   biblioteca a mano consulta todas las series (`LibraryUpdateJob.skipReason`, KAN-45).
+> - La actualización automática viene **encendida** cada 12 h y su «actualización
+>   inteligente» de fábrica es «terminadas» + «fuera de periodo», sin «no leídos» ni «sin
+>   empezar» (`LibraryPreferences`, KAN-46). Quien ya eligió otros valores los conserva.
 
 ---
 

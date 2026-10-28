@@ -204,7 +204,13 @@ object SettingsLibraryScreen : SearchableSettings {
                         MANGA_OUTSIDE_RELEASE_PERIOD to stringResource(MR.strings.pref_update_only_in_release_period),
                     ),
                     title = stringResource(MR.strings.pref_library_update_smart_update),
-                    subtitle = "%s\n" + stringResource(ANMR.strings.pref_library_update_smart_update_scope),
+                    // Appended after formatting, so a translation with a "%" cannot break it.
+                    subtitleProvider = { value, entries ->
+                        val chosen = value.mapNotNull { entries[it] }.joinToString().ifBlank {
+                            stringResource(MR.strings.none)
+                        }
+                        chosen + "\n" + stringResource(ANMR.strings.pref_library_update_smart_update_scope)
+                    },
                 ),
                 Preference.PreferenceItem.SwitchPreference(
                     preference = libraryPreferences.newShowUpdatesCount,
