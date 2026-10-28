@@ -30,6 +30,7 @@ import logcat.LogPriority
 import mihon.app.di.AppGraph
 import mihon.app.di.appGraph
 import mihon.core.metro.metroGraph
+import tachiyomi.core.common.preference.getAndSet
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.library.service.LibraryPreferences
@@ -85,6 +86,8 @@ class AnimeLibraryUpdateJob(private val context: Context, workerParams: WorkerPa
                     notifier.showProgressNotification(current, total, title)
                 }
                 if (result.updates.isNotEmpty()) {
+                    // The Updates tab's badge counts what arrived in both halves of the tab.
+                    libraryPreferences.newUpdatesCount.getAndSet { it + result.updates.sumOf { (_, e) -> e.size } }
                     notifier.showUpdateNotifications(result.updates)
                 }
                 notifier.showUpdateErrorNotification(result.failed)

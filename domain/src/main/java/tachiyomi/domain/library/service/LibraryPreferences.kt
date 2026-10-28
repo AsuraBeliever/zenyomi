@@ -41,7 +41,11 @@ class LibraryPreferences(
         Preference.appStateKey("library_update_last_timestamp"),
         0L,
     )
-    val autoUpdateInterval: Preference<Int> = preferenceStore.getInt("pref_library_update_interval_key", 0)
+
+    // Zenyomi: on by default (Mihon ships it off), so new chapters and episodes reach the
+    // Updates tab without a manual refresh. Whoever already picked a value, "never" included,
+    // keeps it: only the default changes.
+    val autoUpdateInterval: Preference<Int> = preferenceStore.getInt("pref_library_update_interval_key", 12)
 
     val autoUpdateDeviceRestrictions: Preference<Set<String>> = preferenceStore.getStringSet(
         "library_update_restriction",
@@ -49,12 +53,14 @@ class LibraryPreferences(
             DEVICE_ONLY_ON_WIFI,
         ),
     )
+
+    // Zenyomi: without Mihon's "has unread" and "not started". Someone following a series nearly
+    // always has something unread, so with them the automatic update skipped exactly the series
+    // being followed. The two kept only spare checks that cannot find anything new.
     val autoUpdateMangaRestrictions: Preference<Set<String>> = preferenceStore.getStringSet(
         "library_update_manga_restriction",
         setOf(
-            MANGA_HAS_UNREAD,
             MANGA_NON_COMPLETED,
-            MANGA_NON_READ,
             MANGA_OUTSIDE_RELEASE_PERIOD,
         ),
     )
