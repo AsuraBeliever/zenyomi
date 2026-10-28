@@ -3,16 +3,15 @@
 El ecosistema de Aniyomi se degrada solo: los sitios cambian y las extensiones no lo hacen.
 Esto **se mide**, no se opina. La medición la produce un arnés que vive en los builds de debug.
 
-**Última pasada: 2026-10-17**, emulador Pixel 10 Pro XL, 24 fuentes instaladas, antes de la
-v0.20.0 (KAN-41). **Las nueve que fallan por causa propia siguen siendo las mismas**, y siguen
-reproduciendo las mismas cinco: AnimeOnsen, Jkanime, KickAssAnime, TioAnime y TioHentai. Un
-cambio: **Animetsu** ya no devuelve HTML donde la extensión espera JSON, sino que su dominio,
-todavía registrado, no tiene dirección (comprobado desde otra red con 1.1.1.1 y 8.8.8.8). Pasa
-de `outdated` a `gone`, que en la app se lee «el sitio que usa esta fuente ya no existe». Los
-demás fallos de esta pasada —9AnimeTV y Latanime por *timeout*, AnimeFLV y Kaido con 522,
-AniWatchtv con 403, AnimeLatinoHD y AnimePahe detrás de Cloudflare— son de los que vuelven y no
-entran en la lista. Jellyfin sigue pidiendo que se elija una biblioteca, que es configuración y
-no avería.
+**Última pasada: 2026-10-28**, emulador Pixel 10 Pro XL, 24 fuentes instaladas, antes de la
+v0.21.0 (KAN-48). **Sin cambios en la lista:** las nueve que fallan por causa propia son las
+mismas, y siguen reproduciendo las mismas cinco: AnimeOnsen, Jkanime, KickAssAnime, TioAnime y
+TioHentai. Los fallos pasajeros cambian de forma, como siempre —9AnimeTV, AniWatchtv, AnimeFLV y
+Kaido con 522, AnimePahe con 403, AnimeLatinoHD detrás de Cloudflare, Latanime por *timeout* al
+resolver el vídeo— y no entran en la lista. Jellyfin sigue pidiendo que se elija una biblioteca.
+
+> Pasada anterior, 2026-10-17 (v0.20.0): las mismas nueve y las mismas cinco; Animetsu pasó de
+> `outdated` a `gone` porque su dominio, todavía registrado, dejó de tener dirección.
 
 ---
 

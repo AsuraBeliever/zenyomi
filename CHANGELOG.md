@@ -10,6 +10,20 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.21.0] - 2026-10-28
+### Changed
+- **Recargar la biblioteca trae de verdad lo nuevo.** Deslizar hacia abajo en la biblioteca de manga o de anime consulta ahora todas las series, y los capítulos y episodios nuevos aparecen sin tener que entrar en la ficha. Antes la recarga se saltaba las series con algo sin leer, sin empezar, terminadas o «que no tocaban» todavía, que es casi todo lo que se va siguiendo. Esos filtros de «Actualizaciones inteligentes» siguen existiendo, pero solo para la actualización automática, y el ajuste lo dice.
+- **Las novedades llegan solas.** La biblioteca de manga y la de anime se actualizan por su cuenta cada 12 horas (con Wi-Fi), y lo nuevo aparece en la pestaña Novedades con su contador. De fábrica, esa actualización automática ya no se salta las series con capítulos sin leer o sin empezar. Quien ya había elegido otro intervalo, o «nunca», lo conserva.
+
+### Added
+- **Deslizar para recargar en la biblioteca de anime**, que solo se podía recargar desde el menú.
+- **Botón de recargar y deslizar para recargar en Novedades → Anime**, como en la mitad de manga.
+
+### Fixed
+- **Actualizar desde el aviso de la app instala la app.** Desde la v0.20.0, «Descargar» bajaba el complemento de torrent en lugar de Zenyomi, así que tras «actualizar» la app seguía en la versión anterior y volvía a ofrecer la misma actualización. Para que la actualización desde la v0.20.0 funcione desde el propio aviso, los ficheros del complemento se publican ahora como «zenyomi-torrent_…», que la versión anterior ya no confunde con la app.
+- **El aviso de actualización ya no ofrece una versión más vieja que la instalada.** Comparaba los números por separado y daba la 0.19.5 por más nueva que la 0.20.0.
+- **El contador de Novedades cuenta también los episodios** y se borra al verlos desde la mitad de anime.
+
 ## [0.20.0] - 2026-10-17
 ### Added
 - **Anime que llega como torrent: se ve y se descarga.** Algunas fuentes entregan los episodios como magnet o como fichero `.torrent`. Ahora el reproductor los abre como cualquier otro episodio —eligiendo el vídeo del episodio aunque el torrent traiga subtítulos, portadas o una temporada entera— y el botón de descargar los guarda en el teléfono como un vídeo normal, que luego se ve sin conexión. Mientras un torrent se reproduce o se descarga, también se comparte con otros: por eso viene **apagado**, y encenderlo enseña antes un aviso.
