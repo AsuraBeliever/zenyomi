@@ -1,5 +1,7 @@
 package eu.kanade.tachiyomi.data.coil
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import ca.mpreg.imagedecoder.ImageDecoder
@@ -37,18 +39,23 @@ class ImageDecoder(private val resources: ImageSource, private val options: Opti
     }
 
     override suspend fun decode(): DecodeResult {
-        val decoder = resources.source().use {
-            try {
-                ImageDecoder.new(it.inputStream())
-            } catch (e: ImageDecoder.DecodeException) {
-                logcat(LogPriority.ERROR, e) { "ImageDecoder.new failed: ${e.message}" }
+        val res = resources.source().use { source ->
+            val decoded = try {
+                ImageDecoder.new(source.peek().inputStream())
+                    .takeIf { it.pages > 0 }
+                    ?.decode()
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e) { "ImageDecoder failed: ${e.message}" }
                 null
             }
+
+            // The native decoder can't open some images Android can, and the reader sends every
+            // long-strip page through it: fall back to the system decoder rather than lose the page.
+            if (decoded == null && !options.newDecoder) return decodeWithSystem(source)
+            decoded
         }
 
-        check(decoder != null && decoder.pages > 0) { "Failed to initialize decoder" }
-
-        val res = decoder.decode()
+        check(res != null) { "Failed to initialize decoder" }
 
         val srcWidth = res.width
         val srcHeight = res.height
@@ -90,6 +97,34 @@ class ImageDecoder(private val resources: ImageSource, private val options: Opti
         } else {
             fullBitmap
         }
+
+        return DecodeResult(
+            image = bitmap.asImage(),
+            isSampled = sampleSize > 1,
+        )
+    }
+
+    private fun decodeWithSystem(source: BufferedSource): DecodeResult {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeStream(source.peek().inputStream(), null, bounds)
+        check(bounds.outWidth > 0 && bounds.outHeight > 0) { "Failed to initialize decoder" }
+
+        val sampleSize = DecodeUtils.calculateInSampleSize(
+            srcWidth = bounds.outWidth,
+            srcHeight = bounds.outHeight,
+            dstWidth = options.size.widthPx(options.scale) { bounds.outWidth },
+            dstHeight = options.size.heightPx(options.scale) { bounds.outHeight },
+            scale = options.scale,
+        )
+        val bitmap = BitmapFactory.decodeStream(
+            source.inputStream(),
+            null,
+            BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            },
+        )
+        checkNotNull(bitmap) { "Failed to initialize decoder" }
 
         return DecodeResult(
             image = bitmap.asImage(),
