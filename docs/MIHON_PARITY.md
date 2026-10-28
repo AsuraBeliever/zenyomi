@@ -31,6 +31,14 @@ de manga. Esto es la comprobación de esa regla. Se repite antes de cada release
 > - La actualización automática viene **encendida** cada 12 h y su «actualización
 >   inteligente» de fábrica es «terminadas» + «fuera de periodo», sin «no leídos» ni «sin
 >   empezar» (`LibraryPreferences`, KAN-46). Quien ya eligió otros valores los conserva.
+>
+> **Un arreglo sobre código de Mihon (v0.21.1).** El decodificador de páginas de nuestra base
+> de Mihon (`ca.mpreg:imagedecoder` v10, libvips) no abre algunas imágenes que Android sí, y
+> el lector las dejaba en «Failed to initialize decoder». `data/coil/ImageDecoder` cae al
+> `BitmapFactory` de Android y `ReaderPageImageView`, en paginado, reintenta la página entera
+> por Coil si el visor de teselas falla (KAN-49). Solo actúa donde antes había un error. Mihon
+> lo resolvió después cambiando de decodificador (#4023, imagedecoder v15→v18); cuando ese
+> cambio entre con un `sync/mihon`, este respaldo se revisa y probablemente sobra.
 
 ---
 

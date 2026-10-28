@@ -1,0 +1,1 @@
+Fixed: manga pages that showed "Failed to initialize decoder" instead of the image now load, in both long strip and paged modes.
