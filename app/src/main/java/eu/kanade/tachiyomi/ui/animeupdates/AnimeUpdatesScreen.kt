@@ -19,7 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -40,25 +43,33 @@ import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.MangaBottomActionMenu
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.data.animelibrary.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.data.download.anime.describe
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.animedetails.AnimeDetailsScreen
 import eu.kanade.tachiyomi.ui.animeplayer.AnimePlayerActivity
+import eu.kanade.tachiyomi.util.system.workManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Check
 import mihon.icons.materialsymbols.rounded.Download
 import mihon.icons.materialsymbols.rounded.FlipToBack
+import mihon.icons.materialsymbols.rounded.Refresh
 import mihon.icons.materialsymbols.rounded.SelectAll
 import mihon.icons.materialsymbols.rounded.SwapCalls
 import mihon.icons.materialsymbols.roundedfilled.CheckCircle
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.anime.ANMR
 import tachiyomi.presentation.core.components.FastScrollLazyColumn
 import tachiyomi.presentation.core.components.ListGroupHeader
+import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Episodes the anime library has gained, grouped by the day they arrived.
@@ -79,6 +90,22 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
         val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
         val downloadQueue by viewModel.downloadQueue.collectAsStateWithLifecycle()
         val snackbarHostState = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
+
+        // The anime half of Mihon's refresh on the updates screen: the same worker the anime
+        // library's refresh starts, with the same snackbar.
+        val onUpdateLibrary: () -> Boolean = {
+            val started = AnimeLibraryUpdateJob.startNow(context.workManager)
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    context.stringResource(
+                        if (started) MR.strings.updating_library else MR.strings.update_already_running,
+                    ),
+                )
+            }
+            started
+        }
+        var isRefreshing by remember { mutableStateOf(false) }
 
         // A tap that resolves to nothing is indistinguishable from a tap that missed, so the
         // failure is said out loud — in words, not as the exception the extension threw.
@@ -128,6 +155,12 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                             }
                             return@AppBar
                         }
+                        IconButton(onClick = { onUpdateLibrary() }) {
+                            Icon(
+                                imageVector = MaterialSymbols.Rounded.Refresh,
+                                contentDescription = stringResource(MR.strings.action_update_library),
+                            )
+                        }
                         onSwitchToManga?.let { switch ->
                             IconButton(onClick = switch) {
                                 Icon(
@@ -153,106 +186,122 @@ class AnimeUpdatesScreen(private val onSwitchToManga: (() -> Unit)? = null) : Sc
                 )
             },
         ) { contentPadding ->
-            when {
-                state.isLoading -> LoadingScreen(Modifier.padding(contentPadding))
-                state.isEmpty -> EmptyScreen(
-                    stringRes = ANMR.strings.anime_updates_empty,
-                    modifier = Modifier.padding(contentPadding),
-                )
-                else -> FastScrollLazyColumn(contentPadding = contentPadding) {
-                    items(
-                        count = state.items.size,
-                        key = { index ->
-                            when (val item = state.items[index]) {
-                                is AnimeUpdatesUiItem.Header -> "header-${item.dateFetch}"
-                                is AnimeUpdatesUiItem.Item -> "episode-${item.update.episodeId}"
-                            }
-                        },
-                    ) { index ->
-                        when (val item = state.items[index]) {
-                            // ListGroupHeader, like the manga updates: the old header was a
-                            // primary-coloured label, which is not how any other date header
-                            // in the app looks.
-                            is AnimeUpdatesUiItem.Header -> ListGroupHeader(
-                                modifier = Modifier.animateItem(),
-                                text = relativeDateText(item.dateFetch),
-                            )
-                            is AnimeUpdatesUiItem.Item -> {
-                                val update = item.update
-                                val downloaded = update.episodeId in state.downloadedEpisodeIds
-                                val progress = downloadProgress[update.episodeId]
-                                val queued = downloadQueue.any { it.episodeId == update.episodeId }
-                                // Asked for but not yet in the queue counts as queued for the
-                                // row's purposes: the spinner starts on the tap, not once the
-                                // source has finished being asked what it has.
-                                val preparing = update.episodeId in state.preparingEpisodeIds
-                                val downloadState = when {
-                                    downloaded -> Download.State.DOWNLOADED
-                                    progress != null -> Download.State.DOWNLOADING
-                                    queued || preparing -> Download.State.QUEUE
-                                    else -> Download.State.NOT_DOWNLOADED
+            PullRefresh(
+                refreshing = isRefreshing,
+                onRefresh = {
+                    if (onUpdateLibrary()) {
+                        scope.launch {
+                            // Shown for a second only: the update runs on in the background.
+                            isRefreshing = true
+                            delay(1.seconds)
+                            isRefreshing = false
+                        }
+                    }
+                },
+                enabled = state.selected.isEmpty(),
+                indicatorPadding = contentPadding,
+            ) {
+                when {
+                    state.isLoading -> LoadingScreen(Modifier.padding(contentPadding))
+                    state.isEmpty -> EmptyScreen(
+                        stringRes = ANMR.strings.anime_updates_empty,
+                        modifier = Modifier.padding(contentPadding),
+                    )
+                    else -> FastScrollLazyColumn(contentPadding = contentPadding) {
+                        items(
+                            count = state.items.size,
+                            key = { index ->
+                                when (val item = state.items[index]) {
+                                    is AnimeUpdatesUiItem.Header -> "header-${item.dateFetch}"
+                                    is AnimeUpdatesUiItem.Item -> "episode-${item.update.episodeId}"
                                 }
-                                AnimeUpdatesItem(
+                            },
+                        ) { index ->
+                            when (val item = state.items[index]) {
+                                // ListGroupHeader, like the manga updates: the old header was a
+                                // primary-coloured label, which is not how any other date header
+                                // in the app looks.
+                                is AnimeUpdatesUiItem.Header -> ListGroupHeader(
                                     modifier = Modifier.animateItem(),
-                                    update = update,
-                                    // Mientras baja, cuánto lleva y a qué velocidad. El resto
-                                    // del tiempo, "12:34" en un episodio a medias, igual que
-                                    // la misma lista dice "Pagina 12" en un capitulo a medias.
-                                    seenProgress = progress?.describe(context)
-                                        ?: update.takeIf { !it.seen && it.lastSecondSeen > 0 }
-                                            ?.let { formatEpisodePosition(it.lastSecondSeen) },
-                                    selected = update.episodeId in state.selected,
-                                    onLongClick = { viewModel.toggleSelection(update) },
-                                    onClick = if (state.selected.isNotEmpty()) {
-                                        { viewModel.toggleSelection(update) }
-                                    } else {
-                                        {
-                                            viewModel.resolveVideo(update) { request ->
-                                                if (request != null) {
-                                                    context.startActivity(
-                                                        AnimePlayerActivity.newIntent(
-                                                            context,
-                                                            request,
-                                                            update.episodeName,
-                                                            update.episodeId,
-                                                        ),
-                                                    )
+                                    text = relativeDateText(item.dateFetch),
+                                )
+                                is AnimeUpdatesUiItem.Item -> {
+                                    val update = item.update
+                                    val downloaded = update.episodeId in state.downloadedEpisodeIds
+                                    val progress = downloadProgress[update.episodeId]
+                                    val queued = downloadQueue.any { it.episodeId == update.episodeId }
+                                    // Asked for but not yet in the queue counts as queued for the
+                                    // row's purposes: the spinner starts on the tap, not once the
+                                    // source has finished being asked what it has.
+                                    val preparing = update.episodeId in state.preparingEpisodeIds
+                                    val downloadState = when {
+                                        downloaded -> Download.State.DOWNLOADED
+                                        progress != null -> Download.State.DOWNLOADING
+                                        queued || preparing -> Download.State.QUEUE
+                                        else -> Download.State.NOT_DOWNLOADED
+                                    }
+                                    AnimeUpdatesItem(
+                                        modifier = Modifier.animateItem(),
+                                        update = update,
+                                        // Mientras baja, cuánto lleva y a qué velocidad. El resto
+                                        // del tiempo, "12:34" en un episodio a medias, igual que
+                                        // la misma lista dice "Pagina 12" en un capitulo a medias.
+                                        seenProgress = progress?.describe(context)
+                                            ?: update.takeIf { !it.seen && it.lastSecondSeen > 0 }
+                                                ?.let { formatEpisodePosition(it.lastSecondSeen) },
+                                        selected = update.episodeId in state.selected,
+                                        onLongClick = { viewModel.toggleSelection(update) },
+                                        onClick = if (state.selected.isNotEmpty()) {
+                                            { viewModel.toggleSelection(update) }
+                                        } else {
+                                            {
+                                                viewModel.resolveVideo(update) { request ->
+                                                    if (request != null) {
+                                                        context.startActivity(
+                                                            AnimePlayerActivity.newIntent(
+                                                                context,
+                                                                request,
+                                                                update.episodeName,
+                                                                update.episodeId,
+                                                            ),
+                                                        )
+                                                    }
                                                 }
                                             }
-                                        }
-                                    },
-                                    onClickCover = {
-                                        navigator.push(AnimeDetailsScreen(update.animeId))
-                                    }.takeIf { state.selected.isEmpty() },
-                                    onDownloadEpisode = if (update.episodeId in state.downloadableEpisodeIds) {
-                                        { action ->
-                                            when (action) {
-                                                ChapterDownloadAction.START ->
-                                                    viewModel.downloadEpisode(update)
-                                                // Holding the button on an episode you do not
-                                                // have asks which quality, for this download
-                                                // only. On one already queued the same action
-                                                // means "start now", which a queue that runs in
-                                                // order start to finish cannot honour.
-                                                ChapterDownloadAction.START_NOW ->
-                                                    if (downloadState == Download.State.NOT_DOWNLOADED) {
-                                                        viewModel.downloadEpisode(update, ask = true)
-                                                    }
-                                                // Calling off a download that is happening and
-                                                // deleting a file that is there are not the
-                                                // same thing.
-                                                ChapterDownloadAction.CANCEL ->
-                                                    viewModel.cancelDownload(update)
-                                                ChapterDownloadAction.DELETE ->
-                                                    viewModel.deleteDownload(update)
+                                        },
+                                        onClickCover = {
+                                            navigator.push(AnimeDetailsScreen(update.animeId))
+                                        }.takeIf { state.selected.isEmpty() },
+                                        onDownloadEpisode = if (update.episodeId in state.downloadableEpisodeIds) {
+                                            { action ->
+                                                when (action) {
+                                                    ChapterDownloadAction.START ->
+                                                        viewModel.downloadEpisode(update)
+                                                    // Holding the button on an episode you do not
+                                                    // have asks which quality, for this download
+                                                    // only. On one already queued the same action
+                                                    // means "start now", which a queue that runs in
+                                                    // order start to finish cannot honour.
+                                                    ChapterDownloadAction.START_NOW ->
+                                                        if (downloadState == Download.State.NOT_DOWNLOADED) {
+                                                            viewModel.downloadEpisode(update, ask = true)
+                                                        }
+                                                    // Calling off a download that is happening and
+                                                    // deleting a file that is there are not the
+                                                    // same thing.
+                                                    ChapterDownloadAction.CANCEL ->
+                                                        viewModel.cancelDownload(update)
+                                                    ChapterDownloadAction.DELETE ->
+                                                        viewModel.deleteDownload(update)
+                                                }
                                             }
-                                        }
-                                    } else {
-                                        null
-                                    },
-                                    downloadStateProvider = { downloadState },
-                                    downloadProgressProvider = { progress?.percent ?: 0 },
-                                )
+                                        } else {
+                                            null
+                                        },
+                                        downloadStateProvider = { downloadState },
+                                        downloadProgressProvider = { progress?.percent ?: 0 },
+                                    )
+                                }
                             }
                         }
                     }
