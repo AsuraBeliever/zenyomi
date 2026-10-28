@@ -38,7 +38,9 @@ import eu.kanade.tachiyomi.data.coil.customDecoder
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonSubsamplingImageView
 import eu.kanade.tachiyomi.util.system.animatorDurationScale
 import eu.kanade.tachiyomi.util.view.isVisibleOnScreen
+import logcat.LogPriority
 import okio.BufferedSource
+import tachiyomi.core.common.util.system.logcat
 
 /**
  * A wrapper view for showing page image.
@@ -281,6 +283,13 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 }
 
                 override fun onImageLoadError(e: Exception) {
+                    // The tiling decoder can't open some images Android can: decode the whole page
+                    // through Coil instead, which falls back to the system decoder.
+                    if (data is BufferedSource && !isWebtoon) {
+                        logcat(LogPriority.WARN, e) { "Tiled decoding failed, decoding the whole page" }
+                        decodeWithCoil(data, config)
+                        return
+                    }
                     this@ReaderPageImageView.onImageLoadError(e)
                 }
             },
@@ -293,39 +302,44 @@ open class ReaderPageImageView @JvmOverloads constructor(
             }
             is BufferedSource -> {
                 if (!isWebtoon) {
-                    setImage(ImageSource.inputStream(data.inputStream()))
+                    // Peeked, so the page is still there to retry if it can't be tiled
+                    setImage(ImageSource.inputStream(data.peek().inputStream()))
                     isVisible = true
                     return@apply
                 }
 
-                ImageRequest.Builder(context)
-                    .data(data)
-                    .memoryCachePolicy(CachePolicy.DISABLED)
-                    .diskCachePolicy(CachePolicy.DISABLED)
-                    .target(
-                        onSuccess = { result ->
-                            val image = result as BitmapImage
-                            setImage(ImageSource.bitmap(image.bitmap))
-                            isVisible = true
-                        },
-                    )
-                    .listener(
-                        onError = { _, result ->
-                            onImageLoadError(result.throwable)
-                        },
-                    )
-                    .size(ViewSizeResolver(this@ReaderPageImageView))
-                    .precision(Precision.INEXACT)
-                    .cropBorders(config.cropBorders)
-                    .customDecoder(true)
-                    .crossfade(false)
-                    .build()
-                    .let(context.imageLoader::enqueue)
+                decodeWithCoil(data, config)
             }
             else -> {
                 throw IllegalArgumentException("Not implemented for class ${data::class.simpleName}")
             }
         }
+    }
+
+    private fun SubsamplingScaleImageView.decodeWithCoil(data: BufferedSource, config: Config) {
+        ImageRequest.Builder(context)
+            .data(data)
+            .memoryCachePolicy(CachePolicy.DISABLED)
+            .diskCachePolicy(CachePolicy.DISABLED)
+            .target(
+                onSuccess = { result ->
+                    val image = result as BitmapImage
+                    setImage(ImageSource.bitmap(image.bitmap))
+                    isVisible = true
+                },
+            )
+            .listener(
+                onError = { _, result ->
+                    this@ReaderPageImageView.onImageLoadError(result.throwable)
+                },
+            )
+            .size(ViewSizeResolver(this@ReaderPageImageView))
+            .precision(Precision.INEXACT)
+            .cropBorders(config.cropBorders)
+            .customDecoder(true)
+            .crossfade(false)
+            .build()
+            .let(context.imageLoader::enqueue)
     }
 
     private fun prepareAnimatedImageView() {
