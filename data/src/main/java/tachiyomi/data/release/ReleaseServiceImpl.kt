@@ -43,19 +43,39 @@ class ReleaseServiceImpl(
     }
 
     private fun getDownloadLink(release: GithubRelease, isFoss: Boolean): String? {
-        val map = release.assets.associate { asset ->
-            BUILD_TYPES.find { "-$it" in asset.name } to asset.downloadLink
-        }
-
-        return if (!isFoss) {
-            map[Build.SUPPORTED_ABIS[0]] ?: map[null]
-        } else {
-            map[FOSS]
-        }
+        return pickDownloadLink(
+            assets = release.assets.map { it.name to it.downloadLink },
+            isFoss = isFoss,
+            abi = Build.SUPPORTED_ABIS[0],
+        )
     }
 
     companion object {
         private const val FOSS = "foss"
+
+        /**
+         * Release assets that are not the app. Zenyomi publishes its torrent add-on next to the
+         * app, and its per-ABI names also contain "-arm64-v8a" and friends: matched by ABI alone,
+         * the add-on wins and "updating" installs it while the app stays where it was.
+         */
+        private const val ADDON_PREFIX = "zenyomi-torrent-"
+
+        /**
+         * The app APK for [abi] among [assets] (name to link), the universal one when there is
+         * none for that ABI, or the foss one when [isFoss].
+         */
+        internal fun pickDownloadLink(assets: List<Pair<String, String>>, isFoss: Boolean, abi: String): String? {
+            val map = assets
+                .filterNot { (name, _) -> name.startsWith(ADDON_PREFIX) }
+                .associate { (name, link) -> BUILD_TYPES.find { "-$it" in name } to link }
+
+            return if (!isFoss) {
+                map[abi] ?: map[null]
+            } else {
+                map[FOSS]
+            }
+        }
+
         private val BUILD_TYPES = listOf(FOSS, "arm64-v8a", "armeabi-v7a", "x86_64", "x86")
 
         /**

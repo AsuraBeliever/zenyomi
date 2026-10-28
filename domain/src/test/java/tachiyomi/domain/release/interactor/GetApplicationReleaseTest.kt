@@ -96,4 +96,39 @@ class GetApplicationReleaseTest {
 
         result shouldBe GetApplicationRelease.Result.NoNewUpdate
     }
+
+    private suspend fun check(installed: String, latest: String): GetApplicationRelease.Result {
+        coEvery { releaseService.latest(any()) } returns Release(
+            latest,
+            "info",
+            "http://example.com/release_link",
+            "http://example.com/release_link.apk",
+        )
+        return getApplicationRelease.await(
+            GetApplicationRelease.Arguments(
+                isFoss = false,
+                isNightly = false,
+                commitCount = 0,
+                versionName = installed,
+                repository = "test",
+            ),
+        )
+    }
+
+    @Test
+    fun `When a later component is greater but an earlier one is smaller expect no new update`() = runTest {
+        check(installed = "0.20.0", latest = "v0.19.5") shouldBe GetApplicationRelease.Result.NoNewUpdate
+        check(installed = "0.19.10", latest = "v0.19.9") shouldBe GetApplicationRelease.Result.NoNewUpdate
+    }
+
+    @Test
+    fun `When the same version expect no new update`() = runTest {
+        check(installed = "0.20.0", latest = "v0.20.0") shouldBe GetApplicationRelease.Result.NoNewUpdate
+    }
+
+    @Test
+    fun `When a newer minor or patch expect new update`() = runTest {
+        (check(installed = "0.19.5", latest = "v0.20.0") is GetApplicationRelease.Result.NewUpdate) shouldBe true
+        (check(installed = "0.20.0", latest = "v0.20.1") is GetApplicationRelease.Result.NewUpdate) shouldBe true
+    }
 }
