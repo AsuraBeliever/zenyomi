@@ -31,6 +31,7 @@ import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.updates.UpdatesViewModel.Event
 import kotlinx.coroutines.flow.collectLatest
+import mihon.app.di.appGraph
 import mihon.feature.upcoming.UpcomingScreen
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
@@ -61,6 +62,13 @@ data object UpdatesTab : Tab {
         var showAnime by rememberSaveable { mutableStateOf(false) }
         if (showAnime) {
             AnimeUpdatesScreen(onSwitchToManga = { showAnime = false }).Content()
+            // The badge counts both halves, so seeing either clears it, as the manga half does
+            // below. Without this, staying on the anime half left the badge up for good.
+            val libraryPreferences = LocalContext.current.appGraph.libraryPreferences
+            DisposableEffect(Unit) {
+                libraryPreferences.newUpdatesCount.set(0)
+                onDispose { libraryPreferences.newUpdatesCount.set(0) }
+            }
             return
         }
 

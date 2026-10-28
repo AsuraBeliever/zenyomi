@@ -3,6 +3,7 @@ package tachiyomi.domain.library.service
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import tachiyomi.core.common.preference.InMemoryPreferenceStore
+import tachiyomi.core.common.preference.InMemoryPreferenceStore.InMemoryPreference
 
 /**
  * Zenyomi's defaults for the automatic library update, which differ from Mihon's on purpose:
@@ -23,5 +24,15 @@ class LibraryPreferencesTest {
             LibraryPreferences.MANGA_NON_COMPLETED,
             LibraryPreferences.MANGA_OUTSIDE_RELEASE_PERIOD,
         )
+    }
+
+    @Test
+    fun `An interval the user picked, never included, is kept`() {
+        listOf(0, 24).forEach { picked ->
+            val store = InMemoryPreferenceStore(
+                sequenceOf(InMemoryPreference("pref_library_update_interval_key", picked, 12)),
+            )
+            LibraryPreferences(store).autoUpdateInterval.get() shouldBe picked
+        }
     }
 }
