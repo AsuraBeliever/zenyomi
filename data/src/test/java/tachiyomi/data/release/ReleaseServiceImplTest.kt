@@ -35,6 +35,13 @@ class ReleaseServiceImplTest {
     }
 
     @Test
+    fun `Ignores files that are not APKs`() {
+        val withChecksum = assets + ("zenyomi-v0.20.0.apk.sha256" to "https://example.com/zenyomi-v0.20.0.apk.sha256")
+        ReleaseServiceImpl.pickDownloadLink(withChecksum, isFoss = false, abi = "riscv64")
+            ?.substringAfterLast('/') shouldBe "zenyomi-v0.20.0.apk"
+    }
+
+    @Test
     fun `Picks the foss APK for foss builds`() {
         pick("arm64-v8a", isFoss = true) shouldBe "zenyomi-v0.20.0-foss.apk"
     }

@@ -66,7 +66,7 @@ class ReleaseServiceImpl(
          */
         internal fun pickDownloadLink(assets: List<Pair<String, String>>, isFoss: Boolean, abi: String): String? {
             val map = assets
-                .filterNot { (name, _) -> name.startsWith(ADDON_PREFIX) }
+                .filter { (name, _) -> name.endsWith(".apk") && !name.startsWith(ADDON_PREFIX) }
                 .associate { (name, link) -> BUILD_TYPES.find { "-$it" in name } to link }
 
             return if (!isFoss) {
