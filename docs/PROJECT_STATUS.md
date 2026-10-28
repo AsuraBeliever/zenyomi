@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-**Actualizado:** 2026-10-17
+**Actualizado:** 2026-10-28
 **Fase actual:** 4 — Pulido hacia la v1.0.0 (fases 0 a 3 cerradas)
-**Última release:** v0.20.0, tag en `main`
+**Última release:** v0.21.0, tag en `main`
 **¿Compila?** sí
 **¿Instalado en el dispositivo del cliente?** no por defecto — desde el 2026-09-18 las pruebas van al emulador
 y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
@@ -32,6 +32,8 @@ y al celular solo cuando el cliente lo pide (ver `docs/TESTING.md`)
 | Motor de extensiones de anime | ✅ | derivado del de Mihon; carga APK con `tachiyomi.animeextension` |
 | `AndroidAnimeSourceManager` | ✅ | conecta extensiones cargadas con fuentes usables |
 | Biblioteca de anime (UI) | ✅ | pestaña propia; búsqueda, orden (título / visto / sin ver) e insignia de episodios pendientes |
+| Actualizar la biblioteca | ✅ | **Desde la v0.21.0:** deslizar para recargar —en manga y en anime— consulta todas las series; la «actualización inteligente» de Mihon queda solo para la automática. La automática viene encendida cada 12 h (Wi-Fi) y, de fábrica, ya no salta series con no leídos o sin empezar. Novedades → Anime tiene recargar y deslizar, y la insignia cuenta los dos lados. Divergencias con Mihon anotadas en `MIHON_PARITY.md` (KAN-45, KAN-46) |
+| Actualizar la app desde el aviso | ✅ | **Desde la v0.21.0** descarga el APK de la app y no el del complemento de torrent (KAN-44), y compara bien las versiones (KAN-43). El complemento se publica como `zenyomi-torrent_<abi>` para que la v0.20.0 tampoco se confunda al actualizar |
 | Categorías de anime | ✅ | crear, renombrar, reordenar y borrar; pestañas en la biblioteca; asignar desde la ficha; viajan en el backup |
 | Filtros, orden y vista de la biblioteca de anime | ✅ | hoja con tres pestañas; 4 filtros de tres estados, 6 órdenes con sentido, 3 modos de vista; todo se recuerda |
 | Explorar (fuentes + extensiones) | ✅ | 3 pestañas: Sources, Extensions, Migrate. Manga y anime conviven en cada lista, con filtro y secciones plegables |
