@@ -10,6 +10,10 @@ The format is a modified version of [Keep a Changelog](https://keepachangelog.co
 - `Fixed` - for any bug fixes.
 - `Other` - for technical stuff.
 
+## [0.21.1] - 2026-10-28
+### Fixed
+- **Las páginas que no cargaban con «Failed to initialize decoder» se leen.** Algunas fuentes sirven imágenes que el decodificador de Zenyomi no sabía abrir, y la página se quedaba en ese error con un botón de «Reintentar» que no servía de nada. Ahora, si ese decodificador no puede con la imagen, la abre el de Android, tanto en modo cascada como en paginado.
+
 ## [0.21.0] - 2026-10-28
 ### Changed
 - **Recargar la biblioteca trae de verdad lo nuevo.** Deslizar hacia abajo en la biblioteca de manga o de anime consulta ahora todas las series, y los capítulos y episodios nuevos aparecen sin tener que entrar en la ficha. Antes la recarga se saltaba las series con algo sin leer, sin empezar, terminadas o «que no tocaban» todavía, que es casi todo lo que se va siguiendo. Esos filtros de «Actualizaciones inteligentes» siguen existiendo, pero solo para la actualización automática, y el ajuste lo dice.
