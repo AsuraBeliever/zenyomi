@@ -1,0 +1,9 @@
+Changed: pulling to refresh the manga or anime library now checks every series, so new chapters and episodes show up without opening each entry. The smart update filters apply to the automatic update only.
+
+Changed: the library updates on its own every 12 hours (Wi-Fi only) and new chapters and episodes appear in Updates. A chosen interval, "never" included, is kept.
+
+Added: pull to refresh in the anime library, and a refresh button and pull to refresh in Updates > Anime.
+
+Fixed: updating from the in-app notice installs the app, not the torrent add-on. The add-on files are now named zenyomi-torrent_<abi>, so updating out of 0.20.0 from the notice works too.
+
+Fixed: the update notice no longer offers a version older than the installed one, and the Updates badge also counts episodes.
